@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Neue Machina";
+  src: url("https://shuvmarg.vercel.app/fonts/NeueMachina-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Neue Machina";
+  src: url("https://shuvmarg.vercel.app/fonts/NeueMachina-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/Manrope-VariableFont_wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Shuv Marg Design System — Design Constitution v1 ───────────── */
+@theme inline {
+  /* Brand Colors */
+  --color-maroon:        #7A1D1B;
+  --color-maroon-dark:   #5C1414;
+  --color-maroon-light:  #F0A09B;
+  --color-ivory:         #F8F1E3;
+  --color-ivory-dark:    #EDE5D8;
+  --color-gold:          #C99A4A;
+  --color-gold-light:    #EBC77F;
+
+  /* Neutrals */
+  --color-neutral-900:   #111111;
+  --color-neutral-800:   #222222;
+  --color-neutral-700:   #444444;
+  --color-neutral-600:   #666666;
+  --color-neutral-500:   #888888;
+  --color-neutral-400:   #AAAAAA;
+  --color-neutral-300:   #CCCCCC;
+  --color-neutral-200:   #DDDDDD;
+  --color-neutral-100:   #F5F5F5;
+  --color-white:         #FFFFFF;
+
+  /* Semantic */
+  --color-success:       #2E7D32;
+  --color-warning:       #F59E0B;
+  --color-danger:        #D32F2F;
+
+  /* Font */
+  --font-sans: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Neue Machina', system-ui, -apple-system, sans-serif;
+  --font-manrope: 'Manrope', system-ui, -apple-system, sans-serif;
+
+  /* Border Radius — 8px grid */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-2xl:  24px;
+  --radius-pill: 9999px;
+}
+
+/* ─── Global Reset & Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FDFAF6;
+  color: #111111;
+  /* Manrope for all UI text — readable, modern, clean */
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Neue Machina for all headings — editorial, distinctive */
+h1, h2, h3 {
+  font-family: 'Neue Machina', system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Card ────────────────────────────────────────────────────────── */
+.card {
+  background: #FFFFFF;
+  border: 1px solid #E8E0D4;
+  border-radius: 12px;
+  transition: border-color 0.2s ease;
+}
+.card:hover {
+  border-color: #D0C8BC;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────── */
+.btn-primary {
+  background-color: #7A1D1B;
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 12px;
+  border: none;
+  padding: 0 24px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover {
+  background-color: #5C1414;
+  box-shadow: 0 4px 12px rgba(122, 29, 27, 0.30);
+}
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: #7A1D1B;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 1.5px solid #7A1D1B;
+  padding: 0 24px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-secondary:hover {
+  background-color: rgba(122, 29, 27, 0.06);
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: #444444;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 14px;
+  border-radius: 8px;
+  border: none;
+  padding: 0 16px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-ghost:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #111111;
+}
+
+/* ─── Form Elements ───────────────────────────────────────────────── */
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444444;
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
+}
+
+.form-input {
+  width: 100%;
+  height: 48px;
+  background: #FFFFFF;
+  border: 1.5px solid #DDDDDD;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #111111;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-input::placeholder { color: #AAAAAA; }
+.form-input:focus {
+  border-color: #7A1D1B;
+  box-shadow: 0 0 0 3px rgba(122, 29, 27, 0.10);
+}
+.form-input.error {
+  border-color: #D32F2F;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.10);
+}
+
+.form-select {
+  width: 100%;
+  height: 48px;
+  background: #FFFFFF;
+  border: 1.5px solid #DDDDDD;
+  border-radius: 12px;
+  padding: 0 40px 0 16px;
+  font-size: 14px;
+  color: #111111;
+  font-family: var(--font-sans);
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6,9 12,15 18,9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.form-select:focus {
+  border-color: #7A1D1B;
+  box-shadow: 0 0 0 3px rgba(122, 29, 27, 0.10);
+}
+
+/* ─── Eyebrow / Section Label ─────────────────────────────────────── */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7A1D1B;
+}
+
+/* ─── Divider ─────────────────────────────────────────────────────── */
+.divider {
+  width: 100%;
+  height: 1px;
+  background: #DDDDDD;
+}
+
+/* ─── Animations ──────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-fade-up  { animation: fade-up  0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in  { animation: fade-in  0.4s ease both; }

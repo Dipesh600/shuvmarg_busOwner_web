@@ -1,0 +1,147 @@
+import { motion } from "framer-motion";
+
+export default function BenefitsSection() {
+  return (
+    <section id="benefits" className="py-24 relative bg-white overflow-hidden scroll-mt-24">
+      <div className="max-w-[1200px] mx-auto px-6 lg:px-8 relative z-10">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px w-8 flex-shrink-0 bg-[#C99A4A]" />
+              <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#7A1D1B]">
+                Why Join Us
+              </span>
+            </div>
+            <h2 className="font-bold text-[#111111] tracking-tight leading-[1.15]" style={{ fontSize: "clamp(32px, 4vw, 44px)" }}>
+              The infrastructure for <br />
+              modern transport operators
+            </h2>
+          </div>
+          <div className="max-w-sm pb-2">
+            <p className="text-[16px] text-[#666666] leading-relaxed">
+              Nepal&apos;s travel market is digitizing rapidly. Operators who move online now capture the most passengers and scale operations faster.
+            </p>
+          </div>
+        </div>
+
+        {/* 3-Column Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          
+          {/* Card 1: Revenue */}
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className="group flex flex-col bg-white rounded-[24px] border border-neutral-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="h-[220px] bg-[#FAFAFA] border-b border-neutral-100 flex flex-col items-center justify-end px-8 pt-8 relative overflow-hidden">
+              <div className="w-full flex items-end justify-between gap-2 md:gap-3 px-4">
+                {[3, 5, 4, 7, 6, 9].map((h, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ height: 0 }}
+                    whileInView={{ height: `${h * 10}%` }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: i * 0.1, ease: [0.2, 0.8, 0.2, 1] }}
+                    className={`w-full rounded-t-md ${i === 5 ? "bg-[#7A1D1B]" : "bg-neutral-200"}`}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="p-8">
+              <h3 className="font-bold text-[18px] text-[#111111] mb-2">Revenue Growth</h3>
+              <p className="text-[15px] text-[#666666] leading-relaxed">
+                Access Nepal&apos;s largest online passenger pool. Payouts are aggregated and settled automatically.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Card 2: Automated Manifests */}
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className="group flex flex-col bg-white rounded-[24px] border border-neutral-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="h-[220px] bg-[#FAFAFA] border-b border-neutral-100 flex items-center justify-center p-8 relative overflow-hidden">
+               <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 viewport={{ once: true }}
+                 transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+                 className="bg-white p-5 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-neutral-200 w-full max-w-[240px] relative z-10"
+               >
+                 <div className="flex items-center gap-3 mb-3">
+                   <div className="w-8 h-8 rounded-full bg-[#FFF4F3] flex items-center justify-center border border-[#F0A09B]/30">
+                     <div className="w-3 h-3 rounded-sm bg-[#7A1D1B]" />
+                   </div>
+                   <div>
+                     <div className="text-[12px] font-bold text-[#111111]">Auto Manifest</div>
+                     <div className="text-[10px] text-[#888888]">Just now</div>
+                   </div>
+                 </div>
+                 <div className="text-[13px] text-[#444444] mb-3 leading-relaxed">
+                   Manifest for KTM-PKR ready. 32 passengers boarded.
+                 </div>
+                 <div className="h-8 w-full bg-[#FAFAFA] rounded-lg border border-neutral-200 flex items-center justify-center text-[12px] text-[#111111] font-medium transition-colors group-hover:bg-neutral-100">
+                   View Details
+                 </div>
+               </motion.div>
+            </div>
+            <div className="p-8">
+              <h3 className="font-bold text-[18px] text-[#111111] mb-2">Automated Manifests</h3>
+              <p className="text-[15px] text-[#666666] leading-relaxed">
+                Passenger manifests are sent to your conductor&apos;s device automatically right after departure.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Card 3: Smart Scheduling */}
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className="group flex flex-col bg-white rounded-[24px] border border-neutral-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="h-[220px] bg-[#FAFAFA] border-b border-neutral-100 flex items-center justify-center p-8 relative overflow-hidden">
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
+                className="bg-white p-5 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-neutral-200 w-full max-w-[240px] relative z-10"
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <div className="text-[12px] font-bold text-[#111111]">Oct 2026</div>
+                  <div className="flex gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C99A4A]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-neutral-200" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[...Array(15)].map((_, d) => (
+                    <motion.div 
+                      key={d} 
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.2, delay: 0.2 + (d * 0.02) }}
+                      className={`h-6 rounded-md ${
+                        [2, 7, 12, 4, 9, 14].includes(d) 
+                          ? "bg-[#FFF4F3] border border-[#F0A09B]/30" 
+                          : "bg-neutral-100 border border-transparent"
+                      }`} 
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+            <div className="p-8">
+              <h3 className="font-bold text-[18px] text-[#111111] mb-2">Smart Scheduling</h3>
+              <p className="text-[15px] text-[#666666] leading-relaxed">
+                Set your template once and the system auto-generates trips up to 30 days in advance.
+              </p>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
