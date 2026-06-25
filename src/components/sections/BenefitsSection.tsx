@@ -36,9 +36,10 @@ export default function BenefitsSection() {
           <div className="max-w-2xl">
             <div className="flex items-center gap-2 mb-4">
               <div className="h-px w-8 flex-shrink-0 bg-[#C99A4A]" />
-              <span className="text-[12px] font-bold uppercase tracking-[0.15em] text-[#7A1D1B]">
-                Why Join Us
+              <span className="text-[12px] font-medium tracking-wide text-[#7A1D1B]">
+                Why join us
               </span>
+              <div className="h-px w-8 flex-shrink-0 bg-[#C99A4A]" />
             </div>
             <h2
               className="font-bold text-[#111111] tracking-tight leading-[1.15]"
@@ -69,12 +70,12 @@ export default function BenefitsSection() {
               {/* Image Header */}
               <div className="relative w-full h-48 bg-[#FAFAFA] border-b border-neutral-100 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#111111_1px,transparent_1px)] [background-size:16px_16px]" />
-                <Image 
-                  src={benefit.image as string} 
-                  alt={benefit.title} 
-                  fill 
+                <Image
+                  src={benefit.image as string}
+                  alt={benefit.title}
+                  fill
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-contain drop-shadow-md transform group-hover:scale-[1.05] transition-transform duration-700 ease-out p-6" 
+                  className="object-contain drop-shadow-md transform group-hover:scale-[1.05] transition-transform duration-700 ease-out p-6"
                 />
               </div>
 

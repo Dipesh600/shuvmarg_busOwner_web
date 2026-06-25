@@ -56,7 +56,6 @@ export default function PartnerTypesSection() {
         {/* Header Section */}
         <div className="mb-14 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-200 bg-[#FAFAFA] mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#C99A4A]" />
             <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#111111]">
               Partner Network
             </span>

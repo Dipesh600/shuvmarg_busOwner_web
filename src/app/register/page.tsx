@@ -181,7 +181,6 @@ export default function RegisterPage() {
         {/* Background Video */}
         <video
           src="/video.mp4"
-          poster="/images/video-poster.png"
           autoPlay
           loop
           muted

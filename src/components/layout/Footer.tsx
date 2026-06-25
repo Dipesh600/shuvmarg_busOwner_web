@@ -57,9 +57,9 @@ export default function Footer() {
                     directions_bus
                   </span>
                 </div>
-                <span className="font-black text-[20px] sm:text-[24px] tracking-tighter">
-                  <span style={{ color: "#F8F1E3" }}>Shuv</span><span style={{ color: "#D96B62" }}>marg</span>
-                  <span className="font-normal text-[13px] ml-1" style={{ color: "rgba(248,241,227,0.65)" }}>Partner</span>
+                <span className="font-black text-[20px] sm:text-[24px] tracking-tighter flex items-baseline">
+                  <span style={{ color: "#F8F1E3", fontFamily: 'var(--font-manrope)' }}>Shuv</span><span style={{ color: "#D96B62", fontFamily: 'var(--font-display)' }}>marg</span>
+                  <span className="font-normal text-[13px] ml-1" style={{ color: "rgba(248,241,227,0.65)", fontFamily: 'var(--font-sans)' }}>Partner</span>
                 </span>
               </Link>
               <p className="text-sm leading-relaxed max-w-[200px]" style={{ color: "rgba(248,241,227,0.65)" }}>

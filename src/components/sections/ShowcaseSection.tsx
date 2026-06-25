@@ -12,7 +12,6 @@ export default function ShowcaseSection() {
         {/* Header Section */}
         <div className="mb-16 text-center max-w-3xl mx-auto flex flex-col items-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-neutral-200 bg-white mb-6 shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#C99A4A]" />
             <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#111111]">
               Showcase
             </span>

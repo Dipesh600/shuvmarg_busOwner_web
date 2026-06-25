@@ -27,6 +27,8 @@ export const metadata: Metadata = {
   },
 };
 
+import SmoothScrollProvider from "@/components/layout/SmoothScrollProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -47,8 +49,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1">{children}</main>
+        <SmoothScrollProvider>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+        </SmoothScrollProvider>
       </body>
     </html>
   );

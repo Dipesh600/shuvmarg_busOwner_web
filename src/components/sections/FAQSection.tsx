@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import FAQItem from "@/components/ui/FAQItem";
 import { FAQItemData } from "@/types";
 
@@ -47,15 +49,16 @@ const faqs: FAQItemData[] = [
 ];
 
 export default function FAQSection() {
+  const [openId, setOpenId] = useState<number | string | null>(null);
   return (
     <section id="faq" className="py-24 relative bg-[#FAFAFA] w-full">
       <div className="max-w-[1200px] mx-auto px-6 lg:px-8 relative z-10">
-        
+
         {/* Centered Heading */}
         <div className="mb-14 flex flex-col items-center text-center">
           <div className="flex items-center gap-2 mb-4">
             <div className="h-px w-8 flex-shrink-0" style={{ background: "#C99A4A" }} />
-            <span className="text-[12px] font-bold uppercase tracking-[0.16em]" style={{ color: "#7A1D1B" }}>FAQ</span>
+            <span className="text-[12px] font-medium tracking-wide" style={{ color: "#7A1D1B" }}>Faq</span>
             <div className="h-px w-8 flex-shrink-0" style={{ background: "#C99A4A" }} />
           </div>
           <h2
@@ -73,10 +76,10 @@ export default function FAQSection() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* Left Column: Contact Support Card */}
           <div className="lg:col-span-4">
-            <div 
+            <div
               className="p-8 rounded-[24px] flex flex-col items-center text-center"
               style={{
                 background: "#FFFFFF",
@@ -104,7 +107,7 @@ export default function FAQSection() {
 
               {/* Contact Action Pills */}
               <div className="flex flex-col gap-3 w-full">
-                <a 
+                <a
                   href="tel:+9779803643115"
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[12px] transition-colors hover:bg-neutral-50"
                   style={{ background: "#FAFAFA", border: "1px solid #EEEEEE" }}
@@ -112,7 +115,7 @@ export default function FAQSection() {
                   <span className="material-symbols-rounded text-[18px]" style={{ color: "#7A1D1B" }}>call</span>
                   <span className="font-semibold" style={{ fontSize: "14px", color: "#111111" }}>+977 9803643115</span>
                 </a>
-                <a 
+                <a
                   href="mailto:support@shuvmarg.com"
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[12px] transition-colors hover:bg-neutral-50"
                   style={{ background: "#FAFAFA", border: "1px solid #EEEEEE" }}
@@ -127,7 +130,12 @@ export default function FAQSection() {
           {/* Right Column: FAQ Accordions */}
           <div className="lg:col-span-8 flex flex-col gap-3">
             {faqs.map((faq) => (
-              <FAQItem key={faq.id} item={faq} />
+              <FAQItem 
+                key={faq.id} 
+                item={faq} 
+                isOpen={openId === faq.id}
+                onToggle={() => setOpenId(openId === faq.id ? null : faq.id)}
+              />
             ))}
           </div>
 

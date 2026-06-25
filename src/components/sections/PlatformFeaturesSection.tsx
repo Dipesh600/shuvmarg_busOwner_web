@@ -104,7 +104,6 @@ export default function PlatformFeaturesSection() {
           {/* Right Column - Text & Interactive Options */}
           <div className="w-full lg:w-1/2">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-neutral-200 bg-white mb-6 shadow-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#7A1D1B]" />
               <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#7A1D1B]">
                 Platform Capabilities
               </span>

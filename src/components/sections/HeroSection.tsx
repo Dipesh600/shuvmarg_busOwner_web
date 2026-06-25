@@ -7,19 +7,19 @@ const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 export default function HeroSection() {
   return (
     <section className="relative w-full min-h-[calc(100svh+60px)] md:min-h-[calc(100svh+100px)] lg:min-h-[calc(100svh+120px)] flex flex-col overflow-hidden">
-      {/* Background Video */}
-      <video
-        src="/video.mp4"
-        poster="/images/video-poster.png"
-        autoPlay
-        loop
-        muted
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
-      />
-
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-black/40 z-10" />
+      {/* Background Video Layer */}
+      <div className="absolute inset-0 z-0">
+        <video
+          src="/video.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover opacity-90"
+        />
+        {/* Deep, rich overlay matching the design */}
+        <div className="absolute inset-0 bg-black/40 z-10" />
+      </div>
 
       {/* Spacer to balance navbar height */}
       <div className="h-20 md:h-28 shrink-0 z-20 pointer-events-none" />
@@ -32,7 +32,6 @@ export default function HeroSection() {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="flex items-center gap-2 mb-6 md:mb-8 px-4 py-1.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-md"
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-[#7A1D1B]" />
           <span className="text-[12px] md:text-[13px] font-medium tracking-wide text-white" style={{ fontFamily: NM }}>
             For Nepal&apos;s bus operators
           </span>

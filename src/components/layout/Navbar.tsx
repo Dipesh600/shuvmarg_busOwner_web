@@ -51,21 +51,14 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsUserLoggedIn(isLoggedIn());
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
 
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
-    
+
     return () => {
-      window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
-
-  // Calculate exact pixel widths to ensure mathematically perfect bi-directional animations without CSS snapping or delays.
-  const expandedWidth = windowWidth;
-  const shrunkWidth = Math.min(windowWidth - 32, 950);
 
   // Close mobile menu on route change
   useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
@@ -81,193 +74,195 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ── Fixed header bar ─────────────────────────────────── */}
       <div className="fixed inset-x-0 top-0 z-[100] pointer-events-none flex justify-center">
-        <motion.div
-          initial={false}
-          animate={{
-            y: isFullWidth || scrolled ? 0 : 16,
-            width: isFullWidth || scrolled ? expandedWidth : shrunkWidth,
-            borderRadius: isFullWidth || scrolled ? 0 : 999,
+        <div
+          className={`pointer-events-auto flex items-center justify-center h-[64px] backdrop-blur-md transition-all duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+            isFullWidth || scrolled 
+              ? "rounded-none translate-y-0 border-b border-neutral-200" 
+              : "rounded-full translate-y-4 border-b border-transparent"
+          }`}
+          style={{
+            width: isFullWidth || scrolled ? "100%" : "calc(100% - 32px)",
+            maxWidth: isFullWidth || scrolled ? "100%" : "950px",
             backgroundColor: isFullWidth
               ? "#FFFFFF"
               : "rgba(235,235,235,0.95)",
             boxShadow: isFullWidth
               ? "0 1px 0 rgba(0,0,0,0.06)"
-              : scrolled ? "0 2px 16px rgba(0,0,0,0.08)" : "0 8px 32px rgba(0,0,0,0.04)",
+              : scrolled ? "0 2px 16px rgba(0,0,0,0.08)" : "0 8px 32px rgba(0,0,0,0.04)"
           }}
-          transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
-          className={`pointer-events-auto flex items-center justify-center h-[64px] backdrop-blur-md transition-colors duration-300 ${
-            isFullWidth || scrolled ? "border-b border-neutral-200" : "border-b border-transparent"
-          }`}
         >
-          <motion.div 
-            initial={false}
-            animate={{ width: isFullWidth || scrolled ? 1050 : 950 }}
-            transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
-            className="flex items-center justify-between max-w-full px-4 sm:px-6 lg:px-8"
+          <div
+            className="flex items-center justify-between max-w-full px-4 sm:px-6 lg:px-8 transition-all duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+            style={{ width: isFullWidth || scrolled ? 1050 : 950 }}
           >
             {/* ── Left: Logo ───────────────────────── */}
             <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-              <span className="font-black text-[18px] sm:text-[22px] tracking-tighter">
-                <span className="text-[#111111]">Shuv</span><span className="text-[#D96B62]">marg</span>
-                <span className="text-neutral-400 font-normal text-xs sm:text-sm ml-1 hidden sm:inline">
-                  Partner
+              <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+                <span className="font-black text-[18px] sm:text-[22px] tracking-tighter flex items-baseline">
+                  <span className="text-[#111111]" style={{ fontFamily: 'var(--font-manrope)' }}>Shuv</span><span className="text-[#D96B62]" style={{ fontFamily: 'var(--font-display)' }}>marg</span>
+                  <span className="text-neutral-400 font-normal text-xs sm:text-sm ml-1 hidden sm:inline" style={{ fontFamily: 'var(--font-sans)' }}>
+                    Partner
+                  </span>
                 </span>
-              </span>
-            </Link>
+              </Link>
 
-            {/* Onboarding step indicator (md+) */}
-            <AnimatePresence>
-              {isOnboarding && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  className="hidden md:flex items-center gap-2 pl-4 border-l border-neutral-200"
-                >
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{ background: "#FFF4F3", color: "#7A1D1B", border: "1px solid rgba(122,29,27,0.2)" }}
+              {/* Onboarding step indicator (md+) */}
+              <AnimatePresence>
+                {isOnboarding && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    className="hidden md:flex items-center gap-2 pl-4 border-l border-neutral-200"
                   >
-                    {onboardingStep + 1}
-                  </span>
-                  <span className="text-sm font-semibold text-neutral-700 truncate max-w-[180px]">
-                    {onboardingTitle}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Dashboard nav items — desktop only */}
-            <AnimatePresence>
-              {isDashboard && (
-                <motion.nav
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, delay: 0.05 }}
-                  className="hidden lg:flex items-center gap-0.5"
-                >
-                  {dashboardNavItems.map((item) => {
-                    const active = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${active
-                          ? "bg-[rgba(122,29,27,0.08)] text-maroon"
-                          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-                          }`}
-                      >
-                        <span className="material-symbols-rounded text-[16px]">{item.icon}</span>
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </motion.nav>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ── Right: CTAs ──────────────────────── */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <AnimatePresence mode="popLayout">
-
-              {/* Landing state */}
-              {!isDashboard && !isOnboarding && (
-                <motion.div
-                  key="landing-cta"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center gap-2"
-                >
-                  {isUserLoggedIn ? (
-                    <Link
-                      href="/dashboard"
-                      className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
-                      style={{ background: "#7A1D1B" }}
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style={{ background: "#FFF4F3", color: "#7A1D1B", border: "1px solid rgba(122,29,27,0.2)" }}
                     >
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <>
-                      {/* Sign in — visible on all sizes */}
+                      {onboardingStep + 1}
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-700 truncate max-w-[180px]">
+                      {onboardingTitle}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Dashboard nav items — desktop only */}
+              <AnimatePresence>
+                {isDashboard && (
+                  <motion.nav
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, delay: 0.05 }}
+                    className="hidden lg:flex items-center gap-0.5"
+                  >
+                    {dashboardNavItems.map((item) => {
+                      const active = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all ${active
+                            ? "bg-[rgba(122,29,27,0.08)] text-maroon"
+                            : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
+                            }`}
+                        >
+                          <span className="material-symbols-rounded text-[16px]">{item.icon}</span>
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </motion.nav>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* ── Right: CTAs ──────────────────────── */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <AnimatePresence mode="popLayout">
+
+                {/* Landing state */}
+                {!isDashboard && !isOnboarding && (
+                  <motion.div
+                    key="landing-cta"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center  gap-2"
+                  >
+                    {isUserLoggedIn ? (
                       <Link
-                        href="/login"
-                        className="h-[42px] px-3 sm:px-5 rounded-lg text-[15px] font-bold text-neutral-700 hover:bg-neutral-100 transition-colors flex items-center"
+                        href="/dashboard"
+                        className={`font-bold transition-all flex items-center gap-1.5 ${scrolled
+                          ? "h-[42px] px-4 sm:px-6 rounded-xl text-[16px] text-white hover:bg-[#5C1414]"
+                          : "h-[64px] px-6 rounded-r-full text-[16px] text-white -mr-4 sm:-mr-6 lg:-mr-8"
+                          }`}
+                        style={{
+                          background: "#7A1D1B",
+                          fontFamily: 'var(--font-display)'
+                        }}
                       >
-                        Sign in
+                        Dashboard
                       </Link>
-                      {/* Become a Partner — truncated label on xs */}
-                      <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
-                        style={{ background: "#7A1D1B" }}
-                      >
-                        <span className="hidden sm:inline">Request a Call</span>
-                        <span className="sm:hidden">Call</span>
-                      </button>
-                    </>
-                  )}
-                </motion.div>
-              )}
+                    ) : (
+                      <>
+                        {/* Sign in — visible on all sizes */}
+                        <Link
+                          href="/login"
+                          className="h-[42px] px-3 sm:px-5 rounded-lg text-[15px] font-bold text-neutral-700 hover:bg-neutral-100 transition-colors flex items-center"
+                        >
+                          Sign in
+                        </Link>
+                        {/* Become a Partner — truncated label on xs */}
+                        <button
+                          onClick={() => setIsModalOpen(true)}
+                          className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
+                          style={{ background: "#7A1D1B" }}
+                        >
+                          <span className="hidden sm:inline">Request a Call</span>
+                          <span className="sm:hidden">Call</span>
+                        </button>
+                      </>
+                    )}
+                  </motion.div>
+                )}
 
-              {/* Onboarding state */}
-              {isOnboarding && (
-                <motion.div
-                  key="onboarding-cta"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <Link
-                    href="/"
-                    className="h-9 px-4 rounded-lg text-[13px] font-medium text-neutral-600 hover:bg-neutral-100 transition-colors flex items-center"
+                {/* Onboarding state */}
+                {isOnboarding && (
+                  <motion.div
+                    key="onboarding-cta"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                   >
-                    Exit Setup
-                  </Link>
-                </motion.div>
-              )}
+                    <Link
+                      href="/"
+                      className="h-9 px-4 rounded-lg text-[13px] font-medium text-neutral-600 hover:bg-neutral-100 transition-colors flex items-center"
+                    >
+                      Exit Setup
+                    </Link>
+                  </motion.div>
+                )}
 
-              {/* Dashboard state */}
-              {isDashboard && (
-                <motion.div
-                  key="dashboard-cta"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2"
-                >
-                  {/* Operator name — sm+ only */}
-                  <div className="hidden sm:flex flex-col items-end leading-tight">
-                    <span className="text-[12px] font-semibold text-neutral-900">Shuvmarg Travels</span>
-                    <span className="text-[10px] text-neutral-500 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
-                      Active
-                    </span>
-                  </div>
-                  {/* Avatar */}
-                  <div className="w-8 h-8 rounded-full bg-maroon flex items-center justify-center cursor-pointer hover:bg-maroon-dark transition-colors flex-shrink-0">
-                    <span className="text-white text-[11px] font-bold">ST</span>
-                  </div>
-                  {/* Hamburger — below lg */}
-                  <button
-                    className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 transition-colors"
-                    onClick={() => setMobileMenuOpen((v) => !v)}
-                    aria-label="Toggle navigation"
+                {/* Dashboard state */}
+                {isDashboard && (
+                  <motion.div
+                    key="dashboard-cta"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2"
                   >
-                    <span className="material-symbols-rounded text-neutral-700 text-[20px]">
-                      {mobileMenuOpen ? "close" : "menu"}
-                    </span>
-                  </button>
-                </motion.div>
-              )}
+                    {/* Operator name — sm+ only */}
+                    <div className="hidden sm:flex flex-col items-end leading-tight">
+                      <span className="text-[12px] font-semibold text-neutral-900">Shuvmarg Travels</span>
+                      <span className="text-[10px] text-neutral-500 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
+                        Active
+                      </span>
+                    </div>
+                    {/* Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-maroon flex items-center justify-center cursor-pointer hover:bg-maroon-dark transition-colors flex-shrink-0">
+                      <span className="text-white text-[11px] font-bold">ST</span>
+                    </div>
+                    {/* Hamburger — below lg */}
+                    <button
+                      className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center hover:bg-neutral-100 transition-colors"
+                      onClick={() => setMobileMenuOpen((v) => !v)}
+                      aria-label="Toggle navigation"
+                    >
+                      <span className="material-symbols-rounded text-neutral-700 text-[20px]">
+                        {mobileMenuOpen ? "close" : "menu"}
+                      </span>
+                    </button>
+                  </motion.div>
+                )}
 
-            </AnimatePresence>
+              </AnimatePresence>
+            </div>
           </div>
-          </motion.div>
-        </motion.div>
+        </div>
 
         {/* Dashboard mobile nav drawer */}
         <AnimatePresence>
@@ -377,40 +372,40 @@ export default function Navbar() {
                         </p>
                       </div>
 
-                        <form
-                          className="space-y-4"
-                          onSubmit={async (e) => {
-                            e.preventDefault();
-                            if (!modalName.trim() || !modalPhone || !selectedDistrict) return;
-                            setModalError("");
-                            setModalSubmitting(true);
-                            try {
-                              const res = await fetch(
-                                `${process.env.NEXT_PUBLIC_API_URL}/public/partner-leads`,
-                                {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({
-                                    fullName: modalName.trim(),
-                                    phone: modalPhone,
-                                    district: selectedDistrict,
-                                    leadType: "contact_form",
-                                  }),
-                                }
-                              );
-                              const data = await res.json();
-                              if (!res.ok) {
-                                setModalError(data.message || "Something went wrong. Please try again.");
-                              } else {
-                                setIsSubmitted(true);
+                      <form
+                        className="space-y-4"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!modalName.trim() || !modalPhone || !selectedDistrict) return;
+                          setModalError("");
+                          setModalSubmitting(true);
+                          try {
+                            const res = await fetch(
+                              `${process.env.NEXT_PUBLIC_API_URL}/public/partner-leads`,
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  fullName: modalName.trim(),
+                                  phone: modalPhone,
+                                  district: selectedDistrict,
+                                  leadType: "contact_form",
+                                }),
                               }
-                            } catch {
-                              setModalError("Network error. Please try again.");
-                            } finally {
-                              setModalSubmitting(false);
+                            );
+                            const data = await res.json();
+                            if (!res.ok) {
+                              setModalError(data.message || "Something went wrong. Please try again.");
+                            } else {
+                              setIsSubmitted(true);
                             }
-                          }}
-                        >
+                          } catch {
+                            setModalError("Network error. Please try again.");
+                          } finally {
+                            setModalSubmitting(false);
+                          }
+                        }}
+                      >
                         <div>
                           <label className="form-label">Full Name <span style={{ color: "#7A1D1B" }}>*</span></label>
                           <input type="text" required placeholder="e.g. Ram Bahadur Shrestha" className="form-input" value={modalName} onChange={(e) => setModalName(e.target.value)} />
@@ -510,19 +505,19 @@ export default function Navbar() {
                           </div>
                         </div>
 
-                            {modalError && (
-                              <p className="text-[12px] text-center" style={{ color: "#D32F2F" }}>{modalError}</p>
-                            )}
+                        {modalError && (
+                          <p className="text-[12px] text-center" style={{ color: "#D32F2F" }}>{modalError}</p>
+                        )}
 
-                            <button
-                              type="submit"
-                              disabled={modalSubmitting || !modalName.trim() || modalPhone.length < 10 || !selectedDistrict}
-                              className="w-full h-[44px] rounded-[10px] font-semibold text-[14px] text-white mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
-                              style={{ background: "#7A1D1B" }}
-                            >
-                              {modalSubmitting ? "Submitting..." : "Request Callback"}
-                            </button>
-                          </form>
+                        <button
+                          type="submit"
+                          disabled={modalSubmitting || !modalName.trim() || modalPhone.length < 10 || !selectedDistrict}
+                          className="w-full h-[44px] rounded-[10px] font-semibold text-[14px] text-white mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                          style={{ background: "#7A1D1B" }}
+                        >
+                          {modalSubmitting ? "Submitting..." : "Request Callback"}
+                        </button>
+                      </form>
                     </motion.div>
                   ) : (
                     <motion.div

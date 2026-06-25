@@ -197,7 +197,6 @@ export default function ForgotPasswordPage() {
         {/* Background Video */}
         <video
           src="/video.mp4"
-          poster="/images/video-poster.png"
           autoPlay loop muted playsInline
           className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 hidden lg:block"
         />
