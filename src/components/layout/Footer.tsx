@@ -58,7 +58,7 @@ export default function Footer() {
                   </span>
                 </div>
                 <span className="font-black text-[20px] sm:text-[24px] tracking-tighter">
-                  <span style={{ color: "#F8F1E3" }}>Shuv</span><span style={{ color: "#C99A4A" }}>marg</span>
+                  <span style={{ color: "#F8F1E3" }}>Shuv</span><span style={{ color: "#D96B62" }}>marg</span>
                 </span>
               </Link>
               <p className="text-sm leading-relaxed max-w-[200px]" style={{ color: "rgba(248,241,227,0.65)" }}>

@@ -11,6 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -36,77 +37,89 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[100svh] w-full flex flex-col lg:flex-row bg-[#F8F1E3]">
+    <div className="min-h-[100svh] w-full flex items-center justify-center bg-[#FFFCF8] p-2 sm:p-4 lg:p-6">
       
-      {/* ─── LEFT SIDE: HERO/INFO PANEL (Hidden on Mobile) ─── */}
-      <div className="hidden lg:flex w-1/2 relative bg-neutral-900 flex-col justify-between p-12 overflow-hidden">
-        {/* Background Video */}
+      <div className="w-full max-w-[1600px] h-[calc(100svh-1rem)] sm:h-[calc(100svh-2rem)] lg:h-[calc(100svh-3rem)] min-h-[600px] bg-neutral-900 rounded-[24px] lg:rounded-[32px] overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.16)] flex flex-col lg:flex-row relative">
+        
+        {/* Background Video (Shared across the whole card, visible through the right panel's cutout) */}
         <video
           src="/video.mp4"
           autoPlay
           loop
           muted
           playsInline
-          className="absolute inset-0 w-full h-full object-cover z-0 opacity-40"
+          className="absolute inset-0 w-full h-full object-cover z-0 opacity-40 hidden lg:block"
         />
-        {/* Dark Gradient Overlay */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none" />
+        <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none hidden lg:block" />
 
-        {/* Top: Home Link */}
-        <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10">
-            <span className="material-symbols-rounded text-[18px]">arrow_back</span>
-            <span className="text-[14px] font-medium tracking-wide">Home</span>
-          </Link>
-        </div>
+        {/* ─── LEFT SIDE: HERO/INFO PANEL (Hidden on Mobile) ─── */}
+        <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 z-10">
 
-        {/* Middle: Brand Message */}
-        <div className="relative z-10 max-w-lg mt-auto pb-16">
-          <h1 
-            className="text-[48px] leading-[1.1] text-white mb-6"
-            style={{ fontFamily: NM, fontWeight: 800, letterSpacing: "-0.02em" }}
-          >
-            Welcome Back.<br />
-            <span style={{ color: "#D96B62" }}>Let's Move Nepal.</span>
-          </h1>
-          <p className="text-[16px] leading-[1.6] text-white/80 font-medium">
-            Access your operator command center to manage live bookings, track fleet performance, and process seamless daily settlements.
-          </p>
-        </div>
-
-        {/* Bottom: Stats & Footer */}
-        <div className="relative z-10 w-full border-t border-white/20 pt-8 mt-auto">
-          <div className="grid grid-cols-3 gap-6 mb-12">
-            <div className="border-r border-white/20 pr-6">
-              <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>500+</h3>
-              <p className="text-white/60 text-[13px]">Operators on Shuv Marg</p>
-            </div>
-            <div className="border-r border-white/20 px-6">
-              <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>10k+</h3>
-              <p className="text-white/60 text-[13px]">Tickets managed daily</p>
-            </div>
-            <div className="pl-6">
-              <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>Instant</h3>
-              <p className="text-white/60 text-[13px]">Operator Settlements</p>
-            </div>
+          {/* Top: Home Link */}
+          <div className="relative z-10">
+            <Link href="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10">
+              <span className="material-symbols-rounded text-[18px]">arrow_back</span>
+              <span className="text-[14px] font-medium tracking-wide">Home</span>
+            </Link>
           </div>
-          <p className="text-white/40 text-[12px]">
-            Powered by Shuv Marg · &copy; 2026 Shuv Marg
-          </p>
-        </div>
-      </div>
 
-      {/* ─── RIGHT SIDE: FORM PANEL ─── */}
-      <div className="w-full lg:w-1/2 min-h-[100svh] flex flex-col relative overflow-y-auto">
-        {/* Mobile-only Home Link */}
-        <div className="lg:hidden absolute top-6 left-6 z-10">
-          <Link href="/" className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
-            <span className="material-symbols-rounded text-[20px]">arrow_back</span>
-            <span className="text-[14px] font-medium">Home</span>
-          </Link>
+          {/* Middle: Brand Message */}
+          <div className="relative z-10 max-w-lg mt-auto pb-16">
+            <h1 
+              className="text-[48px] leading-[1.1] text-white mb-6"
+              style={{ fontFamily: NM, fontWeight: 800, letterSpacing: "-0.02em" }}
+            >
+              Welcome Back.<br />
+              <span style={{ color: "#D96B62" }}>Let&apos;s Move Nepal.</span>
+            </h1>
+            <p className="text-[16px] leading-[1.6] text-white/80 font-medium">
+              Access your operator command center to manage live bookings, track fleet performance, and process seamless daily settlements.
+            </p>
+          </div>
+
+          {/* Bottom: Stats & Footer */}
+          <div className="relative z-10 w-full border-t border-white/20 pt-8 mt-auto">
+            <div className="grid grid-cols-3 gap-6 mb-12">
+              <div className="border-r border-white/20 pr-6">
+                <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>500+</h3>
+                <p className="text-white/60 text-[13px]">Operators on Shuv Marg</p>
+              </div>
+              <div className="border-r border-white/20 px-6">
+                <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>10k+</h3>
+                <p className="text-white/60 text-[13px]">Tickets managed daily</p>
+              </div>
+              <div className="pl-6">
+                <h3 className="text-white text-[24px] font-bold mb-1" style={{ fontFamily: NM }}>Instant</h3>
+                <p className="text-white/60 text-[13px]">Operator Settlements</p>
+              </div>
+            </div>
+            <p className="text-white/40 text-[12px]">
+              Powered by Shuv Marg · &copy; 2026 Shuv Marg
+            </p>
+          </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 md:p-20 w-full max-w-[560px] mx-auto mt-12 lg:mt-0">
+        {/* ─── RIGHT SIDE: FORM PANEL ─── */}
+        <div className="w-full lg:w-1/2 flex-1 flex flex-col relative overflow-y-auto z-10 bg-white lg:rounded-bl-[100px] lg:shadow-[-24px_0_48px_rgba(0,0,0,0.15)]">
+          {/* Mobile-only Home Link */}
+          <div className="lg:hidden absolute top-6 left-6 z-10">
+            <Link href="/" className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
+              <span className="material-symbols-rounded text-[20px]">arrow_back</span>
+              <span className="text-[14px] font-medium">Home</span>
+            </Link>
+          </div>
+
+          {/* Logo on Right Panel */}
+          <div className="absolute top-6 right-6 lg:right-8 z-10">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <span className="font-black text-[20px] lg:text-[22px] tracking-tighter">
+                <span className="text-[#111111]">Shuv</span><span className="text-[#D96B62]">marg</span>
+                <span className="text-neutral-400 font-normal text-[13px] ml-1">Partner</span>
+              </span>
+            </Link>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 md:p-16 lg:p-20 w-full max-w-[560px] mx-auto mt-12 lg:mt-0">
           
           {/* Header */}
           <div className="w-full mb-10">
@@ -159,12 +172,21 @@ export default function LoginPage() {
                 <div className="relative flex items-center h-[52px] rounded-xl border border-neutral-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-neutral-300 focus-within:border-[#7A1D1B] focus-within:ring-4 focus-within:ring-[#7A1D1B]/10 overflow-hidden transition-all duration-200 bg-white px-4">
                   <span className="material-symbols-rounded text-neutral-400 mr-3 text-[20px]">lock</span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="flex-1 h-full outline-none text-[15px] text-neutral-900 bg-transparent placeholder:text-neutral-400"
+                    className="flex-1 h-full outline-none text-[15px] text-neutral-900 bg-transparent placeholder:text-neutral-400 pr-10"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 text-neutral-400 hover:text-neutral-600 focus:outline-none flex items-center justify-center"
+                  >
+                    <span className="material-symbols-rounded text-[20px]">
+                      {showPassword ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
                 </div>
               </div>
 
@@ -187,7 +209,7 @@ export default function LoginPage() {
               
               <div className="relative py-4 flex items-center">
                 <div className="flex-grow border-t border-neutral-200" />
-                <span className="flex-shrink-0 mx-4 text-neutral-400 text-[13px] bg-[#F8F1E3]">New to Shuv Marg?</span>
+                <span className="flex-shrink-0 mx-4 text-neutral-400 text-[13px] bg-white">New to Shuv Marg?</span>
                 <div className="flex-grow border-t border-neutral-200" />
               </div>
 
@@ -199,6 +221,7 @@ export default function LoginPage() {
             </motion.form>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

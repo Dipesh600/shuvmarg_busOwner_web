@@ -103,7 +103,7 @@ export default function Navbar() {
             <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
               <span className="font-black text-[18px] sm:text-[22px] tracking-tighter">
-                <span className="text-[#111111]">Shuv</span><span className="text-[#7A1D1B]">marg</span>
+                <span className="text-[#111111]">Shuv</span><span className="text-[#D96B62]">marg</span>
                 {isDashboard && (
                   <span className="text-neutral-400 font-normal text-xs sm:text-sm ml-1 hidden sm:inline">
                     Partner
