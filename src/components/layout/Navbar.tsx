@@ -51,7 +51,9 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsUserLoggedIn(isLoggedIn());
+  }, [pathname]);
 
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -174,19 +176,29 @@ export default function Navbar() {
                     className="flex items-center  gap-2"
                   >
                     {isUserLoggedIn ? (
-                      <Link
-                        href="/dashboard"
-                        className={`font-bold transition-all flex items-center gap-1.5 ${scrolled
-                          ? "h-[42px] px-4 sm:px-6 rounded-xl text-[16px] text-white hover:bg-[#5C1414]"
-                          : "h-[64px] px-6 rounded-r-full text-[16px] text-white -mr-4 sm:-mr-6 lg:-mr-8"
+                      <div className="relative flex items-center justify-end w-[100px] h-[64px]">
+                        {/* Scrolled State: Black text, no background */}
+                        <Link
+                          href="/dashboard"
+                          className={`absolute right-0 font-bold flex items-center h-[42px] text-[16px] text-neutral-800 hover:text-black transition-opacity duration-300 ease-in-out ${
+                            scrolled ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
                           }`}
-                        style={{
-                          background: "#7A1D1B",
-                          fontFamily: 'var(--font-display)'
-                        }}
-                      >
-                        Dashboard
-                      </Link>
+                          style={{ fontFamily: 'var(--font-display)' }}
+                        >
+                          Dashboard
+                        </Link>
+                        
+                        {/* Unscrolled State: Maroon pill, flush right */}
+                        <Link
+                          href="/dashboard"
+                          className={`absolute -right-4 sm:-right-6 lg:-right-8 font-bold flex items-center h-[64px] px-6 rounded-r-full text-[16px] text-white bg-[#7A1D1B] transition-opacity duration-300 ease-in-out ${
+                            !scrolled ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                          }`}
+                          style={{ fontFamily: 'var(--font-display)' }}
+                        >
+                          Dashboard
+                        </Link>
+                      </div>
                     ) : (
                       <>
                         {/* Sign in — visible on all sizes */}

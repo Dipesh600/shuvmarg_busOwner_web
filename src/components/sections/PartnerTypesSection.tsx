@@ -1,6 +1,8 @@
 "use client";
 
 import { PartnerCard } from "@/types";
+import { useRouter } from "next/navigation";
+import { isLoggedIn } from "@/lib/auth";
 
 interface ExtendedPartnerCard extends PartnerCard {
   image?: string;
@@ -15,8 +17,8 @@ const partnerCards: ExtendedPartnerCard[] = [
     description: "For fleet operators running AC, Sleeper, or Deluxe long-distance buses. Automate inventory sales across Nepal.",
     ctaLabel: "Register Now",
     ctaBadge: "World-class Tech",
-    ctaType: "link",
-    href: "#register-form",
+    ctaType: "register-action" as any,
+    href: "",
   },
   {
     id: "agent",
@@ -43,9 +45,17 @@ const partnerCards: ExtendedPartnerCard[] = [
 ];
 
 export default function PartnerTypesSection() {
+  const router = useRouter();
+
   const handleCta = (card: PartnerCard) => {
     if (card.ctaType === "modal" && card.modalMessage) {
       alert(card.modalMessage);
+    } else if (card.ctaType === "register-action" as any) {
+      if (isLoggedIn()) {
+        router.push("/dashboard");
+      } else {
+        router.push("/register");
+      }
     }
   };
 

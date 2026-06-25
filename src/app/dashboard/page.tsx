@@ -2,6 +2,9 @@
 
 import React from "react";
 
+import { logout } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+
 const kpis = [
   {
     label: "Today's Revenue",
@@ -64,6 +67,13 @@ const changeColors: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await logout();
+    router.replace("/");
+  };
+
   return (
     <div className="w-full min-h-full p-6 lg:p-8">
 
@@ -77,10 +87,16 @@ export default function DashboardPage() {
             Monday, 23 June 2025 · Shuvmarg Travels
           </p>
         </div>
-        <button className="btn-primary text-sm">
-          <span className="material-symbols-rounded mr-1.5 text-[18px]">add</span>
-          Schedule Trip
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleSignOut} className="btn-ghost text-sm text-red-600 hover:bg-red-50 flex items-center h-10 px-4 rounded-xl font-semibold transition-colors">
+            <span className="material-symbols-rounded mr-1.5 text-[18px]">logout</span>
+            Sign Out
+          </button>
+          <button className="btn-primary text-sm flex items-center h-10 px-4 rounded-xl font-semibold transition-colors">
+            <span className="material-symbols-rounded mr-1.5 text-[18px]">add</span>
+            Schedule Trip
+          </button>
+        </div>
       </div>
 
       {/* ── KPI Row ─────────────────────────────────────────── */}
