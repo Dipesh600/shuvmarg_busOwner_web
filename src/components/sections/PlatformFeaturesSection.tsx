@@ -67,8 +67,8 @@ export default function PlatformFeaturesSection() {
       <div className="max-w-[1200px] mx-auto px-6 lg:px-8 relative z-10">
         <div className="flex flex-col lg:flex-row items-center gap-16">
           
-          {/* Left Column - Detailed Info Card */}
-          <div className="w-full lg:w-1/2 flex justify-center lg:justify-start">
+          {/* Left Column - Detailed Info Card (Desktop Only) */}
+          <div className="hidden lg:flex w-full lg:w-1/2 justify-center lg:justify-start">
             <div className="relative w-full max-w-[500px] h-[550px] rounded-[32px] bg-white border border-neutral-200 shadow-[0_12px_48px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col">
               
               {/* Image Area */}
@@ -119,8 +119,8 @@ export default function PlatformFeaturesSection() {
               Hover over a capability to see how Shuv Marg helps you fill seats, price every route right, and run your fleet smoothly.
             </p>
 
-            {/* Options List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+            {/* Desktop Options List */}
+            <div className="hidden lg:grid grid-cols-2 gap-x-4 gap-y-3">
               {features.map((feature, i) => {
                 const isActive = activeFeature === i;
                 return (
@@ -146,6 +146,30 @@ export default function PlatformFeaturesSection() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Mobile Carousel */}
+            <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 -mx-6 px-6 mt-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {features.map((feature, i) => (
+                <div key={i} className="snap-center shrink-0 w-[85vw] max-w-[320px] rounded-[24px] bg-white border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col">
+                  <div className="relative h-[220px] bg-gradient-to-b from-[#F9F9F9] to-white flex items-center justify-center p-6 border-b border-neutral-100">
+                    <img src={feature.image} alt={feature.title} className="w-full h-full object-contain drop-shadow-xl scale-[1.1]" />
+                  </div>
+                  <div className="p-6 bg-white flex-1 flex flex-col">
+                    <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-full bg-[#FFF4F3] border border-[#F0A09B]/30 mb-3">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A1D1B]">
+                        Capability 0{i + 1}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-[#111111] text-[18px] mb-2 tracking-tight leading-tight">
+                      {feature.title}
+                    </h3>
+                    <p className="text-[#666666] text-[14px] leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
 
           </div>

@@ -94,36 +94,57 @@ export default function GrowthLeversSection() {
                       <div
                         key={lever.id}
                         onClick={() => setActiveIndex(index)}
-                        className={`group relative flex items-center justify-between p-4 rounded-[16px] cursor-pointer transition-all duration-300 border ${
+                        className={`group relative flex flex-col p-4 rounded-[16px] cursor-pointer transition-all duration-300 border ${
                           isActive 
                             ? "bg-[#FFFcfc] border-[#F0A09B] shadow-sm" 
                             : "bg-white border-neutral-100 hover:border-neutral-200"
                         }`}
                       >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center transition-colors duration-300 border ${
-                            isActive 
-                              ? "bg-[#7A1D1B] border-[#7A1D1B] text-white" 
-                              : "bg-[#FAFAFA] border-neutral-200 text-[#666666] group-hover:text-[#111111]"
-                          }`}>
-                            <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-[12px] flex items-center justify-center transition-colors duration-300 border ${
+                              isActive 
+                                ? "bg-[#7A1D1B] border-[#7A1D1B] text-white" 
+                                : "bg-[#FAFAFA] border-neutral-200 text-[#666666] group-hover:text-[#111111]"
+                            }`}>
+                              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                            </div>
+                            <div>
+                              <h4 className={`font-bold text-[16px] mb-0.5 transition-colors duration-300 ${isActive ? "text-[#111111]" : "text-[#444444]"}`}>
+                                {lever.title}
+                              </h4>
+                              <p className="text-[#666666] text-[13px]">{lever.subtitle}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className={`font-bold text-[16px] mb-0.5 transition-colors duration-300 ${isActive ? "text-[#111111]" : "text-[#444444]"}`}>
-                              {lever.title}
-                            </h4>
-                            <p className="text-[#666666] text-[13px]">{lever.subtitle}</p>
+
+                          <div className="text-right">
+                            <div className={`font-bold text-[18px] transition-colors duration-300 ${isActive ? "text-[#7A1D1B]" : "text-[#666666] group-hover:text-[#111111]"}`}>
+                              {lever.statValue}
+                            </div>
+                            <div className="text-[#888888] text-[12px] uppercase tracking-wider font-medium mt-0.5">
+                              {lever.statLabel}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="text-right">
-                          <div className={`font-bold text-[18px] transition-colors duration-300 ${isActive ? "text-[#7A1D1B]" : "text-[#666666] group-hover:text-[#111111]"}`}>
-                            {lever.statValue}
-                          </div>
-                          <div className="text-[#888888] text-[12px] uppercase tracking-wider font-medium mt-0.5">
-                            {lever.statLabel}
-                          </div>
-                        </div>
+                        {/* Mobile Accordion Expansion */}
+                        <AnimatePresence>
+                          {isActive && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="lg:hidden overflow-hidden"
+                            >
+                              <div className="mt-4 pt-4 border-t border-neutral-100">
+                                <h4 className="text-[15px] font-bold text-[#111111] mb-2">{lever.detailTitle}</h4>
+                                <p className="text-[#666666] text-[14px] leading-relaxed">
+                                  {lever.detailDesc}
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })}
@@ -134,7 +155,7 @@ export default function GrowthLeversSection() {
           </div>
 
           {/* Right Column: Detail Card */}
-          <div className="w-full lg:w-[45%]">
+          <div className="hidden lg:block w-full lg:w-[45%]">
             <div className="relative border border-[#F0A09B] bg-[#FFFcfc] rounded-[24px] p-8 lg:p-10 shadow-[0_8px_30px_rgba(122,29,27,0.06)]">
               
               {/* Arrow pointer (visible on desktop) */}

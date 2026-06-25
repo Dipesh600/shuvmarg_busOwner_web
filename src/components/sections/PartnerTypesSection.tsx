@@ -70,11 +70,11 @@ export default function PartnerTypesSection() {
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex flex-wrap justify-center gap-6 lg:gap-6">
           {partnerCards.map((card) => (
             <div
               key={card.id}
-              className="group flex flex-col bg-white rounded-[24px] border border-neutral-200 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:border-neutral-300 transition-all duration-500"
+              className="w-full max-w-[400px] sm:max-w-none sm:w-[calc(50%_-_0.75rem)] lg:w-[calc(33.333%_-_1rem)] group flex flex-col bg-white rounded-[24px] border border-neutral-200 overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.06)] hover:border-neutral-300 transition-all duration-500"
             >
               {/* Image Header */}
               <div className="relative w-full h-48 bg-[#FAFAFA] border-b border-neutral-100 flex items-center justify-center overflow-hidden">

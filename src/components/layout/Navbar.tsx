@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store";
+import { isLoggedIn } from "@/lib/auth";
 
 const DISTRICTS = [
   "Achham", "Arghakhanchi", "Baglung", "Baitadi", "Bajhang", "Bajura", "Banke", "Bara", "Bardiya", "Bhaktapur",
@@ -34,6 +35,12 @@ export default function Navbar() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  // Modal form fields
+  const [modalName, setModalName] = useState("");
+  const [modalPhone, setModalPhone] = useState("");
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+  const [modalError, setModalError] = useState("");
 
   const pathname = usePathname();
   const { onboardingStep, onboardingTitle } = useOnboardingStore();
@@ -43,6 +50,7 @@ export default function Navbar() {
   const isFullWidth = isDashboard || isOnboarding;
 
   useEffect(() => {
+    setIsUserLoggedIn(isLoggedIn());
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
 
@@ -104,11 +112,9 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
               <span className="font-black text-[18px] sm:text-[22px] tracking-tighter">
                 <span className="text-[#111111]">Shuv</span><span className="text-[#D96B62]">marg</span>
-                {isDashboard && (
-                  <span className="text-neutral-400 font-normal text-xs sm:text-sm ml-1 hidden sm:inline">
-                    Partner
-                  </span>
-                )}
+                <span className="text-neutral-400 font-normal text-xs sm:text-sm ml-1 hidden sm:inline">
+                  Partner
+                </span>
               </span>
             </Link>
 
@@ -178,22 +184,34 @@ export default function Navbar() {
                   exit={{ opacity: 0 }}
                   className="flex items-center gap-2"
                 >
-                  {/* Sign in — visible on all sizes */}
-                  <Link
-                    href="/login"
-                    className="h-[42px] px-3 sm:px-5 rounded-lg text-[15px] font-bold text-neutral-700 hover:bg-neutral-100 transition-colors flex items-center"
-                  >
-                    Sign in
-                  </Link>
-                  {/* Become a Partner — truncated label on xs */}
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
-                    style={{ background: "#7A1D1B" }}
-                  >
-                    <span className="hidden sm:inline">Request Demo</span>
-                    <span className="sm:hidden">Demo</span>
-                  </button>
+                  {isUserLoggedIn ? (
+                    <Link
+                      href="/dashboard"
+                      className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
+                      style={{ background: "#7A1D1B" }}
+                    >
+                      Dashboard
+                    </Link>
+                  ) : (
+                    <>
+                      {/* Sign in — visible on all sizes */}
+                      <Link
+                        href="/login"
+                        className="h-[42px] px-3 sm:px-5 rounded-lg text-[15px] font-bold text-neutral-700 hover:bg-neutral-100 transition-colors flex items-center"
+                      >
+                        Sign in
+                      </Link>
+                      {/* Become a Partner — truncated label on xs */}
+                      <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold text-white transition-all flex items-center gap-1.5"
+                        style={{ background: "#7A1D1B" }}
+                      >
+                        <span className="hidden sm:inline">Request a Call</span>
+                        <span className="sm:hidden">Call</span>
+                      </button>
+                    </>
+                  )}
                 </motion.div>
               )}
 
@@ -301,6 +319,11 @@ export default function Navbar() {
                 if (info.offset.y > 100 || info.velocity.y > 500) {
                   setIsModalOpen(false);
                   setIsSubmitted(false);
+                  setModalName("");
+                  setModalPhone("");
+                  setSelectedDistrict("");
+                  setSearchQuery("");
+                  setModalError("");
                 }
               }}
               initial={{ y: 40, opacity: 0 }}
@@ -317,7 +340,15 @@ export default function Navbar() {
               <div className="p-6">
                 {/* Close */}
                 <button
-                  onClick={() => { setIsModalOpen(false); setIsSubmitted(false); }}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setIsSubmitted(false);
+                    setModalName("");
+                    setModalPhone("");
+                    setSelectedDistrict("");
+                    setSearchQuery("");
+                    setModalError("");
+                  }}
                   className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
                 >
                   <span className="material-symbols-rounded text-neutral-500 text-[18px]">close</span>
@@ -346,13 +377,43 @@ export default function Navbar() {
                         </p>
                       </div>
 
-                      <form
-                        className="space-y-4"
-                        onSubmit={(e) => { e.preventDefault(); setIsSubmitted(true); }}
-                      >
+                        <form
+                          className="space-y-4"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!modalName.trim() || !modalPhone || !selectedDistrict) return;
+                            setModalError("");
+                            setModalSubmitting(true);
+                            try {
+                              const res = await fetch(
+                                `${process.env.NEXT_PUBLIC_API_URL}/public/partner-leads`,
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    fullName: modalName.trim(),
+                                    phone: modalPhone,
+                                    district: selectedDistrict,
+                                    leadType: "contact_form",
+                                  }),
+                                }
+                              );
+                              const data = await res.json();
+                              if (!res.ok) {
+                                setModalError(data.message || "Something went wrong. Please try again.");
+                              } else {
+                                setIsSubmitted(true);
+                              }
+                            } catch {
+                              setModalError("Network error. Please try again.");
+                            } finally {
+                              setModalSubmitting(false);
+                            }
+                          }}
+                        >
                         <div>
                           <label className="form-label">Full Name <span style={{ color: "#7A1D1B" }}>*</span></label>
-                          <input type="text" required placeholder="e.g. Ram Bahadur Shrestha" className="form-input" />
+                          <input type="text" required placeholder="e.g. Ram Bahadur Shrestha" className="form-input" value={modalName} onChange={(e) => setModalName(e.target.value)} />
                         </div>
 
                         {/* Fixed phone field — no emoji */}
@@ -373,8 +434,11 @@ export default function Navbar() {
                               type="tel"
                               required
                               placeholder="98XXXXXXXX"
+                              maxLength={10}
                               className="flex-1 h-[44px] px-3 text-[14px] outline-none bg-transparent"
                               style={{ color: "#111" }}
+                              value={modalPhone}
+                              onChange={(e) => setModalPhone(e.target.value.replace(/\D/g, ""))}
                             />
                           </div>
                         </div>
@@ -446,14 +510,19 @@ export default function Navbar() {
                           </div>
                         </div>
 
-                        <button
-                          type="submit"
-                          className="w-full h-[44px] rounded-[10px] font-semibold text-[14px] text-white mt-1"
-                          style={{ background: "#7A1D1B" }}
-                        >
-                          Request Callback
-                        </button>
-                      </form>
+                            {modalError && (
+                              <p className="text-[12px] text-center" style={{ color: "#D32F2F" }}>{modalError}</p>
+                            )}
+
+                            <button
+                              type="submit"
+                              disabled={modalSubmitting || !modalName.trim() || modalPhone.length < 10 || !selectedDistrict}
+                              className="w-full h-[44px] rounded-[10px] font-semibold text-[14px] text-white mt-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                              style={{ background: "#7A1D1B" }}
+                            >
+                              {modalSubmitting ? "Submitting..." : "Request Callback"}
+                            </button>
+                          </form>
                     </motion.div>
                   ) : (
                     <motion.div
@@ -473,7 +542,15 @@ export default function Navbar() {
                         Our partner team will call you back within 2 business hours.
                       </p>
                       <button
-                        onClick={() => { setIsModalOpen(false); setIsSubmitted(false); }}
+                        onClick={() => {
+                          setIsModalOpen(false);
+                          setIsSubmitted(false);
+                          setModalName("");
+                          setModalPhone("");
+                          setSelectedDistrict("");
+                          setSearchQuery("");
+                          setModalError("");
+                        }}
                         className="w-full h-[44px] rounded-[10px] font-semibold text-[14px] text-white"
                         style={{ background: "#7A1D1B" }}
                       >
