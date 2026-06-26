@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { isLoggedIn } from "@/lib/auth";
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 
@@ -11,9 +11,37 @@ export default function HeroSection() {
   const router = useRouter();
   const [userLoggedIn, setUserLoggedIn] = useState(false);
 
+  // For seamless video loop
+  const video1Ref = useRef<HTMLVideoElement>(null);
+  const video2Ref = useRef<HTMLVideoElement>(null);
+  const [activeVideo, setActiveVideo] = useState<1 | 2>(1);
+
   useEffect(() => {
     setUserLoggedIn(isLoggedIn());
+    // Autoplay the first video on mount
+    if (video1Ref.current) {
+      video1Ref.current.play().catch(() => {});
+    }
   }, []);
+
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>, id: 1 | 2) => {
+    const video = e.currentTarget;
+    if (!video.duration) return;
+
+    const timeRemaining = video.duration - video.currentTime;
+    
+    // Crossfade 0.8 seconds before the video ends
+    if (timeRemaining > 0 && timeRemaining <= 0.8 && activeVideo === id) {
+      const nextId = id === 1 ? 2 : 1;
+      const nextVideo = nextId === 1 ? video1Ref.current : video2Ref.current;
+      
+      if (nextVideo) {
+        nextVideo.currentTime = 0;
+        nextVideo.play().catch(() => {});
+        setActiveVideo(nextId);
+      }
+    }
+  };
 
   const handleRegisterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -27,14 +55,26 @@ export default function HeroSection() {
   return (
     <section className="relative w-full min-h-[calc(100svh+60px)] md:min-h-[calc(100svh+100px)] lg:min-h-[calc(100svh+120px)] flex flex-col overflow-hidden">
       {/* Background Video Layer */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 bg-[#111]">
         <video
+          ref={video1Ref}
           src="/video.mp4"
-          autoPlay
-          loop
           muted
           playsInline
-          className="w-full h-full object-cover opacity-90"
+          onTimeUpdate={(e) => handleTimeUpdate(e, 1)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[800ms] ${
+            activeVideo === 1 ? "opacity-90" : "opacity-0"
+          }`}
+        />
+        <video
+          ref={video2Ref}
+          src="/video.mp4"
+          muted
+          playsInline
+          onTimeUpdate={(e) => handleTimeUpdate(e, 2)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-[800ms] ${
+            activeVideo === 2 ? "opacity-90" : "opacity-0"
+          }`}
         />
         {/* Deep, rich overlay matching the design */}
         <div className="absolute inset-0 bg-black/40 z-10" />
