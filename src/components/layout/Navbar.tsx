@@ -51,6 +51,9 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsUserLoggedIn(isLoggedIn());
+    const handleAuthChange = () => setIsUserLoggedIn(isLoggedIn());
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => window.removeEventListener("auth-change", handleAuthChange);
   }, [pathname]);
 
   useEffect(() => {
@@ -176,29 +179,16 @@ export default function Navbar() {
                     className="flex items-center  gap-2"
                   >
                     {isUserLoggedIn ? (
-                      <div className="relative flex items-center justify-end w-[100px] h-[64px]">
-                        {/* Scrolled State: Black text, no background */}
-                        <Link
-                          href="/dashboard"
-                          className={`absolute right-0 font-bold flex items-center h-[42px] text-[16px] text-neutral-800 hover:text-black transition-opacity duration-300 ease-in-out ${
-                            scrolled ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-                          }`}
-                          style={{ fontFamily: 'var(--font-display)' }}
-                        >
-                          Dashboard
-                        </Link>
-                        
-                        {/* Unscrolled State: Maroon pill, flush right */}
-                        <Link
-                          href="/dashboard"
-                          className={`absolute -right-4 sm:-right-6 lg:-right-8 font-bold flex items-center h-[64px] px-6 rounded-r-full text-[16px] text-white bg-[#7A1D1B] transition-opacity duration-300 ease-in-out ${
-                            !scrolled ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-                          }`}
-                          style={{ fontFamily: 'var(--font-display)' }}
-                        >
-                          Dashboard
-                        </Link>
-                      </div>
+                      <Link
+                        href="/dashboard"
+                        className={`h-[42px] px-4 sm:px-6 rounded-xl text-[15px] font-bold transition-all flex items-center gap-1.5 ${
+                          scrolled
+                            ? "bg-transparent text-neutral-800 hover:bg-neutral-100"
+                            : "bg-[#7A1D1B] text-white hover:bg-[#9A2622]"
+                        }`}
+                      >
+                        Dashboard
+                      </Link>
                     ) : (
                       <>
                         {/* Sign in — visible on all sizes */}

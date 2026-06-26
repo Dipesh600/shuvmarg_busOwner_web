@@ -18,6 +18,9 @@ export function saveTokens(accessToken: string, refreshToken?: string): void {
   if (refreshToken) {
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-change"));
+  }
 }
 
 export function getAccessToken(): string | null {
@@ -31,6 +34,9 @@ function getRefreshToken(): string | null {
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-change"));
+  }
 }
 
 // ── Session helpers ──────────────────────────────────────────────────────────

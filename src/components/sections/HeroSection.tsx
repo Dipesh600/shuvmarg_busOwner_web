@@ -2,9 +2,28 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { isLoggedIn } from "@/lib/auth";
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 
 export default function HeroSection() {
+  const router = useRouter();
+  const [userLoggedIn, setUserLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setUserLoggedIn(isLoggedIn());
+  }, []);
+
+  const handleRegisterClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (userLoggedIn) {
+      router.push("/dashboard");
+    } else {
+      router.push("/register");
+    }
+  };
+
   return (
     <section className="relative w-full min-h-[calc(100svh+60px)] md:min-h-[calc(100svh+100px)] lg:min-h-[calc(100svh+120px)] flex flex-col overflow-hidden">
       {/* Background Video Layer */}
@@ -81,10 +100,11 @@ export default function HeroSection() {
 
           <Link
             href="/register"
+            onClick={handleRegisterClick}
             className="w-full sm:w-auto h-12 px-8 rounded-full text-[15px] text-white transition-colors flex items-center justify-center gap-2 hover:bg-[#9A2622]"
             style={{ background: "#7A1D1B", fontFamily: NM, fontWeight: 300, letterSpacing: "0.02em" }}
           >
-            Become a Partner
+            {userLoggedIn ? "Go to Dashboard" : "Become a Partner"}
             <span className="material-symbols-rounded text-[18px]">arrow_forward</span>
           </Link>
         </motion.div>
