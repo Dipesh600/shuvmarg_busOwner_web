@@ -17,7 +17,7 @@ export default function SmoothScrollProvider({
         const locomotiveScroll = new LocomotiveScroll({
           lenisOptions: {
             smoothTouch: false,
-          },
+          } as any,
         });
         
         return () => {
