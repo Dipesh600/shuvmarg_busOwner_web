@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { MoveLeft } from "lucide-react";
 import { saveTokens } from "@/lib/auth";
 
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
@@ -91,7 +92,7 @@ function LoginContent() {
               onClick={() => router.back()}
               className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10"
             >
-              <span className="material-symbols-rounded text-[18px]">arrow_back</span>
+              <MoveLeft className="w-[18px] h-[18px]" strokeWidth={2.5} />
               <span className="text-[14px] font-medium tracking-wide">Back</span>
             </button>
           </div>
@@ -139,7 +140,7 @@ function LoginContent() {
               onClick={() => router.back()}
               className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
             >
-              <span className="material-symbols-rounded text-[20px]">arrow_back</span>
+              <MoveLeft className="w-5 h-5" strokeWidth={2.5} />
               <span className="text-[14px] font-medium">Back</span>
             </button>
           </div>

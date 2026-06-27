@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { isLoggedIn } from "@/lib/auth";
+import { MoveRight } from "lucide-react";
+import { FaPlay } from "react-icons/fa";
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 
 export default function HeroSection() {
@@ -135,7 +137,7 @@ export default function HeroSection() {
             style={{ fontFamily: NM, fontWeight: 300, letterSpacing: "0.02em" }}
           >
             Watch Tutorial
-            <span className="material-symbols-rounded text-[18px]">play_arrow</span>
+            <FaPlay className="w-[16px] h-[16px]" />
           </button>
 
           <Link
@@ -145,7 +147,7 @@ export default function HeroSection() {
             style={{ background: "#7A1D1B", fontFamily: NM, fontWeight: 300, letterSpacing: "0.02em" }}
           >
             {userLoggedIn ? "Go to Dashboard" : "Become a Partner"}
-            <span className="material-symbols-rounded text-[18px]">arrow_forward</span>
+            <MoveRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={1.5} />
           </Link>
         </motion.div>
       </div>

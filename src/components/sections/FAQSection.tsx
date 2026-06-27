@@ -97,11 +97,10 @@ export default function FAQSection() {
                 </span>
               </div>
 
-              {/* Title & Description */}
-              <h3 className="font-bold mb-3 tracking-tight" style={{ fontSize: "20px", color: "#111111" }}>
+              <h3 className="mb-3 tracking-tight" style={{ fontSize: "24px", color: "#111111", fontWeight: "bold" }}>
                 Still have questions?
               </h3>
-              <p className="mb-8" style={{ fontSize: "15px", color: "#666666", lineHeight: 1.6 }}>
+              <p className="mb-8" style={{ fontSize: "12px", color: "#666666", lineHeight: 1.6 }}>
                 Our team will walk you through the Shuv Marg platform for your specific fleet requirements.
               </p>
 
