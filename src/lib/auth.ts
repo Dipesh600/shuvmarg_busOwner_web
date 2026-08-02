@@ -7,17 +7,13 @@
  */
 
 const ACCESS_TOKEN_KEY = "busowner_access_token";
-const REFRESH_TOKEN_KEY = "busowner_refresh_token";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 // ── Token storage ────────────────────────────────────────────────────────────
 
-export function saveTokens(accessToken: string, refreshToken?: string): void {
+export function saveTokens(accessToken: string): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("auth-change"));
   }
@@ -27,13 +23,8 @@ export function getAccessToken(): string | null {
   return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
-function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
 export function clearTokens(): void {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("auth-change"));
   }
@@ -71,14 +62,11 @@ export async function refreshAccessToken(): Promise<boolean> {
   if (_refreshPromise) return _refreshPromise;
 
   _refreshPromise = (async () => {
-    const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
-
     try {
       const res = await fetch(`${API}/auth/busowner/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        credentials: "include", // Send HttpOnly cookie
       });
 
       if (!res.ok) {
@@ -88,7 +76,7 @@ export async function refreshAccessToken(): Promise<boolean> {
       }
 
       const data = await res.json();
-      saveTokens(data.accessToken, data.refreshToken);
+      saveTokens(data.accessToken);
       return true;
     } catch {
       return false;
@@ -144,18 +132,14 @@ export async function authFetch(
  * 2. Clears local tokens immediately
  */
 export async function logout(): Promise<void> {
-  const refreshToken = getRefreshToken();
-
   // Fire and forget — don't wait for the server, clear local state immediately
-  if (refreshToken) {
-    fetch(`${API}/auth/busowner/logout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    }).catch(() => {
-      // Intentionally silent — logout should never block the UI
-    });
-  }
+  fetch(`${API}/auth/busowner/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include", // Send HttpOnly cookie
+  }).catch(() => {
+    // Intentionally silent — logout should never block the UI
+  });
 
   clearTokens();
 }

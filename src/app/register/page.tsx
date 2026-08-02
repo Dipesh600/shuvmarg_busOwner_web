@@ -165,7 +165,7 @@ export default function RegisterPage() {
       }
 
       // Store token and redirect to onboarding
-      saveTokens(data.accessToken, data.refreshToken);
+      saveTokens(data.accessToken);
       router.push("/onboarding");
     } catch {
       setDetailsError("Network error. Check your connection and try again.");
