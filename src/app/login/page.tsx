@@ -60,7 +60,7 @@ function LoginContent() {
       }
 
       // Normal successful login — save tokens and go to dashboard
-      saveTokens(data.accessToken, data.refreshToken);
+      saveTokens(data.accessToken);
       router.push("/dashboard");
     } catch {
       setError("Network error. Check your connection and try again.");
