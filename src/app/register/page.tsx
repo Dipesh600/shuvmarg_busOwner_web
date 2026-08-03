@@ -7,6 +7,12 @@ import Link from "next/link";
 import { MoveLeft } from "lucide-react";
 
 import { saveTokens } from "@/lib/auth";
+import {
+  extractVerificationToken,
+  buildBusOwnerRegistrationPayload,
+  isRegistrationVerificationError,
+  getRegistrationRecoveryState,
+} from "@/features/auth/registration/registration-continuation";
 
 type Step = "phone" | "otp" | "details";
 
@@ -37,6 +43,10 @@ export default function RegisterPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // Step 2 → Step 3 continuation proof — returned flat on the verifyOTP response body.
+  // Must be forwarded to /register as req.body.verificationToken (canonical contract).
+  const [verificationToken, setVerificationToken] = useState("");
+
   // Resend countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -48,6 +58,7 @@ export default function RegisterPage() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError("");
+    setVerificationToken(""); // Explicit token clear on phone submission
     if (phone.length < 10) return;
 
     setIsLoading(true);
@@ -95,6 +106,13 @@ export default function RegisterPage() {
         return;
       }
 
+      const token = extractVerificationToken(data);
+      if (!token) {
+        setOtpError("Verification failed. Please try again.");
+        return;
+      }
+      setVerificationToken(token);
+
       setStep("details");
     } catch {
       setOtpError("Network error. Check your connection and try again.");
@@ -107,6 +125,7 @@ export default function RegisterPage() {
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
     setOtpError("");
+    setVerificationToken(""); // Explicit token clear on OTP resend
     setIsLoading(true);
     try {
       const res = await fetch(`${API}/auth/busowner/resendOTP`, {
@@ -152,25 +171,57 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
+      const payload = buildBusOwnerRegistrationPayload(phone, name, companyName, password, verificationToken);
       const res = await fetch(`${API}/auth/busowner/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, name: name.trim(), companyName: companyName.trim(), password }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
       if (!res.ok) {
+        // Narrow recovery check: only reset flow if error is a known verification-session failure
+        if (isRegistrationVerificationError(res.status, data.message)) {
+          const recovery = getRegistrationRecoveryState();
+          setVerificationToken("");
+          setOtp("");
+          setStep(recovery.step);
+          setOtpError(recovery.otpError);
+          return;
+        }
         setDetailsError(data.message || "Registration failed. Please try again.");
         return;
       }
 
-      // Store token and redirect to onboarding
+      // Store tokens and clear sensitive state
+      setVerificationToken("");
+      setPhone("");
+      setOtp("");
+      setPassword("");
+      setConfirmPassword("");
+
       saveTokens(data.accessToken);
       router.push("/onboarding");
     } catch {
       setDetailsError("Network error. Check your connection and try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBackNavigation = () => {
+    if (step === "otp") {
+      setVerificationToken("");
+      setOtp("");
+      setOtpError("");
+      setStep("phone");
+    } else if (step === "details") {
+      setVerificationToken("");
+      setOtp("");
+      setDetailsError("");
+      setStep("otp");
+    } else {
+      router.back();
     }
   };
 
@@ -194,11 +245,7 @@ export default function RegisterPage() {
         <div className="hidden lg:flex w-1/2 relative flex-col justify-between p-12 z-10">
           <div className="relative z-10">
             <button
-              onClick={() => {
-                if (step === "otp") { setStep("phone"); setOtpError(""); }
-                else if (step === "details") { setStep("otp"); setDetailsError(""); }
-                else router.back();
-              }}
+              onClick={handleBackNavigation}
               className="inline-flex items-center gap-2 text-white/80 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm border border-white/10"
             >
               <MoveLeft className="w-[18px] h-[18px]" strokeWidth={2.5} />
@@ -246,11 +293,7 @@ export default function RegisterPage() {
           {/* Mobile back button */}
           <div className="lg:hidden absolute top-6 left-6 z-10">
             <button
-              onClick={() => {
-                if (step === "otp") { setStep("phone"); setOtpError(""); }
-                else if (step === "details") { setStep("otp"); setDetailsError(""); }
-                else router.back();
-              }}
+              onClick={handleBackNavigation}
               className="inline-flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
             >
               <MoveLeft className="w-5 h-5" strokeWidth={2.5} />
@@ -375,7 +418,7 @@ export default function RegisterPage() {
                         <label className="text-[13px] font-semibold text-neutral-800">6-Digit OTP</label>
                         <button
                           type="button"
-                          onClick={() => { setStep("phone"); setOtp(""); setOtpError(""); }}
+                          onClick={() => { setStep("phone"); setOtp(""); setOtpError(""); setVerificationToken(""); }}
                           className="text-[#7A1D1B] text-[13px] hover:underline font-medium"
                         >
                           Change Number
