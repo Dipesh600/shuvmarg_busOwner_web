@@ -15,7 +15,7 @@ const DISTRICTS = [
   "Siraha", "Solukhumbu", "Sunsari", "Surkhet", "Syangja", "Tanahun", "Taplejung", "Terhathum", "Udayapur",
 ];
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL } from "@/lib/config";
 const nepalMobilePattern = /^[9][678][0-9]{8}$/;
 
 export default function LeadForm() {

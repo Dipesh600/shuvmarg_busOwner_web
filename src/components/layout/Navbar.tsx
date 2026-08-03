@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store";
 import { isLoggedIn } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 const DISTRICTS = [
   "Achham", "Arghakhanchi", "Baglung", "Baitadi", "Bajhang", "Bajura", "Banke", "Bara", "Bardiya", "Bhaktapur",
@@ -383,7 +384,7 @@ export default function Navbar() {
                           setModalSubmitting(true);
                           try {
                             const res = await fetch(
-                              `${process.env.NEXT_PUBLIC_API_URL}/public/partner-leads`,
+                              `${API_URL}/public/partner-leads`,
                               {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },

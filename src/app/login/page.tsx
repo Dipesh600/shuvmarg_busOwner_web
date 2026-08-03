@@ -8,7 +8,7 @@ import { MoveLeft } from "lucide-react";
 import { saveTokens } from "@/lib/auth";
 
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL as API } from "@/lib/config";
 
 function LoginContent() {
   const router = useRouter();
