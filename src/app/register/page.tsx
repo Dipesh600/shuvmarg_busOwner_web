@@ -37,6 +37,10 @@ export default function RegisterPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // Step 2 → Step 3 continuation proof — returned flat on the verifyOTP response body.
+  // Must be forwarded to /register as req.body.verificationToken (canonical contract).
+  const [verificationToken, setVerificationToken] = useState("");
+
   // Resend countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -94,6 +98,15 @@ export default function RegisterPage() {
         setOtpError(data.message || "Invalid or expired code. Please try again.");
         return;
       }
+
+      // Capture the verification token — required to continue to Step 3.
+      // The token is returned flat on the response body (data.verificationToken),
+      // NOT nested under data.data. Without this token the register call returns 401.
+      if (!data.verificationToken) {
+        setOtpError("Verification failed. Please try again.");
+        return;
+      }
+      setVerificationToken(data.verificationToken);
 
       setStep("details");
     } catch {
@@ -155,7 +168,7 @@ export default function RegisterPage() {
       const res = await fetch(`${API}/auth/busowner/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, name: name.trim(), companyName: companyName.trim(), password }),
+        body: JSON.stringify({ phone, name: name.trim(), companyName: companyName.trim(), password, verificationToken }),
       });
       const data = await res.json();
 
