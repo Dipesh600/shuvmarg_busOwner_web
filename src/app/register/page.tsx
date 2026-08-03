@@ -11,7 +11,7 @@ import { saveTokens } from "@/lib/auth";
 type Step = "phone" | "otp" | "details";
 
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
-const API = process.env.NEXT_PUBLIC_API_URL; // e.g. http://localhost:5000
+import { API_URL as API } from "@/lib/config";
 
 export default function RegisterPage() {
   const router = useRouter();

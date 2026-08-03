@@ -8,7 +8,7 @@
 
 const ACCESS_TOKEN_KEY = "busowner_access_token";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL as API } from "./config";
 
 // ── Token storage ────────────────────────────────────────────────────────────
 
