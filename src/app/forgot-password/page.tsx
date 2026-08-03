@@ -21,7 +21,7 @@ import { MoveLeft } from "lucide-react";
 type Step = "phone" | "otp" | "password";
 
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
-const API = process.env.NEXT_PUBLIC_API_URL;
+import { API_URL as API } from "@/lib/config";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
