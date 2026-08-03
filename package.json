@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "NEXT_PUBLIC_API_URL=http://localhost:5000/api node --experimental-strip-types --test tests/auth/*.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
