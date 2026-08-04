@@ -23,6 +23,129 @@ const FLEET_SIZES = [
 ];
 const STEPS = ["Operator Details", "Company & Bank", "Documents", "Success"];
 
+interface FormFieldProps {
+  label: string;
+  name: string;
+  placeholder?: string;
+  type?: string;
+  value?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  required?: boolean;
+  error?: string;
+}
+
+function FormField({
+  label,
+  name,
+  placeholder,
+  type = "text",
+  value,
+  onChange,
+  required = false,
+  error,
+}: FormFieldProps) {
+  return (
+    <div className="flex flex-col">
+      <label className="form-label">
+        {label}{" "}
+        {required && <span className="text-maroon">*</span>}
+      </label>
+      <input
+        type={type}
+        name={name}
+        placeholder={placeholder}
+        value={value || ""}
+        onChange={onChange}
+        className={`form-input ${error ? "error" : ""}`}
+      />
+      {error && <p className="text-xs text-danger mt-1.5">{error}</p>}
+    </div>
+  );
+}
+
+interface FileUploadItemProps {
+  label: string;
+  fieldName: string;
+  icon: string;
+  file: File | null;
+  onFileChange: (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => void;
+  onFileRemove: (fieldName: string) => void;
+}
+
+function FileUploadItem({
+  label,
+  fieldName,
+  icon,
+  file,
+  onFileChange,
+  onFileRemove,
+}: FileUploadItemProps) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      onClick={() => !file && ref.current?.click()}
+      className={`relative rounded-xl p-4 border-2 border-dashed flex items-center justify-between gap-4 transition-all duration-200 ${
+        file
+          ? "border-maroon bg-[rgba(122,29,27,0.04)] cursor-default"
+          : "border-neutral-200 bg-white hover:border-maroon hover:bg-[rgba(122,29,27,0.02)] cursor-pointer"
+      }`}
+    >
+      <input
+        ref={ref}
+        type="file"
+        className="hidden"
+        onChange={(e) => onFileChange(e, fieldName)}
+      />
+
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            file ? "bg-[rgba(122,29,27,0.1)]" : "bg-ivory border border-neutral-200"
+          }`}
+        >
+          <span
+            className={`material-symbols-rounded text-[20px] ${
+              file ? "text-maroon" : "text-neutral-400"
+            }`}
+          >
+            {icon}
+          </span>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-semibold text-neutral-900 truncate">{label}</span>
+          {file ? (
+            <span className="text-xs text-neutral-500 truncate">
+              {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+            </span>
+          ) : (
+            <span className="text-xs text-neutral-400">
+              PDF, JPG up to 5 MB
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-shrink-0">
+        {file ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onFileRemove(fieldName);
+            }}
+            className="w-8 h-8 rounded-full hover:bg-[rgba(211,47,47,0.1)] text-neutral-400 hover:text-danger flex items-center justify-center transition-colors"
+          >
+            <span className="material-symbols-rounded text-[18px]">delete</span>
+          </button>
+        ) : (
+          <div className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center">
+            <span className="material-symbols-rounded text-neutral-400 text-[18px]">add</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingWizard() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,8 +195,12 @@ export default function OnboardingWizard() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
     if (e.target.files && e.target.files[0]) {
-      setFiles({ ...files, [fieldName]: e.target.files[0] });
+      setFiles((prev) => ({ ...prev, [fieldName]: e.target.files![0] }));
     }
+  };
+
+  const handleFileRemove = (fieldName: string) => {
+    setFiles((prev) => ({ ...prev, [fieldName]: null }));
   };
 
   const handleNext = () => setStep((s) => s + 1);
@@ -84,111 +211,6 @@ export default function OnboardingWizard() {
     await new Promise((r) => setTimeout(r, 1500));
     setIsSubmitting(false);
     setStep(3);
-  };
-
-  // ── Reusable form field ──────────────────────────────────────────
-  const FormField = ({
-    label,
-    name,
-    placeholder,
-    type = "text",
-    value,
-    onChange,
-    required = false,
-    error,
-  }: any) => (
-    <div className="flex flex-col">
-      <label className="form-label">
-        {label}{" "}
-        {required && <span className="text-maroon">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        placeholder={placeholder}
-        value={value || ""}
-        onChange={onChange}
-        className={`form-input ${error ? "error" : ""}`}
-      />
-      {error && <p className="text-xs text-danger mt-1.5">{error}</p>}
-    </div>
-  );
-
-  // ── File upload item ─────────────────────────────────────────────
-  const FileUploadItem = ({
-    label,
-    fieldName,
-    icon,
-  }: {
-    label: string;
-    fieldName: string;
-    icon: string;
-  }) => {
-    const file = files[fieldName];
-    const ref = useRef<HTMLInputElement>(null);
-    return (
-      <div
-        onClick={() => !file && ref.current?.click()}
-        className={`relative rounded-xl p-4 border-2 border-dashed flex items-center justify-between gap-4 transition-all duration-200 ${
-          file
-            ? "border-maroon bg-[rgba(122,29,27,0.04)] cursor-default"
-            : "border-neutral-200 bg-white hover:border-maroon hover:bg-[rgba(122,29,27,0.02)] cursor-pointer"
-        }`}
-      >
-        <input
-          ref={ref}
-          type="file"
-          className="hidden"
-          onChange={(e) => handleFileChange(e, fieldName)}
-        />
-
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              file ? "bg-[rgba(122,29,27,0.1)]" : "bg-ivory border border-neutral-200"
-            }`}
-          >
-            <span
-              className={`material-symbols-rounded text-[20px] ${
-                file ? "text-maroon" : "text-neutral-400"
-              }`}
-            >
-              {icon}
-            </span>
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-neutral-900 truncate">{label}</span>
-            {file ? (
-              <span className="text-xs text-neutral-500 truncate">
-                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-              </span>
-            ) : (
-              <span className="text-xs text-neutral-400">
-                PDF, JPG up to 5 MB
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-shrink-0">
-          {file ? (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setFiles({ ...files, [fieldName]: null });
-              }}
-              className="w-8 h-8 rounded-full hover:bg-[rgba(211,47,47,0.1)] text-neutral-400 hover:text-danger flex items-center justify-center transition-colors"
-            >
-              <span className="material-symbols-rounded text-[18px]">delete</span>
-            </button>
-          ) : (
-            <div className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center">
-              <span className="material-symbols-rounded text-neutral-400 text-[18px]">add</span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -510,21 +532,33 @@ export default function OnboardingWizard() {
                     label="Company Registration Certificate"
                     fieldName="companyRegistrationCert"
                     icon="verified"
+                    file={files.companyRegistrationCert}
+                    onFileChange={handleFileChange}
+                    onFileRemove={handleFileRemove}
                   />
                   <FileUploadItem
                     label="PAN Card Image"
                     fieldName="panCardImage"
                     icon="badge"
+                    file={files.panCardImage}
+                    onFileChange={handleFileChange}
+                    onFileRemove={handleFileRemove}
                   />
                   <FileUploadItem
                     label="Owner Citizenship / ID"
                     fieldName="ownerCitizenship"
                     icon="id_card"
+                    file={files.ownerCitizenship}
+                    onFileChange={handleFileChange}
+                    onFileRemove={handleFileRemove}
                   />
                   <FileUploadItem
                     label="Bank Authorization Letter"
                     fieldName="bankAuthorizationLetter"
                     icon="account_balance_wallet"
+                    file={files.bankAuthorizationLetter}
+                    onFileChange={handleFileChange}
+                    onFileRemove={handleFileRemove}
                   />
                 </div>
 
