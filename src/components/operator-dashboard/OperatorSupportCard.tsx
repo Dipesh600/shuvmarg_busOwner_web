@@ -1,28 +1,49 @@
 "use client";
 
 import React from "react";
-import { LifeBuoy, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { MessageSquare, ArrowRight } from "lucide-react";
 
 export default function OperatorSupportCard() {
   return (
-    <div className="bg-[#FDFAF6] rounded-xl border border-[#E8DDCC] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-      <div className="flex items-start gap-3.5">
-        <div className="w-10 h-10 rounded-xl bg-[#7A1D1B]/10 border border-[#7A1D1B]/20 flex items-center justify-center text-[#7A1D1B] flex-shrink-0">
-          <LifeBuoy className="w-5 h-5" />
+    <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 sm:p-7 shadow-2xs space-y-4 flex flex-col justify-between">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-[#746E69] uppercase tracking-wider mb-1">
+              Assisted Setup
+            </div>
+            <h3
+              className="text-lg font-bold text-[#161311]"
+              style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
+            >
+              Operator Support
+            </h3>
+          </div>
+          <Image
+            src="/operator-dashboard/illustrations/operator-support.svg"
+            alt="Operator Support"
+            width={48}
+            height={48}
+            className="flex-shrink-0"
+          />
         </div>
-        <div className="space-y-0.5">
-          <h4 className="text-sm font-bold text-neutral-900">
-            Need help setting up?
-          </h4>
-          <p className="text-xs text-neutral-600 leading-relaxed max-w-xl">
-            Our operator support team can guide you through business verification and fleet registration.
-          </p>
-        </div>
+
+        <p className="text-xs text-[#746E69] leading-relaxed font-medium">
+          Need help setting up? Our operator support team can guide you through verification and fleet preparation.
+        </p>
       </div>
 
-      <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-[#E5DECE] text-xs font-semibold text-neutral-700 flex-shrink-0 self-start sm:self-auto">
-        <ShieldCheck className="w-4 h-4 text-[#7A1D1B]" />
-        <span>Assisted Setup Available</span>
+      <div className="pt-2">
+        <Link
+          href="/dashboard/support"
+          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] hover:bg-neutral-100 text-[#161311] font-semibold text-xs border border-[#EEE8E2] transition-colors flex items-center justify-center gap-2 group"
+        >
+          <MessageSquare className="w-4 h-4 text-[#7A1D1B]" />
+          <span>Contact Operator Support</span>
+          <ArrowRight className="w-3.5 h-3.5 text-[#746E69] group-hover:translate-x-0.5 transition-transform" />
+        </Link>
       </div>
     </div>
   );

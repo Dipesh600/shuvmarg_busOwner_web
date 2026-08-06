@@ -75,8 +75,8 @@ export default function Navbar() {
     return () => { document.body.style.overflow = ""; };
   }, [mobileMenuOpen]);
 
-  // Hide Navbar completely on the register, login, and forgot-password pages
-  if (pathname === "/register" || pathname === "/login" || pathname === "/forgot-password") return null;
+  // Hide Navbar completely on dashboard, register, login, and forgot-password pages
+  if (pathname?.startsWith("/dashboard") || pathname === "/register" || pathname === "/login" || pathname === "/forgot-password") return null;
 
   return (
     <>

@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Bus, Plus, Lock } from "lucide-react";
+import Image from "next/image";
+import { Lock, Plus } from "lucide-react";
 import { VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
 
 interface FleetEmptyStateProps {
@@ -14,39 +15,58 @@ export default function FleetEmptyState({
   const isApproved = verificationStatus === "approved";
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6 sm:p-8 text-center shadow-2xs space-y-4">
-      <div className="w-12 h-12 rounded-2xl bg-[#FDFAF6] border border-[#E8DDCC] flex items-center justify-center text-[#7A1D1B] mx-auto">
-        <Bus className="w-6 h-6" />
-      </div>
+    <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 sm:p-7 shadow-2xs space-y-4 flex flex-col justify-between">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-[#746E69] uppercase tracking-wider mb-1">
+              Fleet Readiness
+            </div>
+            <h3
+              className="text-lg font-bold text-[#161311]"
+              style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
+            >
+              Vehicle Inventory
+            </h3>
+          </div>
+          <Image
+            src="/operator-dashboard/illustrations/empty-fleet.svg"
+            alt="Empty Fleet"
+            width={48}
+            height={48}
+            className="flex-shrink-0"
+          />
+        </div>
 
-      <div className="max-w-md mx-auto space-y-1">
-        <h3 className="text-base font-bold text-neutral-900">
-          No vehicles added yet
-        </h3>
-        <p className="text-xs text-neutral-600 leading-relaxed">
-          Register your first bus and prepare its verification documents. Each vehicle will be verified individually before being assigned to live routes.
-        </p>
+        <div className="bg-[#FAF8F5] rounded-2xl p-4 border border-[#EEE8E2] space-y-1">
+          <h4 className="text-sm font-bold text-[#161311]">
+            No vehicles added yet
+          </h4>
+          <p className="text-xs text-[#746E69] leading-relaxed">
+            Prepare your first vehicle when fleet registration becomes available in the next setup step.
+          </p>
+        </div>
       </div>
 
       <div className="pt-2">
         <button
           disabled
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-100 text-neutral-400 font-semibold text-xs border border-neutral-200 cursor-not-allowed mx-auto"
+          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isApproved ? (
             <>
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-neutral-400" />
               <span>Prepare your first vehicle</span>
-              <span className="text-[10px] text-neutral-400 font-normal ml-1">
+              <span className="text-[10px] text-neutral-400 font-normal">
                 (Upcoming step)
               </span>
             </>
           ) : (
             <>
-              <Lock className="w-3.5 h-3.5" />
-              <span>Fleet creation locked</span>
-              <span className="text-[10px] text-neutral-400 font-normal ml-1">
-                (Requires business verification)
+              <Lock className="w-3.5 h-3.5 text-neutral-400" />
+              <span>Fleet preparation locked</span>
+              <span className="text-[10px] text-neutral-400 font-normal">
+                (Requires verification)
               </span>
             </>
           )}

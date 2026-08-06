@@ -2,8 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  FileText,
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -35,21 +35,28 @@ export default function BusinessVerificationCard({
   const docs = kycStatus?.documents || [];
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-2xs space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-4 border-b border-neutral-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#FDFAF6] border border-[#E8DDCC] flex items-center justify-center text-[#7A1D1B]">
-            <FileText className="w-5 h-5" />
-          </div>
+    <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 sm:p-7 shadow-2xs space-y-5 flex flex-col justify-between">
+      <div className="space-y-4">
+        {/* Header with Functional Illustration */}
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-neutral-900">
+            <div className="text-[11px] font-bold text-[#746E69] uppercase tracking-wider mb-1">
+              KYC & Compliance
+            </div>
+            <h3
+              className="text-lg font-bold text-[#161311]"
+              style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
+            >
               Business Verification
             </h3>
-            <p className="text-xs text-neutral-500">
-              KYC documents & compliance review
-            </p>
           </div>
+          <Image
+            src="/operator-dashboard/illustrations/business-verification.svg"
+            alt="Business Verification"
+            width={48}
+            height={48}
+            className="flex-shrink-0"
+          />
         </div>
 
         {/* Status Badge */}
@@ -70,84 +77,80 @@ export default function BusinessVerificationCard({
               {statusLabel}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FAF8F5] text-[#746E69] border border-[#EEE8E2]">
               <ShieldAlert className="w-3.5 h-3.5 text-neutral-400" />
               {statusLabel}
             </span>
           )}
         </div>
-      </div>
 
-      {/* Rejection Reason Alert if rejected */}
-      {verificationStatus === "rejected" && reason && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-1">
-          <div className="font-bold flex items-center gap-1.5 text-red-700">
-            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            Rejection Feedback
+        {/* Rejection Feedback Alert */}
+        {verificationStatus === "rejected" && reason && (
+          <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-900 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-red-700">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              Rejection Feedback
+            </div>
+            <p className="leading-relaxed text-[11px]">{reason}</p>
           </div>
-          <p className="leading-relaxed">{reason}</p>
-        </div>
-      )}
+        )}
 
-      {/* Pending Info */}
-      {verificationStatus === "pending" && (
-        <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
-          Your submitted company documents and identity verification are currently being reviewed by Shuvmarg Compliance. Approval typically takes 24–48 business hours.
-        </div>
-      )}
-
-      {/* Document Descriptors Checklist if returned by backend contract */}
-      {docs.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-bold uppercase tracking-wider text-neutral-500">
-            Document Statuses
+        {/* Pending Banner */}
+        {verificationStatus === "pending" && (
+          <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
+            Your submitted company documents and identity verification are currently under compliance review. Approval typically takes 24–48 business hours.
           </div>
-          <div className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl overflow-hidden">
-            {docs.map((doc, idx) => (
-              <div
-                key={doc.documentType || idx}
-                className="px-4 py-3 flex items-center justify-between text-xs bg-white"
-              >
-                <div className="flex items-center gap-2.5">
-                  {doc.uploaded ? (
-                    <FileCheck className="w-4 h-4 text-[#2E7D32]" />
-                  ) : (
-                    <FileWarning className="w-4 h-4 text-neutral-400" />
-                  )}
-                  <span className="font-semibold text-neutral-800">
-                    {doc.label || doc.documentType}
+        )}
+
+        {/* Document Status Summary if returned by contract */}
+        {docs.length > 0 && (
+          <div className="space-y-1.5 pt-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[#746E69]">
+              Submitted Documents
+            </div>
+            <div className="divide-y divide-[#EEE8E2] border border-[#EEE8E2] rounded-2xl overflow-hidden text-xs">
+              {docs.map((doc, idx) => (
+                <div
+                  key={doc.documentType || idx}
+                  className="px-3.5 py-2.5 flex items-center justify-between bg-white"
+                >
+                  <div className="flex items-center gap-2">
+                    {doc.uploaded ? (
+                      <FileCheck className="w-3.5 h-3.5 text-[#2E7D32]" />
+                    ) : (
+                      <FileWarning className="w-3.5 h-3.5 text-neutral-400" />
+                    )}
+                    <span className="font-semibold text-[#161311] text-[11px]">
+                      {doc.label || doc.documentType}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-medium text-[#746E69]">
+                    {doc.uploaded ? "Uploaded" : "Pending"}
                   </span>
                 </div>
-                <span
-                  className={`text-[11px] font-medium ${
-                    doc.uploaded ? "text-[#2E7D32]" : "text-neutral-500"
-                  }`}
-                >
-                  {doc.uploaded ? "Uploaded" : "Pending submission"}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Action Footer */}
-      <div className="pt-2 flex items-center justify-between">
-        <div className="text-[11px] text-neutral-500">
+      {/* Footer CTA */}
+      <div className="pt-3 border-t border-[#EEE8E2]/60 flex items-center justify-between gap-2">
+        <div className="text-[10px] text-[#746E69]">
           {kycStatus?.updatedAt
-            ? `Last updated: ${new Date(kycStatus.updatedAt).toLocaleDateString()}`
-            : "Required before fleet activation"}
+            ? `Updated: ${new Date(kycStatus.updatedAt).toLocaleDateString()}`
+            : "Required for live operations"}
         </div>
 
         {verificationStatus !== "approved" && verificationStatus !== "pending" && (
           <Link
             href={COMPATIBILITY_ONBOARDING_ROUTE}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7A1D1B] hover:bg-[#5C1414] text-white text-xs font-semibold transition-colors shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#7A1D1B] hover:bg-[#5C1414] text-white text-xs font-semibold transition-colors shadow-2xs"
           >
             <span>
               {verificationStatus === "rejected"
-                ? "Review & Resubmit"
-                : "Complete Verification"}
+                ? "Resubmit"
+                : "Verify Business"}
             </span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>

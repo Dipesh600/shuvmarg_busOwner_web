@@ -35,6 +35,14 @@
   --color-gold:          #C99A4A;
   --color-gold-light:    #EBC77F;
 
+  /* Operator Workspace Tokens */
+  --color-operator-sidebar:       #D96861;
+  --color-operator-sidebar-dark:  #C75A54;
+  --color-operator-sidebar-text:  #FFF9F5;
+  --color-[#FDFAF6]:                 #FAF8F5;
+  --color-operator-card-soft:     #FFF8F4;
+  --color-operator-border:        #EEE8E2;
+
   /* Neutrals */
   --color-neutral-900:   #111111;
   --color-neutral-800:   #222222;

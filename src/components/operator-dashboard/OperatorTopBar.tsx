@@ -7,11 +7,11 @@ import {
   Bell,
   HelpCircle,
   LogOut,
-  Building2,
-  ShieldAlert,
-  Clock,
+  Search,
   CheckCircle2,
+  Clock,
   AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import {
@@ -47,21 +47,21 @@ export default function OperatorTopBar({
     switch (verificationStatus) {
       case "approved":
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#2E7D32] border border-emerald-200/80">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-[#2E7D32] border border-emerald-200">
             <CheckCircle2 className="w-3.5 h-3.5" />
             {label}
           </span>
         );
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-[#F59E0B] border border-amber-200/80">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-[#F59E0B] border border-amber-200">
             <Clock className="w-3.5 h-3.5 animate-pulse" />
             {label}
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-[#D32F2F] border border-red-200/80">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-[#D32F2F] border border-red-200">
             <AlertTriangle className="w-3.5 h-3.5" />
             {label}
           </span>
@@ -69,8 +69,8 @@ export default function OperatorTopBar({
       case "not_submitted":
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200">
-            <ShieldAlert className="w-3.5 h-3.5 text-neutral-500" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white text-neutral-600 border border-[#EEE8E2]">
+            <ShieldAlert className="w-3.5 h-3.5 text-neutral-400" />
             {label}
           </span>
         );
@@ -78,63 +78,57 @@ export default function OperatorTopBar({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-neutral-200 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
-      {/* Left side: Mobile menu toggle + Company identity */}
-      <div className="flex items-center gap-3">
+    <header className="h-24 bg-transparent px-6 lg:px-10 flex items-center justify-between sticky top-0 z-20">
+      {/* Left side: Mobile menu toggle + Contextual Search */}
+      <div className="flex items-center gap-4 flex-1 max-w-md">
         <button
           onClick={onMobileMenuToggle}
-          className="lg:hidden p-2 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+          className="lg:hidden p-2 rounded-xl text-neutral-700 bg-white border border-[#EEE8E2] shadow-2xs hover:bg-neutral-50 transition-colors"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#FDFAF6] border border-[#E8DDCC] flex items-center justify-center text-[#7A1D1B]">
-            <Building2 className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              Operator Portal
-            </div>
-            <div
-              className="text-sm font-bold text-neutral-900 truncate max-w-[200px] sm:max-w-[300px]"
-              title={displayName}
-            >
-              {displayName}
-            </div>
-          </div>
+        {/* Contextual Search Input (UI Affordance) */}
+        <div className="relative w-full hidden sm:block">
+          <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Search setup, fleet, routes…"
+            className="w-full h-11 pl-11 pr-4 bg-white rounded-2xl border border-[#EEE8E2] text-xs font-medium text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#D96861] transition-all shadow-2xs"
+            aria-label="Contextual search"
+          />
         </div>
-
-        <div className="hidden sm:block ml-2">{renderStatusBadge()}</div>
       </div>
 
-      {/* Right side: Actions & User Menu */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      {/* Right side: Status, Support, Notifications, Profile */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="hidden md:block">{renderStatusBadge()}</div>
+
         {/* Support Affordance */}
         <button
-          className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors relative"
+          className="p-2.5 rounded-2xl bg-white border border-[#EEE8E2] text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-colors shadow-2xs relative"
           title="Operator Support"
-          aria-label="Operator support information"
+          aria-label="Operator support"
         >
-          <HelpCircle className="w-5 h-5" />
+          <HelpCircle className="w-4 h-4" />
         </button>
 
-        {/* Notifications Affordance (No fake unread count badge!) */}
+        {/* Notifications Affordance (No fake badge numbers!) */}
         <button
-          className="p-2 rounded-xl text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 transition-colors relative"
+          className="p-2.5 rounded-2xl bg-white border border-[#EEE8E2] text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-colors shadow-2xs relative"
           title="Notifications"
           aria-label="Notifications"
         >
-          <Bell className="w-5 h-5" />
+          <Bell className="w-4 h-4" />
         </button>
 
-        <div className="h-6 w-px bg-neutral-200 mx-1" />
+        <div className="h-6 w-px bg-[#EEE8E2] mx-1 hidden sm:block" />
 
         {/* Sign Out Button */}
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100/80 rounded-xl transition-colors"
+          className="flex items-center gap-1.5 h-10 px-3.5 text-xs font-semibold text-red-700 bg-white hover:bg-red-50 rounded-2xl border border-[#EEE8E2] transition-colors shadow-2xs"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Sign Out</span>

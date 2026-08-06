@@ -39,6 +39,7 @@ export default function DashboardLayout({
       <DashboardShell
         companyName={dashboardState?.profile?.business?.companyName}
         ownerName={dashboardState?.profile?.profile?.name}
+        ownerCode={dashboardState?.profile?.ownerCode}
         verificationStatus={dashboardState?.verificationStatus || "not_submitted"}
         capabilities={
           dashboardState?.capabilities || deriveCapabilities("not_submitted")

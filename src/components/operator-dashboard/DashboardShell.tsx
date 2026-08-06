@@ -12,6 +12,7 @@ interface DashboardShellProps {
   children: React.ReactNode;
   companyName?: string | null;
   ownerName?: string | null;
+  ownerCode?: string | null;
   verificationStatus?: VerificationStatus;
   capabilities?: OperatorCapabilities;
 }
@@ -30,23 +31,28 @@ export default function DashboardShell({
   children,
   companyName,
   ownerName,
+  ownerCode,
   verificationStatus = "not_submitted",
   capabilities = defaultCapabilities,
 }: DashboardShellProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FDFAF6]">
-      {/* Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-[#FAF8F5]">
+      {/* Muted Coral Rounded Sidebar */}
       <OperatorSidebar
         capabilities={capabilities}
+        companyName={companyName}
+        ownerName={ownerName}
+        ownerCode={ownerCode}
+        verificationStatus={verificationStatus}
         isMobileOpen={isMobileMenuOpen}
         onMobileClose={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Main Container */}
+      {/* Main Operating Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* TopBar */}
+        {/* Transparent Integrated Utility TopBar */}
         <OperatorTopBar
           companyName={companyName}
           ownerName={ownerName}
@@ -54,9 +60,12 @@ export default function DashboardShell({
           onMobileMenuToggle={() => setIsMobileMenuOpen((prev) => !prev)}
         />
 
-        {/* Operating Canvas */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">{children}</div>
+        {/* Workspace Canvas */}
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden px-6 lg:px-10 pt-4 sm:pt-6 lg:pt-8"
+          data-lenis-prevent="true"
+        >
+          <div className="max-w-7xl mx-auto space-y-8 pb-12">{children}</div>
         </main>
       </div>
     </div>
