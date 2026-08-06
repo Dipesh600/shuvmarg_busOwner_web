@@ -4,7 +4,7 @@ let state = {
   onboardingStep: 0,
   onboardingTitle: "Operator Profile"
 };
-let listeners = new Set<() => void>();
+const listeners = new Set<() => void>();
 
 export const store = {
   getState: () => state,
