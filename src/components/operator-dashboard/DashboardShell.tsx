@@ -13,6 +13,7 @@ interface DashboardShellProps {
   companyName?: string | null;
   ownerName?: string | null;
   ownerCode?: string | null;
+  logoUrl?: string | null;
   verificationStatus?: VerificationStatus;
   capabilities?: OperatorCapabilities;
 }
@@ -32,6 +33,7 @@ export default function DashboardShell({
   companyName,
   ownerName,
   ownerCode,
+  logoUrl,
   verificationStatus = "not_submitted",
   capabilities = defaultCapabilities,
 }: DashboardShellProps) {
@@ -56,6 +58,7 @@ export default function DashboardShell({
         <OperatorTopBar
           companyName={companyName}
           ownerName={ownerName}
+          logoUrl={logoUrl}
           verificationStatus={verificationStatus}
           onMobileMenuToggle={() => setIsMobileMenuOpen((prev) => !prev)}
         />

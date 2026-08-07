@@ -39,6 +39,7 @@ function LoginContent() {
       const res = await fetch(`${API}/auth/busowner/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ phone, password }),
       });
 

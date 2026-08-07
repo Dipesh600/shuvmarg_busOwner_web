@@ -153,13 +153,13 @@ export default function OperatorSidebar({
               aria-label={`${item.label} (Locked: Complete business verification to unlock operations)`}
             >
               <div className="flex items-center gap-3.5">
-                <span className="w-5 h-5 flex items-center justify-center opacity-75">
+                <span className="w-5 h-5 flex items-center justify-center">
                   <Image
                     src={item.iconPath}
                     alt=""
                     width={18}
                     height={18}
-                    className="brightness-200"
+                    className="brightness-0 invert opacity-70"
                   />
                 </span>
                 <span className="font-manrope text-[13px]">{item.label}</span>
@@ -181,22 +181,18 @@ export default function OperatorSidebar({
             onClick={() => onMobileClose?.()}
             className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all ${
               isActive
-                ? "bg-[#FDFAF6] text-[#7A1D1B] shadow-sm font-bold"
+                ? "bg-[#FDFAF6] text-neutral-900 shadow-sm font-bold"
                 : "text-[#FFF9F5] hover:bg-white/10"
             }`}
             aria-current={isActive ? "page" : undefined}
           >
-            <span
-              className={`w-5 h-5 flex items-center justify-center ${
-                isActive ? "text-[#7A1D1B]" : "text-white"
-              }`}
-            >
+            <span className="w-5 h-5 flex items-center justify-center">
               <Image
                 src={item.iconPath}
                 alt=""
                 width={18}
                 height={18}
-                className={isActive ? "" : "brightness-200"}
+                className={isActive ? "brightness-0" : "brightness-0 invert"}
               />
             </span>
             <span className="font-manrope">{item.label}</span>
