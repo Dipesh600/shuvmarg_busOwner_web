@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PremiumDatePickerProps {
   selectedDate?: Date;
@@ -15,19 +15,15 @@ export default function PremiumDatePicker({
   onDateChange,
   customTrigger,
 }: PremiumDatePickerProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>(externalSelectedDate || new Date());
+  const [internalSelectedDate, setInternalSelectedDate] = useState<Date>(
+    externalSelectedDate || new Date()
+  );
+  const selectedDate = externalSelectedDate || internalSelectedDate;
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(
     new Date((externalSelectedDate || new Date()).getFullYear(), (externalSelectedDate || new Date()).getMonth(), 1)
   );
   const popoverRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (externalSelectedDate) {
-      setSelectedDate(externalSelectedDate);
-      setCurrentMonth(new Date(externalSelectedDate.getFullYear(), externalSelectedDate.getMonth(), 1));
-    }
-  }, [externalSelectedDate]);
 
   // Close popover when clicking outside
   useEffect(() => {
@@ -86,7 +82,7 @@ export default function PremiumDatePicker({
   };
 
   const handleSelectDate = (date: Date) => {
-    setSelectedDate(date);
+    if (!externalSelectedDate) setInternalSelectedDate(date);
     if (onDateChange) onDateChange(date);
     setIsOpen(false);
   };

@@ -12,6 +12,12 @@ import { OperatorDashboardState } from "@/features/operator-dashboard/operator-d
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Failed to load dashboard status";
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<OperatorDashboardState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,15 +29,30 @@ export default function DashboardPage() {
     try {
       const state = await fetchOperatorDashboardState();
       setData(state);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load dashboard status");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadDashboard();
+    let isMounted = true;
+
+    fetchOperatorDashboardState()
+      .then((state) => {
+        if (isMounted) setData(state);
+      })
+      .catch((err: unknown) => {
+        if (isMounted) setError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (loading) {

@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 const buses = [
   { id: "BA-2-KHA-3490", type: "AC Deluxe", seats: 32, status: "Active", driver: "Ram Bahadur K.", route: "KTM → Pokhara", occupancy: 85 },
   { id: "BA-3-KHA-1102", type: "AC Sleeper", seats: 24, status: "Active", driver: "Mohan Shrestha", route: "KTM → Chitwan", occupancy: 62 },

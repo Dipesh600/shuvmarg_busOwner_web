@@ -3,6 +3,10 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
+type LocomotiveScrollInstance = InstanceType<
+  (typeof import("locomotive-scroll"))["default"]
+>;
+
 export default function SmoothScrollProvider({
   children,
 }: {
@@ -16,7 +20,7 @@ export default function SmoothScrollProvider({
       return;
     }
 
-    let locomotiveScroll: any = null;
+    let locomotiveScroll: LocomotiveScrollInstance | null = null;
 
     (async () => {
       try {
@@ -24,8 +28,8 @@ export default function SmoothScrollProvider({
         
         locomotiveScroll = new LocomotiveScroll({
           lenisOptions: {
-            smoothTouch: false,
-          } as any,
+            syncTouch: false,
+          },
         });
       } catch (error) {
         console.error("Failed to initialize Locomotive Scroll", error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -18,14 +18,10 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-
-  // Show success banner when redirected from forgot-password
-  useEffect(() => {
-    if (searchParams.get("reset") === "success") {
-      setSuccessMsg("Password reset successful. Please sign in with your new password.");
-    }
-  }, [searchParams]);
+  const successMsg =
+    searchParams.get("reset") === "success"
+      ? "Password reset successful. Please sign in with your new password."
+      : "";
 
 
   const handleLoginSubmit = async (e: React.FormEvent) => {

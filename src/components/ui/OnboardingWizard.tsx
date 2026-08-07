@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { store } from "@/lib/store";
@@ -149,7 +149,7 @@ function FileUploadItem({
 export default function OnboardingWizard() {
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fullData, setFullData] = useState<any>({});
+  const [fullData, setFullData] = useState<Record<string, string>>({});
 
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
     companyRegistrationCert: null,
@@ -162,14 +162,17 @@ export default function OnboardingWizard() {
     register: registerBasic,
     handleSubmit: handleSubmitBasic,
     setValue: setBasicValue,
-    watch: watchBasic,
+    control: basicControl,
     formState: { errors: basicErrors },
   } = useForm<BasicFormData>({
     resolver: zodResolver(basicSchema),
     defaultValues: { operatingCity: "", fleetSize: "1-5 Buses" },
   });
 
-  const currentFleetSize = watchBasic("fleetSize");
+  const currentFleetSize = useWatch({
+    control: basicControl,
+    name: "fleetSize",
+  });
 
   // Sync state to the global store for the Navbar
   useEffect(() => {
@@ -180,7 +183,7 @@ export default function OnboardingWizard() {
   }, [step]);
 
   const onBasicSubmit = (data: BasicFormData) => {
-    setFullData((prev: any) => ({
+    setFullData((prev) => ({
       ...prev,
       companyName: data.operatorName,
       ownerName: data.contactName,
@@ -190,7 +193,7 @@ export default function OnboardingWizard() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFullData((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
+    setFullData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {

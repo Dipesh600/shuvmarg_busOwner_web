@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOnboardingStore } from "@/lib/store";
-import { isLoggedIn } from "@/lib/auth";
+import {
+  getServerAuthSnapshot,
+  isLoggedIn,
+  subscribeToAuthChanges,
+} from "@/lib/auth";
 import { API_URL } from "@/lib/config";
 
 const DISTRICTS = [
@@ -35,8 +39,11 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const isUserLoggedIn = useSyncExternalStore(
+    subscribeToAuthChanges,
+    isLoggedIn,
+    getServerAuthSnapshot
+  );
   // Modal form fields
   const [modalName, setModalName] = useState("");
   const [modalPhone, setModalPhone] = useState("");
@@ -51,13 +58,6 @@ export default function Navbar() {
   const isFullWidth = isDashboard || isOnboarding;
 
   useEffect(() => {
-    setIsUserLoggedIn(isLoggedIn());
-    const handleAuthChange = () => setIsUserLoggedIn(isLoggedIn());
-    window.addEventListener("auth-change", handleAuthChange);
-    return () => window.removeEventListener("auth-change", handleAuthChange);
-  }, [pathname]);
-
-  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
 
@@ -65,9 +65,6 @@ export default function Navbar() {
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => { setMobileMenuOpen(false); }, [pathname]);
 
   // Lock body scroll when mobile menu open
   useEffect(() => {
@@ -283,6 +280,7 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3.5 text-[14px] font-medium border-b border-neutral-100 last:border-0 transition-colors ${active
                       ? "text-maroon bg-[rgba(122,29,27,0.04)]"
                       : "text-neutral-700 hover:bg-neutral-50"

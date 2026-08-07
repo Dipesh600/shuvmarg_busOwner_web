@@ -169,6 +169,8 @@ export default function OperatorTopBar({
             aria-label="Operator user menu"
           >
             {logoUrl ? (
+              // The operator logo is an authenticated, user-provided remote URL.
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={displayName}

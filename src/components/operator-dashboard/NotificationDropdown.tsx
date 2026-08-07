@@ -3,15 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bell,
   CheckCircle2,
   CreditCard,
   Info,
   RotateCcw,
   Ticket,
   Bus,
-  AlertTriangle,
-  X,
 } from "lucide-react";
 
 export interface OperatorNotification {

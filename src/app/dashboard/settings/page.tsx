@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { User, KeyRound, CheckCircle2, ShieldAlert, Lock, Save, Phone, Building2, Hash, ShieldCheck } from "lucide-react";
+import { User, KeyRound, CheckCircle2, ShieldAlert, Lock, Save, Phone, Building2, Hash } from "lucide-react";
 import { authFetch } from "@/lib/auth";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import { getVerificationStatusLabel, OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
@@ -10,8 +10,8 @@ import { getVerificationStatusLabel, OperatorDashboardState } from "@/features/o
 function SettingsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = searchParams.get("tab") === "security" ? "security" : "profile";
-  const [activeTab, setActiveTab] = useState<"profile" | "security">(initialTab);
+  const activeTab: "profile" | "security" =
+    searchParams.get("tab") === "security" ? "security" : "profile";
 
   // Profile data state
   const [dashboardData, setDashboardData] = useState<OperatorDashboardState | null>(null);
@@ -40,17 +40,7 @@ function SettingsContent() {
     };
   }, []);
 
-  useEffect(() => {
-    const tabParam = searchParams.get("tab");
-    if (tabParam === "security") {
-      setActiveTab("security");
-    } else {
-      setActiveTab("profile");
-    }
-  }, [searchParams]);
-
   const handleTabChange = (tab: "profile" | "security") => {
-    setActiveTab(tab);
     setFeedback(null);
     router.replace(`/dashboard/settings${tab === "security" ? "?tab=security" : ""}`);
   };
@@ -92,10 +82,13 @@ function SettingsContent() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setFeedback({
         type: "error",
-        message: err.message || "Could not update password. Please check your current password and try again.",
+        message:
+          err instanceof Error
+            ? err.message
+            : "Could not update password. Please check your current password and try again.",
       });
     } finally {
       setIsSubmitting(false);

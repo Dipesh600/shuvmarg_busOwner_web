@@ -11,14 +11,18 @@ export default function DashboardGreeting({ ownerName }: DashboardGreetingProps)
   const [greeting, setGreeting] = useState("Welcome");
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) {
-      setGreeting("Good morning");
-    } else if (hour < 18) {
-      setGreeting("Good afternoon");
-    } else {
-      setGreeting("Good evening");
-    }
+    const timer = window.setTimeout(() => {
+      const hour = new Date().getHours();
+      if (hour < 12) {
+        setGreeting("Good morning");
+      } else if (hour < 18) {
+        setGreeting("Good afternoon");
+      } else {
+        setGreeting("Good evening");
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   const firstName = ownerName ? ownerName.trim().split(" ")[0] : "Operator";
