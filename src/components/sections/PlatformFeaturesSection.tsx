@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { FleetRouteIcon } from "../svg/FleetRouteIcon";
 import { DynamicFareIcon } from "../svg/DynamicFareIcon";
 import { StaffAssignmentIcon } from "../svg/StaffAssignmentIcon";
@@ -73,10 +74,12 @@ export default function PlatformFeaturesSection() {
               
               {/* Image Area */}
               <div className="relative flex-1 bg-gradient-to-b from-[#F9F9F9] to-white flex items-center justify-center p-12 overflow-hidden border-b border-neutral-100">
-                <img 
+                <Image
                   key={`img-${activeFeature}`}
                   src={features[activeFeature].image} 
                   alt={features[activeFeature].title}
+                  width={500}
+                  height={400}
                   className="w-full h-full object-contain drop-shadow-xl animate-feature scale-[1.1]"
                 />
               </div>
@@ -152,7 +155,13 @@ export default function PlatformFeaturesSection() {
               {features.map((feature, i) => (
                 <div key={i} className="snap-center shrink-0 w-[85vw] max-w-[320px] rounded-[24px] bg-white border border-neutral-200 shadow-[0_8px_24px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col">
                   <div className="relative h-[220px] bg-gradient-to-b from-[#F9F9F9] to-white flex items-center justify-center p-6 border-b border-neutral-100">
-                    <img src={feature.image} alt={feature.title} className="w-full h-full object-contain drop-shadow-xl scale-[1.1]" />
+                    <Image
+                      src={feature.image}
+                      alt={feature.title}
+                      width={320}
+                      height={220}
+                      className="w-full h-full object-contain drop-shadow-xl scale-[1.1]"
+                    />
                   </div>
                   <div className="p-6 bg-white flex-1 flex flex-col">
                     <div className="inline-flex items-center self-start gap-2 px-3 py-1 rounded-full bg-[#FFF4F3] border border-[#F0A09B]/30 mb-3">

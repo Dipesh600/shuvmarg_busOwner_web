@@ -175,6 +175,7 @@ export default function RegisterPage() {
       const res = await fetch(`${API}/auth/busowner/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       const data = await res.json();

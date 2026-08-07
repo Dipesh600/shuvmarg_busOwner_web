@@ -36,6 +36,15 @@ export function isLoggedIn(): boolean {
   return !!getAccessToken();
 }
 
+export function subscribeToAuthChanges(onStoreChange: () => void): () => void {
+  window.addEventListener("auth-change", onStoreChange);
+  return () => window.removeEventListener("auth-change", onStoreChange);
+}
+
+export function getServerAuthSnapshot(): boolean {
+  return false;
+}
+
 /**
  * Returns Authorization header for authenticated API calls.
  * Usage: fetch(url, { headers: getAuthHeaders() })
