@@ -6,9 +6,15 @@ import {
   buildBusOwnerRegistrationPayload,
   isRegistrationVerificationError,
   getRegistrationRecoveryState,
+  POST_REGISTRATION_ROUTE,
+  type VerifyOtpResponse,
 } from "../../src/features/auth/registration/registration-continuation.ts";
 
 test("registration-continuation utilities (Bus-Owner Web)", async (t) => {
+  await t.test("successful registration continues to the operator dashboard", () => {
+    assert.equal(POST_REGISTRATION_ROUTE, "/dashboard");
+  });
+
   await t.test("extractVerificationToken extracts valid string token from response root", () => {
     assert.equal(
       extractVerificationToken({ verificationToken: "busowner-signed-jwt-token" }),

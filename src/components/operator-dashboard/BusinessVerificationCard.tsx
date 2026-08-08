@@ -17,7 +17,7 @@ import {
   VerificationStatus,
   getVerificationStatusLabel,
 } from "@/features/operator-dashboard/operator-dashboard-contract";
-import { COMPATIBILITY_ONBOARDING_ROUTE } from "@/features/operator-dashboard/next-action";
+import { BUSINESS_SETUP_ROUTE } from "@/features/operator-dashboard/next-action";
 
 interface BusinessVerificationCardProps {
   kycStatus: BusOwnerKycStatus | null;
@@ -33,6 +33,7 @@ export default function BusinessVerificationCard({
   const statusLabel = getVerificationStatusLabel(verificationStatus);
   const reason = rejectionReason || kycStatus?.rejectionReason;
   const docs = kycStatus?.documents || [];
+  const submittedDocs = docs.filter((document) => document.uploaded);
 
   return (
     <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 sm:p-7 shadow-2xs space-y-5 flex flex-col justify-between">
@@ -98,18 +99,18 @@ export default function BusinessVerificationCard({
         {/* Pending Banner */}
         {verificationStatus === "pending" && (
           <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
-            Your submitted company documents and identity verification are currently under compliance review. Approval typically takes 24–48 business hours.
+            Your application was submitted successfully. We will notify you when the review is complete or if an update is required.
           </div>
         )}
 
         {/* Document Status Summary if returned by contract */}
-        {docs.length > 0 && (
+        {submittedDocs.length > 0 && (
           <div className="space-y-1.5 pt-2">
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#746E69]">
               Submitted Documents
             </div>
             <div className="divide-y divide-[#EEE8E2] border border-[#EEE8E2] rounded-2xl overflow-hidden text-xs">
-              {docs.map((doc, idx) => (
+              {submittedDocs.map((doc, idx) => (
                 <div
                   key={doc.documentType || idx}
                   className="px-3.5 py-2.5 flex items-center justify-between bg-white"
@@ -125,7 +126,7 @@ export default function BusinessVerificationCard({
                     </span>
                   </div>
                   <span className="text-[10px] font-medium text-[#746E69]">
-                    {doc.uploaded ? "Uploaded" : "Pending"}
+                    {doc.uploaded ? "Received" : "Not included"}
                   </span>
                 </div>
               ))}
@@ -144,7 +145,7 @@ export default function BusinessVerificationCard({
 
         {verificationStatus !== "approved" && verificationStatus !== "pending" && (
           <Link
-            href={COMPATIBILITY_ONBOARDING_ROUTE}
+            href={BUSINESS_SETUP_ROUTE}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#7A1D1B] hover:bg-[#5C1414] text-white text-xs font-semibold transition-colors shadow-2xs"
           >
             <span>

@@ -8,7 +8,11 @@ import OperationalReadiness from "@/components/operator-dashboard/OperationalRea
 import FleetEmptyState from "@/components/operator-dashboard/FleetEmptyState";
 import LockedOperationsPreview from "@/components/operator-dashboard/LockedOperationsPreview";
 import OperatorSupportCard from "@/components/operator-dashboard/OperatorSupportCard";
-import { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
+import FirstLoginOverview from "@/components/operator-dashboard/FirstLoginOverview";
+import {
+  isFirstLoginOverview,
+  OperatorDashboardState,
+} from "@/features/operator-dashboard/operator-dashboard-contract";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
@@ -100,6 +104,10 @@ export default function DashboardPage() {
 
   const { profile, verificationStatus, evidence } = data;
   const ownerName = profile?.profile?.name || null;
+
+  if (isFirstLoginOverview(data)) {
+    return <FirstLoginOverview state={data} />;
+  }
 
   return (
     <div className="space-y-8">

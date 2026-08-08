@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { User, KeyRound, CheckCircle2, ShieldAlert, Lock, Save, Phone, Building2, Hash } from "lucide-react";
 import { authFetch } from "@/lib/auth";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
-import { getVerificationStatusLabel, OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
+import { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -99,8 +99,6 @@ function SettingsContent() {
   const ownerName = dashboardData?.profile?.profile?.name || "Operator";
   const phone = dashboardData?.profile?.profile?.phone || "N/A";
   const ownerCode = dashboardData?.profile?.ownerCode || "N/A";
-  const verificationStatusLabel = getVerificationStatusLabel(dashboardData?.verificationStatus || "not_submitted");
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -159,14 +157,11 @@ function SettingsContent() {
       {/* Tab 1: Profile Information */}
       {activeTab === "profile" && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#EEE8E2] shadow-2xs space-y-6 max-w-2xl">
-          <div className="flex items-center justify-between border-b border-[#EEE8E2] pb-4">
+          <div className="border-b border-[#EEE8E2] pb-4">
             <div>
               <h2 className="text-sm font-bold text-neutral-900">Bus Operator Identity</h2>
               <p className="text-xs text-neutral-500 mt-0.5">Official operator credentials registered on Shuvmarg.</p>
             </div>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#FAF8F5] text-[#7A1D1B] border border-[#7A1D1B]/20">
-              {verificationStatusLabel}
-            </span>
           </div>
 
           {isLoadingProfile ? (

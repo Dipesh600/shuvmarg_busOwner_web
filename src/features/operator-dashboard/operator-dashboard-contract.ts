@@ -24,6 +24,15 @@ export interface BusOwnerProfile {
   };
   business: {
     companyName: string;
+    registeredAddress: {
+      tole: string | null;
+      wardNumber: string | null;
+      municipality: string | null;
+      district: string | null;
+      province: string | null;
+      postalCode: string | null;
+      country: string;
+    } | null;
   };
   bank: {
     present: boolean;
@@ -43,8 +52,14 @@ export interface KycDocumentDescriptor {
   documentType: string;
   label?: string;
   uploaded: boolean;
+  fileCount?: number;
   status?: string;
   rejectionReason?: string | null;
+}
+
+export interface KycSubmittedDetails {
+  panNumber: string | null;
+  registrationNumber: string | null;
 }
 
 export interface BusOwnerKycStatus {
@@ -58,8 +73,34 @@ export interface BusOwnerKycStatus {
     totalUploaded?: number;
     isComplete?: boolean;
   };
+  submittedDetails?: KycSubmittedDetails;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+export interface OperatorFleetListItem {
+  fleetId: string;
+  fleetCode: string | null;
+  busName: string;
+  busNumber: string;
+  approvalStatus: "DRAFT" | "PENDING" | "REJECTED" | "APPROVED" | string;
+  rejectionReason: string | null;
+  setupComplete: boolean;
+  documentSummary?: {
+    totalSlots?: number;
+    present?: number;
+    missing?: number;
+    pending?: number;
+    approved?: number;
+    rejected?: number;
+  };
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface OperatorFleetOverview {
+  items: OperatorFleetListItem[];
+  totalItems: number;
 }
 
 export interface SetupEvidence {
@@ -87,9 +128,32 @@ export interface OperatorDashboardState {
   error: string | null;
   profile: BusOwnerProfile | null;
   kycStatus: BusOwnerKycStatus | null;
+  fleet: OperatorFleetOverview;
   verificationStatus: VerificationStatus;
   evidence: SetupEvidence;
   capabilities: OperatorCapabilities;
+}
+
+export function isFirstLoginOverview(
+  state: Pick<OperatorDashboardState, "fleet">
+): boolean {
+  return !state.fleet.items.some(
+    (vehicle) => String(vehicle.approvalStatus || "").trim().toUpperCase() === "APPROVED"
+  );
+}
+
+export function shouldFetchProtectedFleet(
+  verificationStatus: VerificationStatus
+): boolean {
+  return verificationStatus === "approved";
+}
+
+export function hasKycSubmissionEvidence(
+  kycStatus: BusOwnerKycStatus | null
+): boolean {
+  if (!kycStatus) return false;
+  if ((kycStatus.documentSummary?.totalUploaded || 0) > 0) return true;
+  return Boolean(kycStatus.documents?.some((document) => document.uploaded));
 }
 
 /**

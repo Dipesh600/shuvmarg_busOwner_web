@@ -7,11 +7,7 @@
 
 import type { OperatorDashboardState } from "./operator-dashboard-contract.ts";
 
-/**
- * Isolated compatibility route constant.
- * Routes to /onboarding until the standalone /dashboard/business/verification route is ready.
- */
-export const COMPATIBILITY_ONBOARDING_ROUTE = "/onboarding";
+export const BUSINESS_SETUP_ROUTE = "/dashboard";
 
 export interface NextActionConfig {
   label: string;
@@ -34,7 +30,7 @@ export function determineNextAction(
         description:
           "Submit your company registration and owner identification documents to begin account verification.",
         badge: "Action required",
-        href: COMPATIBILITY_ONBOARDING_ROUTE,
+        href: BUSINESS_SETUP_ROUTE,
         disabled: false,
       };
 
@@ -54,7 +50,7 @@ export function determineNextAction(
         description:
           "Your submission requires updates. Please review the feedback and update your documents.",
         badge: "Changes required",
-        href: COMPATIBILITY_ONBOARDING_ROUTE,
+        href: BUSINESS_SETUP_ROUTE,
         disabled: false,
       };
 
@@ -74,7 +70,7 @@ export function determineNextAction(
         description:
           "Submit your company registration and owner identification documents to unlock live operations.",
         badge: "Action required",
-        href: COMPATIBILITY_ONBOARDING_ROUTE,
+        href: BUSINESS_SETUP_ROUTE,
         disabled: false,
       };
   }
