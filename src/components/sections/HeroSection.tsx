@@ -3,15 +3,23 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
-import { isLoggedIn } from "@/lib/auth";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
+import {
+  getServerAuthSnapshot,
+  isLoggedIn,
+  subscribeToAuthChanges,
+} from "@/lib/auth";
 import { MoveRight } from "lucide-react";
 import { FaPlay } from "react-icons/fa";
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 
 export default function HeroSection() {
   const router = useRouter();
-  const [userLoggedIn, setUserLoggedIn] = useState(false);
+  const userLoggedIn = useSyncExternalStore(
+    subscribeToAuthChanges,
+    isLoggedIn,
+    getServerAuthSnapshot
+  );
 
   // For seamless video loop
   const video1Ref = useRef<HTMLVideoElement>(null);
@@ -19,7 +27,6 @@ export default function HeroSection() {
   const [activeVideo, setActiveVideo] = useState<1 | 2>(1);
 
   useEffect(() => {
-    setUserLoggedIn(isLoggedIn());
     // Autoplay the first video on mount
     if (video1Ref.current) {
       video1Ref.current.play().catch(() => {});

@@ -1,280 +1,171 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import DashboardGreeting from "@/components/operator-dashboard/DashboardGreeting";
+import SetupProgressPanel from "@/components/operator-dashboard/SetupProgressPanel";
+import BusinessVerificationCard from "@/components/operator-dashboard/BusinessVerificationCard";
+import OperationalReadiness from "@/components/operator-dashboard/OperationalReadiness";
+import FleetEmptyState from "@/components/operator-dashboard/FleetEmptyState";
+import LockedOperationsPreview from "@/components/operator-dashboard/LockedOperationsPreview";
+import OperatorSupportCard from "@/components/operator-dashboard/OperatorSupportCard";
+import FirstLoginOverview from "@/components/operator-dashboard/FirstLoginOverview";
+import {
+  isFirstLoginOverview,
+  OperatorDashboardState,
+} from "@/features/operator-dashboard/operator-dashboard-contract";
+import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
-import { logout } from "@/lib/auth";
-import { useRouter } from "next/navigation";
-
-const kpis = [
-  {
-    label: "Today's Revenue",
-    value: "Rs. 45,200",
-    change: "+12.5%",
-    changeType: "positive",
-    icon: "account_balance_wallet",
-  },
-  {
-    label: "Active Fleet",
-    value: "18 / 24",
-    change: "3 delayed",
-    changeType: "warning",
-    icon: "directions_bus",
-  },
-  {
-    label: "Seats Booked Today",
-    value: "142",
-    change: "+8 vs yesterday",
-    changeType: "positive",
-    icon: "confirmation_number",
-  },
-  {
-    label: "Occupancy Rate",
-    value: "73%",
-    change: "Healthy",
-    changeType: "neutral",
-    icon: "reduce_capacity",
-  },
-];
-
-const weekData = [
-  { day: "Sun", val: 40 },
-  { day: "Mon", val: 70 },
-  { day: "Tue", val: 45 },
-  { day: "Wed", val: 90 },
-  { day: "Thu", val: 65 },
-  { day: "Fri", val: 100 },
-  { day: "Sat", val: 85 },
-];
-
-const recentBookings = [
-  { id: "BK-9821", route: "KTM → Pokhara", passenger: "Aarav Sharma", seat: "A3", amount: "Rs. 1,200", status: "Confirmed" },
-  { id: "BK-9820", route: "KTM → Chitwan", passenger: "Sita Basnet", seat: "B7", amount: "Rs. 950", status: "Confirmed" },
-  { id: "BK-9819", route: "PKR → Butwal", passenger: "Ramesh KC", seat: "C2", amount: "Rs. 700", status: "Pending" },
-  { id: "BK-9818", route: "KTM → Dharan", passenger: "Priya Rai", seat: "A8", amount: "Rs. 1,600", status: "Confirmed" },
-  { id: "BK-9817", route: "KTM → Pokhara", passenger: "Bikash Tamang", seat: "D4", amount: "Rs. 1,200", status: "Cancelled" },
-];
-
-const statusColors: Record<string, string> = {
-  Confirmed: "#2E7D32",
-  Pending: "#F59E0B",
-  Cancelled: "#D32F2F",
-};
-
-const changeColors: Record<string, string> = {
-  positive: "#2E7D32",
-  warning: "#F59E0B",
-  neutral: "#888888",
-};
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Failed to load dashboard status";
+}
 
 export default function DashboardPage() {
-  const router = useRouter();
+  const [data, setData] = useState<OperatorDashboardState | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignOut = async () => {
-    await logout();
-    router.replace("/");
+  const loadDashboard = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const state = await fetchOperatorDashboardState();
+      setData(state);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="w-full min-h-full p-6 lg:p-8">
+  useEffect(() => {
+    let isMounted = true;
 
-      {/* ── Page Header ────────────────────────────────────── */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            Dashboard Overview
-          </h1>
-          <p className="text-sm text-neutral-500 mt-0.5">
-            Monday, 23 June 2025 · Shuvmarg Travels
+    fetchOperatorDashboardState()
+      .then((state) => {
+        if (isMounted) setData(state);
+      })
+      .catch((err: unknown) => {
+        if (isMounted) setError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse py-4">
+        <div className="h-14 bg-white rounded-2xl w-2/3 border border-[#EEE8E2]" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 h-72 bg-white rounded-3xl border border-[#EEE8E2]" />
+          <div className="lg:col-span-5 h-72 bg-white rounded-3xl border border-[#EEE8E2]" />
+        </div>
+        <div className="h-44 bg-white rounded-3xl border border-[#EEE8E2]" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-48 bg-white rounded-3xl border border-[#EEE8E2]" />
+          <div className="h-48 bg-white rounded-3xl border border-[#EEE8E2]" />
+          <div className="h-48 bg-white rounded-3xl border border-[#EEE8E2]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="bg-white rounded-3xl border border-red-200 p-8 text-center space-y-4 max-w-lg mx-auto my-12 shadow-2xs">
+        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-700 flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold text-[#161311]">
+            Unable to Load Dashboard
+          </h2>
+          <p className="text-xs text-[#746E69]">
+            {error || "An unexpected error occurred while fetching account data."}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={handleSignOut} className="btn-ghost text-sm text-red-600 hover:bg-red-50 flex items-center h-10 px-4 rounded-xl font-semibold transition-colors">
-            <span className="material-symbols-rounded mr-1.5 text-[18px]">logout</span>
-            Sign Out
-          </button>
-          <button className="btn-primary text-sm flex items-center h-10 px-4 rounded-xl font-semibold transition-colors">
-            <span className="material-symbols-rounded mr-1.5 text-[18px]">add</span>
-            Schedule Trip
-          </button>
-        </div>
+        <button
+          onClick={loadDashboard}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7A1D1B] text-white font-semibold text-xs hover:bg-[#5C1414] transition-colors shadow-2xs"
+        >
+          <RefreshCw className="w-4 h-4" />
+          <span>Try Again</span>
+        </button>
       </div>
+    );
+  }
 
-      {/* ── KPI Row ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white rounded-xl border border-neutral-200 p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="w-9 h-9 rounded-lg bg-ivory border border-neutral-200 flex items-center justify-center">
-                <span className="material-symbols-rounded text-maroon text-[18px]">
-                  {kpi.icon}
-                </span>
-              </div>
-              <span
-                className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-                style={{
-                  color: changeColors[kpi.changeType],
-                  background: `${changeColors[kpi.changeType]}15`,
-                }}
-              >
-                {kpi.change}
-              </span>
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1">
-                {kpi.label}
-              </div>
-              <div className="text-2xl font-bold text-neutral-900 tracking-tight">
-                {kpi.value}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+  const { profile, verificationStatus, evidence } = data;
+  const ownerName = profile?.profile?.name || null;
 
-      {/* ── Main Grid ──────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  if (isFirstLoginOverview(data)) {
+    return <FirstLoginOverview state={data} />;
+  }
 
-        {/* Weekly Revenue Chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-neutral-200 p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-1">
-                Weekly Revenue
-              </div>
-              <div className="text-xl font-bold text-neutral-900">Rs. 3,12,400</div>
-            </div>
-            <button className="btn-ghost text-xs flex items-center gap-1">
-              This Week
-              <span className="material-symbols-rounded text-[16px]">expand_more</span>
-            </button>
-          </div>
+  return (
+    <div className="space-y-8">
+      {/* 1. Welcome Greeting Row */}
+      <DashboardGreeting ownerName={ownerName} />
 
-          {/* Bar chart */}
-          <div className="flex-1 flex items-end gap-2 md:gap-3 pb-4 border-b border-neutral-100" style={{ minHeight: 160 }}>
-            {weekData.map((col, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-                <div className="w-full relative flex items-end justify-center" style={{ height: 140 }}>
-                  <div
-                    className="w-full rounded-t-md transition-all duration-300"
-                    style={{
-                      height: `${col.val}%`,
-                      background: col.val === 100
-                        ? "#7A1D1B"
-                        : col.day === "Sat" || col.day === "Wed"
-                        ? "rgba(122, 29, 27, 0.60)"
-                        : "#DDDDDD",
-                    }}
-                  />
-                </div>
-                <span className="text-[11px] font-medium text-neutral-400">{col.day}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-4 mt-4">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ background: "#7A1D1B" }} />
-              <span className="text-xs text-neutral-500">Peak day</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm" style={{ background: "rgba(122,29,27,0.6)" }} />
-              <span className="text-xs text-neutral-500">Above avg.</span>
-            </div>
+      {/* 2. Primary 2-Column Desktop Row (~65% / ~35%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-7 flex">
+          <div className="w-full">
+            <SetupProgressPanel
+              evidence={evidence}
+              verificationStatus={verificationStatus}
+            />
           </div>
         </div>
-
-        {/* Upcoming Departures */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
-          <div className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-4">
-            Today's Departures
-          </div>
-          <div className="flex flex-col gap-3">
-            {[
-              { time: "06:00", route: "KTM → Pokhara", bus: "BA 2 KHA 3490", occupancy: 85 },
-              { time: "07:30", route: "KTM → Chitwan", bus: "BA 3 KHA 1102", occupancy: 62 },
-              { time: "09:00", route: "PKR → Butwal", bus: "GA 1 CHA 7841", occupancy: 91 },
-              { time: "10:30", route: "KTM → Dharan", bus: "BA 2 KHA 5533", occupancy: 40 },
-            ].map((dep, i) => (
-              <div key={i} className="flex items-center gap-3 py-2 border-b border-neutral-100 last:border-0">
-                <div className="text-xs font-bold text-neutral-900 w-10 flex-shrink-0">{dep.time}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-neutral-900 truncate">{dep.route}</div>
-                  <div className="text-[10px] text-neutral-400 truncate">{dep.bus}</div>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <div
-                    className="text-[11px] font-bold"
-                    style={{
-                      color:
-                        dep.occupancy >= 80
-                          ? "#2E7D32"
-                          : dep.occupancy >= 50
-                          ? "#F59E0B"
-                          : "#D32F2F",
-                    }}
-                  >
-                    {dep.occupancy}%
-                  </div>
-                  <div className="text-[10px] text-neutral-400">full</div>
-                </div>
-              </div>
-            ))}
+        <div className="lg:col-span-5 flex">
+          <div className="w-full">
+            <BusinessVerificationCard
+              kycStatus={data.kycStatus}
+              verificationStatus={verificationStatus}
+              rejectionReason={data.kycStatus?.rejectionReason || data.profile?.rejectionReason}
+            />
           </div>
         </div>
       </div>
 
-      {/* ── Recent Bookings Table ───────────────────────────── */}
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-            Recent Bookings
-          </div>
-          <button className="text-xs font-semibold text-maroon hover:underline">
-            View All
-          </button>
+      {/* 3. Operational Readiness Sequence Row */}
+      <OperationalReadiness verificationStatus={verificationStatus} />
+
+      {/* 4. Bottom Workspace Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <FleetEmptyState verificationStatus={verificationStatus} />
+        <div className="md:col-span-1">
+          <OperatorSupportCard />
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-neutral-100">
-                {["Booking ID", "Route", "Passenger", "Seat", "Amount", "Status"].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-neutral-400"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentBookings.map((b, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50 transition-colors"
-                >
-                  <td className="px-6 py-4 font-mono text-xs font-semibold text-neutral-600">{b.id}</td>
-                  <td className="px-6 py-4 text-neutral-900 font-medium text-xs">{b.route}</td>
-                  <td className="px-6 py-4 text-neutral-700 text-xs">{b.passenger}</td>
-                  <td className="px-6 py-4 text-neutral-700 text-xs">{b.seat}</td>
-                  <td className="px-6 py-4 font-semibold text-neutral-900 text-xs">{b.amount}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                      style={{
-                        color: statusColors[b.status],
-                        background: `${statusColors[b.status]}12`,
-                      }}
-                    >
-                      {b.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="md:col-span-1">
+          <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 shadow-2xs space-y-2 h-full flex flex-col justify-between">
+            <div className="space-y-1">
+              <div className="text-[11px] font-bold text-[#7A1D1B] uppercase tracking-wider">
+                Platform Notice
+              </div>
+              <h4 className="text-sm font-bold text-[#161311]">
+                Truthful Operational Mode
+              </h4>
+              <p className="text-xs text-[#746E69] leading-relaxed">
+                Your dashboard displays live system status only. Booking, fleet, route, and settlement features unlock automatically as setup milestones are verified.
+              </p>
+            </div>
+            <div className="text-[10px] text-neutral-400 font-mono">
+              Status: Truthful Account Overview
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Locked Capabilities Row */}
+      <LockedOperationsPreview />
     </div>
   );
 }

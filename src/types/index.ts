@@ -26,7 +26,7 @@ export interface PartnerCard {
   description: string;
   ctaLabel: string;
   ctaBadge: string;
-  ctaType: "link" | "modal";
+  ctaType: "link" | "modal" | "register-action";
   href?: string;
   modalMessage?: string;
 }

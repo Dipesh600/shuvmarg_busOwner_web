@@ -14,6 +14,11 @@ export type VerifyOtpResponse = {
 };
 
 /**
+ * Bus owners land in their stage-driven workspace immediately after signup.
+ */
+export const POST_REGISTRATION_ROUTE = "/dashboard";
+
+/**
  * Exact verification token error messages returned by backend (utils/verificationToken.js).
  * Lowercased and trimmed for exact matching.
  */
