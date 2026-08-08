@@ -110,14 +110,20 @@ export async function authFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const makeRequest = () =>
-    fetch(url.startsWith("http") ? url : `${API}${url}`, {
+  const makeRequest = () => {
+    const authHeaders = getAuthHeaders();
+    if (typeof FormData !== "undefined" && options.body instanceof FormData) {
+      delete authHeaders["Content-Type"];
+    }
+
+    return fetch(url.startsWith("http") ? url : `${API}${url}`, {
       ...options,
       headers: {
-        ...getAuthHeaders(),
+        ...authHeaders,
         ...(options.headers as Record<string, string>),
       },
     });
+  };
 
   const res = await makeRequest();
 

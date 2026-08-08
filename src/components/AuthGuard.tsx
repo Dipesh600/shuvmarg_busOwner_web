@@ -3,7 +3,7 @@
 /**
  * components/AuthGuard.tsx
  *
- * Wraps protected pages (dashboard, onboarding).
+ * Wraps protected dashboard pages.
  * On mount:
  *   1. If no access token → redirect to /login immediately.
  *   2. If token exists but is expired → try silent refresh.
@@ -14,14 +14,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isLoggedIn } from "@/lib/auth";
+import { isLoggedIn, subscribeToAuthChanges } from "@/lib/auth";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [status, setStatus] = useState<"checking" | "authorized" | "redirecting">("checking");
 
   useEffect(() => {
-    async function check() {
+    function check() {
       if (!isLoggedIn()) {
         setStatus("redirecting");
         router.replace("/login");
@@ -37,6 +37,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     check();
+    return subscribeToAuthChanges(check);
   }, [router]);
 
   if (status === "checking" || status === "redirecting") {

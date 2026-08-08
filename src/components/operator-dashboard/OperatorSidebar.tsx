@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
   {
     id: "business",
     label: "Business Profile",
-    href: "/onboarding", // Compatibility route
+    href: "/dashboard/business-profile",
     iconPath: "/operator-dashboard/icons/business.svg",
     isAllowed: (caps) => caps.canManageBusiness,
   },

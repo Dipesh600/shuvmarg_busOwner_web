@@ -12,6 +12,7 @@ import {
   buildBusOwnerRegistrationPayload,
   isRegistrationVerificationError,
   getRegistrationRecoveryState,
+  POST_REGISTRATION_ROUTE,
 } from "@/features/auth/registration/registration-continuation";
 
 type Step = "phone" | "otp" | "details";
@@ -202,7 +203,7 @@ export default function RegisterPage() {
       setConfirmPassword("");
 
       saveTokens(data.accessToken);
-      router.push("/onboarding");
+      router.replace(POST_REGISTRATION_ROUTE);
     } catch {
       setDetailsError("Network error. Check your connection and try again.");
     } finally {

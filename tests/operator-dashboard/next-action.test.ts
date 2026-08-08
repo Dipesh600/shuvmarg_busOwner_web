@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   determineNextAction,
-  COMPATIBILITY_ONBOARDING_ROUTE,
+  BUSINESS_SETUP_ROUTE,
 } from "../../src/features/operator-dashboard/next-action.ts";
 
 test("next-action mapping rules (Operator Dashboard)", async (t) => {
@@ -13,7 +13,7 @@ test("next-action mapping rules (Operator Dashboard)", async (t) => {
       const action = determineNextAction({ verificationStatus: "not_submitted" });
       assert.equal(action.label, "Complete business verification");
       assert.equal(action.disabled, false);
-      assert.equal(action.href, COMPATIBILITY_ONBOARDING_ROUTE);
+      assert.equal(action.href, BUSINESS_SETUP_ROUTE);
       assert.equal(action.badge, "Action required");
     }
   );
@@ -35,7 +35,7 @@ test("next-action mapping rules (Operator Dashboard)", async (t) => {
       const action = determineNextAction({ verificationStatus: "rejected" });
       assert.equal(action.label, "Review and resubmit business verification");
       assert.equal(action.disabled, false);
-      assert.equal(action.href, COMPATIBILITY_ONBOARDING_ROUTE);
+      assert.equal(action.href, BUSINESS_SETUP_ROUTE);
       assert.equal(action.badge, "Changes required");
     }
   );

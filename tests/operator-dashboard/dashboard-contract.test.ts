@@ -7,9 +7,20 @@ import {
   normalizeVerificationStatus,
   deriveCapabilities,
   deriveSetupEvidence,
+  isFirstLoginOverview,
+  hasKycSubmissionEvidence,
+  shouldFetchProtectedFleet,
 } from "../../src/features/operator-dashboard/operator-dashboard-contract.ts";
+import { normalizeKycStatusPayload } from "../../src/features/operator-dashboard/operator-dashboard-kyc-normalizer.ts";
 
 test("dashboard-contract normalization & evidence rules (Operator Dashboard)", async (t) => {
+  await t.test("protected fleet data is requested only after KYC approval", () => {
+    assert.equal(shouldFetchProtectedFleet("not_submitted"), false);
+    assert.equal(shouldFetchProtectedFleet("pending"), false);
+    assert.equal(shouldFetchProtectedFleet("rejected"), false);
+    assert.equal(shouldFetchProtectedFleet("approved"), true);
+  });
+
   await t.test("hasUsableValue excludes blank strings and 'N/A'", () => {
     assert.equal(hasUsableValue(""), false);
     assert.equal(hasUsableValue("   "), false);
@@ -76,6 +87,7 @@ test("dashboard-contract normalization & evidence rules (Operator Dashboard)", a
         },
         business: {
           companyName: "Shuvmarg Travels",
+          registeredAddress: null,
         },
         bank: {
           present: false,
@@ -97,4 +109,94 @@ test("dashboard-contract normalization & evidence rules (Operator Dashboard)", a
       assert.equal(evidence.businessVerificationStatus, "pending");
     }
   );
+
+  await t.test(
+    "setup overview remains until the first vehicle is approved",
+    () => {
+      assert.equal(
+        isFirstLoginOverview({
+          fleet: { items: [], totalItems: 0 },
+        }),
+        true
+      );
+
+      assert.equal(
+        isFirstLoginOverview({
+          fleet: { items: [], totalItems: 0 },
+        }),
+        true
+      );
+
+      assert.equal(
+        isFirstLoginOverview({
+          fleet: {
+            totalItems: 1,
+            items: [{
+              fleetId: "fleet-1",
+              fleetCode: "BUS-1",
+              busName: "Mountain Express",
+              busNumber: "BA 1 KHA 1000",
+              approvalStatus: "APPROVED",
+              rejectionReason: null,
+              setupComplete: true,
+              createdAt: null,
+              updatedAt: null,
+            }],
+          },
+        }),
+        false
+      );
+    }
+  );
+
+  await t.test("KYC needs uploaded document evidence before pending is trusted", () => {
+    assert.equal(
+      hasKycSubmissionEvidence({
+        ownerId: "owner_123",
+        ownerCode: "BO-001",
+        verificationStatus: "pending",
+        rejectionReason: null,
+        documents: [{ documentType: "companyRegistration", uploaded: false }],
+        documentSummary: { totalRequired: 3, totalUploaded: 0, isComplete: false },
+        createdAt: null,
+        updatedAt: null,
+      }),
+      false
+    );
+
+    assert.equal(
+      hasKycSubmissionEvidence({
+        ownerId: "owner_123",
+        ownerCode: "BO-001",
+        verificationStatus: "pending",
+        rejectionReason: null,
+        documents: [{ documentType: "companyRegistration", uploaded: true }],
+        documentSummary: { totalRequired: 3, totalUploaded: 1, isComplete: false },
+        createdAt: null,
+        updatedAt: null,
+      }),
+      true
+    );
+  });
+
+  await t.test("flat submitted KYC response remains pending after dashboard normalization", () => {
+    const status = normalizeKycStatusPayload({
+      verificationStatus: "pending",
+      companyRegistration: { fileCount: 1, available: true },
+      taxRegistration: { fileCount: 1, available: true, panNumber: "123456789", registrationNumber: "REG-10" },
+      transportLicense: { fileCount: 1, available: true },
+      insuranceCertificates: [],
+      updatedAt: "2026-08-08T00:00:00.000Z",
+    });
+
+    assert.ok(status);
+    assert.equal(status.verificationStatus, "pending");
+    assert.equal(status.documentSummary?.totalUploaded, 3);
+    assert.equal(status.submittedDetails?.panNumber, "123456789");
+    assert.equal(status.submittedDetails?.registrationNumber, "REG-10");
+    assert.equal(hasKycSubmissionEvidence(status), true);
+    assert.equal(status.documents?.find((document) =>
+      document.documentType === "companyRegistration"
+    )?.uploaded, true);
+  });
 });

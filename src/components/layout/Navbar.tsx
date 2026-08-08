@@ -4,7 +4,6 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useOnboardingStore } from "@/lib/store";
 import {
   getServerAuthSnapshot,
   isLoggedIn,
@@ -51,11 +50,8 @@ export default function Navbar() {
   const [modalError, setModalError] = useState("");
 
   const pathname = usePathname();
-  const { onboardingStep, onboardingTitle } = useOnboardingStore();
 
   const isDashboard = pathname?.startsWith("/dashboard");
-  const isOnboarding = pathname === "/onboarding";
-  const isFullWidth = isDashboard || isOnboarding;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -80,24 +76,24 @@ export default function Navbar() {
       <div className="fixed inset-x-0 top-0 z-[100] pointer-events-none flex justify-center">
         <div
           className={`pointer-events-auto flex items-center justify-center h-[64px] backdrop-blur-md transition-all duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
-            isFullWidth || scrolled 
+            isDashboard || scrolled
               ? "rounded-none translate-y-0 border-b border-neutral-200" 
               : "rounded-full translate-y-4 border-b border-transparent"
           }`}
           style={{
-            width: isFullWidth || scrolled ? "100%" : "calc(100% - 32px)",
-            maxWidth: isFullWidth || scrolled ? "100%" : "950px",
-            backgroundColor: isFullWidth
+            width: isDashboard || scrolled ? "100%" : "calc(100% - 32px)",
+            maxWidth: isDashboard || scrolled ? "100%" : "950px",
+            backgroundColor: isDashboard
               ? "#FFFFFF"
               : "rgba(235,235,235,0.95)",
-            boxShadow: isFullWidth
+            boxShadow: isDashboard
               ? "0 1px 0 rgba(0,0,0,0.06)"
               : scrolled ? "0 2px 16px rgba(0,0,0,0.08)" : "0 8px 32px rgba(0,0,0,0.04)"
           }}
         >
           <div
             className="flex items-center justify-between max-w-full px-4 sm:px-6 lg:px-8 transition-all duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
-            style={{ width: isFullWidth || scrolled ? 1050 : 950 }}
+            style={{ width: isDashboard || scrolled ? 1050 : 950 }}
           >
             {/* ── Left: Logo ───────────────────────── */}
             <div className="flex items-center gap-4 lg:gap-6 min-w-0 flex-1">
@@ -109,28 +105,6 @@ export default function Navbar() {
                   </span>
                 </span>
               </Link>
-
-              {/* Onboarding step indicator (md+) */}
-              <AnimatePresence>
-                {isOnboarding && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    className="hidden md:flex items-center gap-2 pl-4 border-l border-neutral-200"
-                  >
-                    <span
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      style={{ background: "#FFF4F3", color: "#7A1D1B", border: "1px solid rgba(122,29,27,0.2)" }}
-                    >
-                      {onboardingStep + 1}
-                    </span>
-                    <span className="text-sm font-semibold text-neutral-700 truncate max-w-[180px]">
-                      {onboardingTitle}
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* Dashboard nav items — desktop only */}
               <AnimatePresence>
@@ -168,7 +142,7 @@ export default function Navbar() {
               <AnimatePresence mode="popLayout">
 
                 {/* Landing state */}
-                {!isDashboard && !isOnboarding && (
+                {!isDashboard && (
                   <motion.div
                     key="landing-cta"
                     initial={{ opacity: 0 }}
@@ -207,22 +181,6 @@ export default function Navbar() {
                         </button>
                       </>
                     )}
-                  </motion.div>
-                )}
-
-                {/* Onboarding state */}
-                {isOnboarding && (
-                  <motion.div
-                    key="onboarding-cta"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  >
-                    <Link
-                      href="/"
-                      className="h-9 px-4 rounded-lg text-[13px] font-medium text-neutral-600 hover:bg-neutral-100 transition-colors flex items-center"
-                    >
-                      Exit Setup
-                    </Link>
                   </motion.div>
                 )}
 
