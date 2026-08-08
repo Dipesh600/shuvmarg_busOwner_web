@@ -3,6 +3,7 @@
 import { PartnerCard } from "@/types";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/lib/auth";
+import Image from "next/image";
 
 interface ExtendedPartnerCard extends PartnerCard {
   image?: string;
@@ -17,7 +18,7 @@ const partnerCards: ExtendedPartnerCard[] = [
     description: "For fleet operators running AC, Sleeper, or Deluxe long-distance buses. Automate inventory sales across Nepal.",
     ctaLabel: "Register Now",
     ctaBadge: "World-class Tech",
-    ctaType: "register-action" as any,
+    ctaType: "register-action",
     href: "",
   },
   {
@@ -50,7 +51,7 @@ export default function PartnerTypesSection() {
   const handleCta = (card: PartnerCard) => {
     if (card.ctaType === "modal" && card.modalMessage) {
       alert(card.modalMessage);
-    } else if (card.ctaType === "register-action" as any) {
+    } else if (card.ctaType === "register-action") {
       if (isLoggedIn()) {
         router.push("/dashboard");
       } else {
@@ -74,7 +75,7 @@ export default function PartnerTypesSection() {
             Who can join the platform?
           </h2>
           <p className="text-[#666666] text-lg leading-relaxed">
-            Shuv Marg connects the entire transportation ecosystem. Whether you own the buses, sell the tickets, or manage the terminals, there's a specialized suite built for you.
+            Shuv Marg connects the entire transportation ecosystem. Whether you own the buses, sell the tickets, or manage the terminals, there&apos;s a specialized suite built for you.
           </p>
         </div>
 
@@ -88,9 +89,11 @@ export default function PartnerTypesSection() {
               {/* Image Header */}
               <div className="relative w-full h-48 bg-[#FAFAFA] border-b border-neutral-100 flex items-center justify-center overflow-hidden">
                 {card.image ? (
-                  <img 
+                  <Image
                     src={card.image} 
                     alt={card.title} 
+                    width={400}
+                    height={192}
                     className="w-full h-full object-contain drop-shadow-md transform group-hover:scale-[1.05] transition-transform duration-700 ease-out p-6" 
                   />
                 ) : (

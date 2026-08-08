@@ -36,6 +36,15 @@ export function isLoggedIn(): boolean {
   return !!getAccessToken();
 }
 
+export function subscribeToAuthChanges(onStoreChange: () => void): () => void {
+  window.addEventListener("auth-change", onStoreChange);
+  return () => window.removeEventListener("auth-change", onStoreChange);
+}
+
+export function getServerAuthSnapshot(): boolean {
+  return false;
+}
+
 /**
  * Returns Authorization header for authenticated API calls.
  * Usage: fetch(url, { headers: getAuthHeaders() })
@@ -101,14 +110,20 @@ export async function authFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const makeRequest = () =>
-    fetch(url.startsWith("http") ? url : `${API}${url}`, {
+  const makeRequest = () => {
+    const authHeaders = getAuthHeaders();
+    if (typeof FormData !== "undefined" && options.body instanceof FormData) {
+      delete authHeaders["Content-Type"];
+    }
+
+    return fetch(url.startsWith("http") ? url : `${API}${url}`, {
       ...options,
       headers: {
-        ...getAuthHeaders(),
+        ...authHeaders,
         ...(options.headers as Record<string, string>),
       },
     });
+  };
 
   const res = await makeRequest();
 
