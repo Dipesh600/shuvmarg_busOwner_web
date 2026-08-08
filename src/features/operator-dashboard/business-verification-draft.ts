@@ -231,7 +231,7 @@ export function calculateBusinessDraftProgress(
   const documentsComplete = [
     "companyRegistration",
     "taxRegistration",
-    "transportLicense",
+    "ownerIdentity",
   ].every((field) => documents.has(field));
 
   const completedSections = [

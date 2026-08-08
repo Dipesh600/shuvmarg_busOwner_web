@@ -8,8 +8,7 @@ const FILE_STORE = "kyc-files";
 export const KYC_DOCUMENT_FIELDS = [
   "companyRegistration",
   "taxRegistration",
-  "transportLicense",
-  "insuranceCertificates",
+  "ownerIdentity",
 ] as const;
 
 export type KycDocumentField = (typeof KYC_DOCUMENT_FIELDS)[number];
@@ -125,7 +124,27 @@ export async function saveDraftFiles(
 }
 
 export async function clearDraftFiles(ownerKey: string): Promise<void> {
+  // Remove both the current three-document draft and keys written by older builds.
+  const fieldsToClear = [
+    ...KYC_DOCUMENT_FIELDS,
+    "transportLicense",
+    "insuranceCertificates",
+    "bankAuthorizationLetter",
+  ] as const;
   await Promise.all(
-    KYC_DOCUMENT_FIELDS.map((field) => saveDraftFiles(ownerKey, field, []))
+    fieldsToClear.map(async (field) => {
+      if (typeof window === "undefined" || !window.indexedDB) return;
+      const database = await openDraftDatabase();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const transaction = database.transaction(FILE_STORE, "readwrite");
+          transaction.objectStore(FILE_STORE).delete(`${ownerKey}:${field}`);
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+        });
+      } finally {
+        database.close();
+      }
+    })
   );
 }

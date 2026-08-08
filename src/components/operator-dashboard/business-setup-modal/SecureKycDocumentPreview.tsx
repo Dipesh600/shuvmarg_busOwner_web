@@ -35,12 +35,7 @@ interface SecureKycDocumentPreviewProps {
 
 function buildPreviewPath(ownerId: string, documentType: string, index: number) {
   const params = new URLSearchParams({ busOwnerId: ownerId, documentType });
-  if (documentType === "insuranceCertificates") {
-    params.set("certificateIndex", String(index));
-    params.set("fileIndex", "0");
-  } else {
-    params.set("fileIndex", String(index));
-  }
+  params.set("fileIndex", String(index));
   return `/busowner/kycDocumentView?${params.toString()}`;
 }
 
