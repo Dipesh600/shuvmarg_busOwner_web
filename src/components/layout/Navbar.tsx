@@ -24,8 +24,7 @@ const DISTRICTS = [
 
 const dashboardNavItems = [
   { label: "Overview", href: "/dashboard", icon: "dashboard" },
-  { label: "Fleet", href: "/dashboard/fleet", icon: "directions_bus" },
-  { label: "Routes", href: "/dashboard/routes", icon: "route" },
+  { label: "Buses", href: "/dashboard/fleet", icon: "directions_bus" },
   { label: "Bookings", href: "/dashboard/bookings", icon: "confirmation_number" },
   { label: "Finance", href: "/dashboard/finance", icon: "account_balance_wallet" },
 ];

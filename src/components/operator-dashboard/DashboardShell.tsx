@@ -40,7 +40,7 @@ export default function DashboardShell({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#FAF8F5]">
+    <div className="flex h-screen overflow-hidden bg-[#FAF7F2]">
       {/* Muted Coral Rounded Sidebar */}
       <OperatorSidebar
         capabilities={capabilities}

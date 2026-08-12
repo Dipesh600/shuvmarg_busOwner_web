@@ -47,17 +47,10 @@ const navItems: NavItem[] = [
   },
   {
     id: "fleet",
-    label: "Fleet Setup",
+    label: "Buses",
     href: "/dashboard/fleet",
     iconPath: "/operator-dashboard/icons/fleet.svg",
     isAllowed: (caps) => caps.canPrepareFleet,
-  },
-  {
-    id: "routes",
-    label: "Routes",
-    href: "/dashboard/routes",
-    iconPath: "/operator-dashboard/icons/routes.svg",
-    isAllowed: (caps) => caps.canManageRoutes,
   },
   {
     id: "trips",
@@ -68,7 +61,7 @@ const navItems: NavItem[] = [
   },
   {
     id: "staff",
-    label: "Staff",
+    label: "Agent & Staff",
     href: "/dashboard/staff",
     iconPath: "/operator-dashboard/icons/staff.svg",
     isAllowed: () => true,

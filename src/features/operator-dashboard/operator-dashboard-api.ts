@@ -68,8 +68,6 @@ export async function fetchOperatorDashboardState(): Promise<OperatorDashboardSt
       ? "not_submitted"
       : reportedVerificationStatus;
 
-  // Fleet reads are protected by the approved-KYC middleware. Before approval,
-  // the truthful fleet state is locked and empty, not an authorization failure.
   let fleetItems: OperatorFleetListItem[] = [];
   let fleetTotalItems = 0;
   if (shouldFetchProtectedFleet(verificationStatus)) {

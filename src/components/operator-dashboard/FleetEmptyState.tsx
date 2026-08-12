@@ -20,13 +20,13 @@ export default function FleetEmptyState({
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-[#746E69] uppercase tracking-wider mb-1">
-              Fleet Readiness
+              My Buses
             </div>
             <h3
               className="text-lg font-bold text-[#161311]"
               style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
             >
-              Vehicle Inventory
+              Buses
             </h3>
           </div>
           <Image
@@ -40,10 +40,10 @@ export default function FleetEmptyState({
 
         <div className="bg-[#FAF8F5] rounded-2xl p-4 border border-[#EEE8E2] space-y-1">
           <h4 className="text-sm font-bold text-[#161311]">
-            No vehicles added yet
+            No buses added yet
           </h4>
           <p className="text-xs text-[#746E69] leading-relaxed">
-            Prepare your first vehicle when fleet registration becomes available in the next setup step.
+            Add your buses to assign drivers, schedule routes, and start selling seats.
           </p>
         </div>
       </div>
@@ -56,7 +56,7 @@ export default function FleetEmptyState({
           {isApproved ? (
             <>
               <Plus className="w-4 h-4 text-neutral-400" />
-              <span>Prepare your first vehicle</span>
+              <span>Add your first bus</span>
               <span className="text-[10px] text-neutral-400 font-normal">
                 (Upcoming step)
               </span>
@@ -64,7 +64,7 @@ export default function FleetEmptyState({
           ) : (
             <>
               <Lock className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Fleet preparation locked</span>
+              <span>Add bus locked</span>
               <span className="text-[10px] text-neutral-400 font-normal">
                 (Requires verification)
               </span>

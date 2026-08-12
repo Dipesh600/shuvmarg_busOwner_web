@@ -135,8 +135,11 @@ export interface OperatorDashboardState {
 }
 
 export function isFirstLoginOverview(
-  state: Pick<OperatorDashboardState, "fleet">
+  state?: Partial<Pick<OperatorDashboardState, "fleet">> | null
 ): boolean {
+  if (!state?.fleet?.items || !Array.isArray(state.fleet.items)) {
+    return true;
+  }
   return !state.fleet.items.some(
     (vehicle) => String(vehicle.approvalStatus || "").trim().toUpperCase() === "APPROVED"
   );
