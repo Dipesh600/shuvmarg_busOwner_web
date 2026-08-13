@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Lock, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 
@@ -45,34 +45,21 @@ export default function FleetEmptyState({
             No vehicles added yet
           </h4>
           <p className="text-xs text-[#746E69] leading-relaxed">
-            Prepare your first vehicle when fleet registration becomes available in the next setup step.
+            Prepare vehicles now. Business approval is required only when you submit a completed vehicle for review.
           </p>
         </div>
       </div>
 
       <div className="pt-2">
         <button
-          disabled={!isApproved}
-          onClick={() => isApproved && setRegistrationOpen(true)}
-          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:border-[#CDBDB5]"
+          onClick={() => setRegistrationOpen(true)}
+          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] flex items-center justify-center gap-2 hover:border-[#CDBDB5]"
         >
-          {isApproved ? (
-            <>
-              <Plus className="w-4 h-4 text-neutral-400" />
-              <span>Register your first vehicle</span>
-            </>
-          ) : (
-            <>
-              <Lock className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Fleet preparation locked</span>
-              <span className="text-[10px] text-neutral-400 font-normal">
-                (Requires verification)
-              </span>
-            </>
-          )}
+          <Plus className="w-4 h-4 text-neutral-400" />
+          <span>Prepare a vehicle</span>
         </button>
       </div>
-      <FleetRegistrationFlow open={registrationOpen} onClose={() => setRegistrationOpen(false)} onRegistered={() => window.location.reload()} />
+      <FleetRegistrationFlow open={registrationOpen} canSubmitForReview={isApproved} onClose={() => setRegistrationOpen(false)} onRegistered={() => window.location.reload()} />
     </div>
   );
 }
