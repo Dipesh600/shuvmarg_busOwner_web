@@ -53,13 +53,6 @@ const navItems: NavItem[] = [
     isAllowed: (caps) => caps.canPrepareFleet,
   },
   {
-    id: "routes",
-    label: "Routes",
-    href: "/dashboard/routes",
-    iconPath: "/operator-dashboard/icons/routes.svg",
-    isAllowed: (caps) => caps.canManageRoutes,
-  },
-  {
     id: "seat-layouts",
     label: "Seat Layouts",
     href: "/dashboard/seat-layouts",
@@ -72,6 +65,13 @@ const navItems: NavItem[] = [
     href: "/dashboard/trips",
     iconPath: "/operator-dashboard/icons/trips.svg",
     isAllowed: (caps) => caps.canManageTrips,
+  },
+  {
+    id: "staff",
+    label: "Staff & Agents",
+    href: "/dashboard/staff",
+    iconPath: "/operator-dashboard/icons/staff.svg",
+    isAllowed: () => true,
   },
   {
     id: "bookings",
