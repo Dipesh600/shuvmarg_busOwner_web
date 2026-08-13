@@ -3,7 +3,7 @@
 import { useRef, useState, type PointerEvent } from "react";
 import { Armchair, BedDouble, CircleGauge, DoorOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { applyTool } from "./layout";
+import { applyTool, canPlacePassenger } from "./layout";
 import type { BuilderTool, LayoutElement, LayoutSection, SeatLayoutV3 } from "./types";
 
 const colors: Record<LayoutElement["kind"], string> = {
@@ -44,11 +44,28 @@ type CanvasProps = {
 
 function Deck({ section, layout, tool, selectedId, selectedIds = [], editable, onChange, onSelect, onMove }: CanvasProps & { section: LayoutSection }) {
   const isEditable = editable ?? Boolean(onMove);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ pointerId: number; elementId: string; startX: number; startY: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [targetCell, setTargetCell] = useState<{ x: number; y: number } | null>(null);
+  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const cells = Array.from({ length: section.widthUnits * section.heightUnits }, (_, index) => ({ x: index % section.widthUnits, y: Math.floor(index / section.widthUnits) }));
   const places = section.elements.filter((element) => element.kind === "SEAT" || element.kind === "BERTH");
+  function cellAtPoint(clientX: number, clientY: number) {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const bounds = grid.getBoundingClientRect();
+    if (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) return null;
+    const cells = [...grid.querySelectorAll<HTMLElement>("[data-layout-cell='true']")];
+    const containing = cells.find((cell) => { const box = cell.getBoundingClientRect(); return clientX >= box.left && clientX <= box.right && clientY >= box.top && clientY <= box.bottom; });
+    const cell = containing || cells.reduce<{ node: HTMLElement; distance: number } | null>((best, node) => {
+      const box = node.getBoundingClientRect();
+      const distance = Math.hypot(clientX - (box.left + box.width / 2), clientY - (box.top + box.height / 2));
+      return !best || distance < best.distance ? { node, distance } : best;
+    }, null)?.node;
+    return cell ? { x: Number(cell.dataset.x), y: Number(cell.dataset.y) } : null;
+  }
   function beginMove(event: PointerEvent<HTMLButtonElement>, element: LayoutElement) {
     if (!isEditable || !onMove || tool !== "SELECT" || !["SEAT", "BERTH"].includes(element.kind)) return;
     drag.current = { pointerId: event.pointerId, elementId: element.elementId, startX: event.clientX, startY: event.clientY, moved: false };
@@ -61,6 +78,7 @@ function Deck({ section, layout, tool, selectedId, selectedIds = [], editable, o
     if (Math.hypot(event.clientX - current.startX, event.clientY - current.startY) > 5) {
       current.moved = true;
       event.preventDefault();
+      setTargetCell(cellAtPoint(event.clientX, event.clientY));
     }
   }
   function finishMove(event: PointerEvent<HTMLButtonElement>) {
@@ -68,15 +86,19 @@ function Deck({ section, layout, tool, selectedId, selectedIds = [], editable, o
     if (!current || current.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (current.moved) {
-      const target = document.elementsFromPoint(event.clientX, event.clientY)
-        .find((item) => item instanceof HTMLElement && item.dataset.layoutCell === "true") as HTMLElement | undefined;
-      if (target?.dataset.sectionId === section.sectionId) {
-        onMove?.(section.sectionId, current.elementId, Number(target.dataset.x), Number(target.dataset.y));
-      }
+      const target = cellAtPoint(event.clientX, event.clientY);
+      if (target) onMove?.(section.sectionId, current.elementId, target.x, target.y);
       suppressClick.current = true;
     }
     drag.current = null;
     setDraggingId(null);
+    setTargetCell(null);
+  }
+  function cancelMove(event: PointerEvent<HTMLButtonElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    drag.current = null;
+    setDraggingId(null);
+    setTargetCell(null);
   }
   return <section className="min-w-0 overflow-hidden rounded-[30px] border border-[#DED5CD] bg-white shadow-[0_12px_34px_rgba(44,35,29,0.08)]">
     <div className="flex items-center justify-between px-5 pb-3 pt-4"><div><p className="text-sm font-black text-[#191512]">{section.name}</p><p className="mt-0.5 text-[10px] font-bold text-[#938A82]">{section.role.startsWith("UPPER") ? "Upper level" : "Main passenger cabin"}</p></div><span className="rounded-full bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#746E69]">{places.length} places</span></div>
@@ -84,9 +106,10 @@ function Deck({ section, layout, tool, selectedId, selectedIds = [], editable, o
       <FrontCabin section={section} />
       <div className="relative px-3 pb-4">
         <div className="pointer-events-none absolute inset-y-0 left-1/2 w-8 -translate-x-1/2 rounded-full bg-[#F4F0EB]" aria-hidden="true" />
-        <div className="relative grid gap-2" style={{ gridTemplateColumns: `repeat(${section.widthUnits}, minmax(34px, 1fr))`, gridTemplateRows: `repeat(${section.heightUnits}, 48px)` }}>
-          {cells.map(({ x, y }) => <button key={`${x}:${y}`} type="button" disabled={!isEditable} data-layout-cell="true" data-section-id={section.sectionId} data-x={x} data-y={y} aria-label={`Position ${x + 1}, ${y + 1}`} onClick={() => { if (!isEditable) return; const hit = section.elements.find((element) => x >= element.position.x && x < element.position.x + element.size.width && y >= element.position.y && y < element.position.y + element.size.height); if (tool === "SELECT") onSelect(hit?.elementId || null); else onChange(applyTool(layout, section.sectionId, x, y, tool)); }} className={cn("rounded-xl border border-transparent transition", isEditable && "hover:border-dashed hover:border-[#CFC3B9] hover:bg-white/70 focus-visible:border-[#7A1D1B]", draggingId && "border-dashed border-[#CFC3B9]", !isEditable && "pointer-events-none")} />)}
-          {section.elements.map((element) => <button key={element.elementId} type="button" disabled={!isEditable} onPointerDown={(event) => beginMove(event, element)} onPointerMove={trackMove} onPointerUp={finishMove} onPointerCancel={finishMove} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } if (!isEditable) return; if (tool === "SELECT") onSelect(element.elementId); else onChange(applyTool(layout, section.sectionId, element.position.x, element.position.y, tool)); }} className={cn("z-10 flex min-h-0 touch-none select-none items-center justify-center gap-1 overflow-hidden rounded-[13px] border text-[10px] font-black shadow-[0_2px_0_rgba(92,72,59,0.14)] transition", colors[element.kind], element.kind === "SEAT" && "after:absolute after:inset-x-1.5 after:bottom-1 after:h-1 after:rounded-full after:bg-current after:opacity-15", element.kind === "BERTH" && "m-0.5 rounded-[15px]", (selectedId === element.elementId || selectedIds.includes(element.elementId)) && "ring-2 ring-[#7A1D1B] ring-offset-2", draggingId === element.elementId && "scale-105 opacity-75 ring-2 ring-[#7A1D1B]", isEditable && tool === "SELECT" && (element.kind === "SEAT" || element.kind === "BERTH") && "cursor-grab hover:-translate-y-0.5 active:cursor-grabbing", !isEditable && "pointer-events-none")} style={{ gridColumn: `${element.position.x + 1} / span ${element.size.width}`, gridRow: `${element.position.y + 1} / span ${element.size.height}`, position: "relative" }}><PlaceContent element={element} /></button>)}
+        <div ref={gridRef} onPointerMove={(event) => { if (tool === "SEAT" || tool === "BERTH") setHoverCell(cellAtPoint(event.clientX, event.clientY)); }} onPointerLeave={() => setHoverCell(null)} className="relative grid gap-2" style={{ gridTemplateColumns: `repeat(${section.widthUnits}, minmax(34px, 1fr))`, gridTemplateRows: `repeat(${section.heightUnits}, 48px)` }}>
+          {cells.map(({ x, y }) => <button key={`${x}:${y}`} type="button" disabled={!isEditable} data-layout-cell="true" data-section-id={section.sectionId} data-x={x} data-y={y} aria-label={`Position ${x + 1}, ${y + 1}`} onClick={() => { if (!isEditable) return; if (tool === "SELECT") return onSelect(null); if ((tool === "SEAT" || tool === "BERTH") && !canPlacePassenger(layout, section.sectionId, x, y, tool)) return; onChange(applyTool(layout, section.sectionId, x, y, tool)); }} className={cn("rounded-xl border border-transparent transition", isEditable && "hover:border-dashed hover:border-[#CFC3B9] hover:bg-white/70 focus-visible:border-[#7A1D1B]", targetCell?.x === x && targetCell?.y === y && "border-[#7A1D1B] bg-[#FFF1EE]", !isEditable && "pointer-events-none")} />)}
+          {hoverCell && (tool === "SEAT" || tool === "BERTH") && <div aria-hidden="true" className={cn("pointer-events-none z-20 m-0.5 rounded-[13px] border-2 border-dashed", canPlacePassenger(layout, section.sectionId, hoverCell.x, hoverCell.y, tool) ? tool === "SEAT" ? "border-[#C6655D] bg-[#FFF1F0]/90" : "border-[#7463A5] bg-[#F2EEFF]/90" : "border-red-500 bg-red-100/80")} style={{ gridColumn: `${hoverCell.x + 1} / span 1`, gridRow: `${hoverCell.y + 1} / span ${tool === "BERTH" ? 2 : 1}` }} />}
+          {section.elements.map((element) => <button key={element.elementId} type="button" disabled={!isEditable} onPointerDown={(event) => beginMove(event, element)} onPointerMove={trackMove} onPointerUp={finishMove} onPointerCancel={cancelMove} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } if (!isEditable) return; if (tool === "SELECT") onSelect(element.elementId); else onChange(applyTool(layout, section.sectionId, element.position.x, element.position.y, tool)); }} className={cn("z-10 flex min-h-0 touch-none select-none items-center justify-center gap-1 overflow-hidden rounded-[13px] border text-[10px] font-black shadow-[0_2px_0_rgba(92,72,59,0.14)] transition", colors[element.kind], element.kind === "SEAT" && "after:absolute after:inset-x-1.5 after:bottom-1 after:h-1 after:rounded-full after:bg-current after:opacity-15", element.kind === "BERTH" && "m-0.5 rounded-[15px]", (selectedId === element.elementId || selectedIds.includes(element.elementId)) && "ring-2 ring-[#7A1D1B] ring-offset-2", draggingId === element.elementId && "scale-105 opacity-75 ring-2 ring-[#7A1D1B]", isEditable && tool === "SELECT" && (element.kind === "SEAT" || element.kind === "BERTH") && "cursor-grab hover:-translate-y-0.5 active:cursor-grabbing", !isEditable && "pointer-events-none")} style={{ gridColumn: `${element.position.x + 1} / span ${element.size.width}`, gridRow: `${element.position.y + 1} / span ${element.size.height}`, position: "relative" }}><PlaceContent element={element} /></button>)}
         </div>
       </div>
     </div>

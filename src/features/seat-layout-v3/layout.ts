@@ -3,6 +3,14 @@ export const cloneLayout = (layout: SeatLayoutV3): SeatLayoutV3 => structuredClo
 export const passengerPlaces = (layout: SeatLayoutV3) => layout.sections.flatMap((section) => section.elements.filter((element) => element.kind === "SEAT" || element.kind === "BERTH"));
 function nextIdentity(layout: SeatLayoutV3, kind: "SEAT" | "BERTH") { const prefix = kind === "BERTH" ? "B" : "S"; const used = new Set(layout.sections.flatMap((section) => section.elements.map((element) => element.elementId))); let number = 1; while (used.has(`${prefix}-${number}`)) number += 1; return { elementId: `${prefix}-${number}`, label: `${prefix}${number}` }; }
 function overlaps(a: LayoutElement, b: LayoutElement) { return a.position.x < b.position.x + b.size.width && a.position.x + a.size.width > b.position.x && a.position.y < b.position.y + b.size.height && a.position.y + a.size.height > b.position.y; }
+export function canPlacePassenger(layout: SeatLayoutV3, sectionId: string, x: number, y: number, kind: "SEAT" | "BERTH") {
+  const section = layout.sections.find((item) => item.sectionId === sectionId);
+  if (!section) return false;
+  const size = kind === "BERTH" ? { width: 1, height: 2 } : { width: 1, height: 1 };
+  if (x < 0 || y < 0 || x + size.width > section.widthUnits || y + size.height > section.heightUnits) return false;
+  const candidate: LayoutElement = { elementId: "preview", label: null, kind, position: { x, y }, size };
+  return !section.elements.some((element) => overlaps(element, candidate));
+}
 export function applyTool(layout: SeatLayoutV3, sectionId: string, x: number, y: number, tool: BuilderTool) {
   if (tool === "SELECT") return layout; const next = cloneLayout(layout); const section = next.sections.find((item) => item.sectionId === sectionId); if (!section) return layout;
   const hit = section.elements.find((element) => x >= element.position.x && x < element.position.x + element.size.width && y >= element.position.y && y < element.position.y + element.size.height);
