@@ -74,13 +74,6 @@ const navItems: NavItem[] = [
     isAllowed: (caps) => caps.canManageTrips,
   },
   {
-    id: "staff",
-    label: "Staff",
-    href: "/dashboard/staff",
-    iconPath: "/operator-dashboard/icons/staff.svg",
-    isAllowed: () => true,
-  },
-  {
     id: "bookings",
     label: "Bookings",
     href: "/dashboard/bookings",
@@ -93,20 +86,6 @@ const navItems: NavItem[] = [
     href: "/dashboard/finance",
     iconPath: "/operator-dashboard/icons/finance.svg",
     isAllowed: (caps) => caps.canViewFinance,
-  },
-  {
-    id: "reports",
-    label: "Reports",
-    href: "/dashboard/reports",
-    iconPath: "/operator-dashboard/icons/reports.svg",
-    isAllowed: (caps) => caps.canViewReports,
-  },
-  {
-    id: "support",
-    label: "Support",
-    href: "/dashboard/support",
-    iconPath: "/operator-dashboard/icons/support.svg",
-    isAllowed: () => true,
   },
   {
     id: "settings",
