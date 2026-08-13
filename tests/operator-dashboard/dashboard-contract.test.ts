@@ -176,8 +176,7 @@ test("dashboard-contract normalization & evidence rules (Operator Dashboard)", a
       verificationStatus: "pending",
       companyRegistration: { fileCount: 1, available: true },
       taxRegistration: { fileCount: 1, available: true, panNumber: "123456789", registrationNumber: "REG-10" },
-      transportLicense: { fileCount: 1, available: true },
-      insuranceCertificates: [],
+      ownerIdentity: { fileCount: 1, available: true },
       updatedAt: "2026-08-08T00:00:00.000Z",
     });
 

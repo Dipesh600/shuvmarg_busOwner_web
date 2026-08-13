@@ -92,7 +92,7 @@ test("business verification draft progress", async (t) => {
         branchName: "New Road",
         swiftCode: "",
       },
-      ["companyRegistration", "taxRegistration", "transportLicense"]
+      ["companyRegistration", "taxRegistration", "ownerIdentity"]
     );
 
     assert.equal(progress.percentage, 100);

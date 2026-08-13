@@ -136,7 +136,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           ? {
               eyebrow: "Next step",
               title: "Upload required documents",
-              detail: "Company registration, PAN and transport licence.",
+              detail: "Company registration, PAN and owner citizenship or identity.",
               button: "Upload documents",
               step: 2 as const,
             }
@@ -185,7 +185,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
     {
       id: "documents",
       label: "Documents",
-      detail: "Registration, tax and transport licence",
+      detail: "Registration, tax and owner identity",
       complete: isDraft ? draftProgress.documentsComplete : isBusinessApproved,
       stateLabel: isPending ? "Received" : isRejected ? "Check feedback" : isBusinessApproved ? "Approved" : undefined,
       icon: FileText,

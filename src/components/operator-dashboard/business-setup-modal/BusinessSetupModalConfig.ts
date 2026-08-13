@@ -18,8 +18,7 @@ export const BUSINESS_SETUP_DOCUMENTS: Array<{
 }> = [
   { field: "companyRegistration", label: "Company registration", hint: "PDF, JPG or PNG · max 5 MB", required: true },
   { field: "taxRegistration", label: "PAN / tax registration", hint: "PDF, JPG or PNG · max 5 MB", required: true },
-  { field: "transportLicense", label: "Transport licence", hint: "PDF, JPG or PNG · max 5 MB", required: true },
-  { field: "insuranceCertificates", label: "Insurance certificates", hint: "Optional · up to 5 files", required: false, multiple: true },
+  { field: "ownerIdentity", label: "Owner citizenship / identity", hint: "PDF, JPG or PNG · max 5 MB", required: true },
 ];
 
 export const BUSINESS_SETUP_TEXT_FIELDS = new Set<string>([

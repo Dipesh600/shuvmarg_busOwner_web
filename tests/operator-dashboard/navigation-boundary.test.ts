@@ -25,3 +25,16 @@ test("frontend-only staff workspace contains no staff API or fabricated counters
   assert.doesNotMatch(agents, /DEFAULT_PARTNER_COUNTERS/);
   assert.match(agents, /No sample or fabricated counters are shown/);
 });
+
+test("business verification submits exactly the three backend-supported documents", () => {
+  const config = readFileSync(
+    join(projectRoot, "src/components/operator-dashboard/business-setup-modal/BusinessSetupModalConfig.ts"),
+    "utf8"
+  );
+
+  assert.match(config, /companyRegistration/);
+  assert.match(config, /taxRegistration/);
+  assert.match(config, /ownerIdentity/);
+  assert.doesNotMatch(config, /transportLicense/);
+  assert.doesNotMatch(config, /insuranceCertificates/);
+});
