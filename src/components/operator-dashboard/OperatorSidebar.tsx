@@ -60,6 +60,13 @@ const navItems: NavItem[] = [
     isAllowed: (caps) => caps.canManageRoutes,
   },
   {
+    id: "seat-layouts",
+    label: "Seat Layouts",
+    href: "/dashboard/seat-layouts",
+    iconPath: "/operator-dashboard/icons/fleet.svg",
+    isAllowed: (caps) => caps.canPrepareFleet,
+  },
+  {
     id: "trips",
     label: "Trips",
     href: "/dashboard/trips",
