@@ -38,3 +38,15 @@ test("business verification submits exactly the three backend-supported document
   assert.doesNotMatch(config, /transportLicense/);
   assert.doesNotMatch(config, /insuranceCertificates/);
 });
+
+test("settings document preview renders PDFs separately from images", () => {
+  const viewer = readFileSync(
+    join(projectRoot, "src/components/dashboard/settings/profile/SecureDocViewerModal.tsx"),
+    "utf8"
+  );
+
+  assert.match(viewer, /mediaType === "application\/pdf"/);
+  assert.match(viewer, /<iframe/);
+  assert.match(viewer, /<img/);
+  assert.match(viewer, /ALLOWED_PREVIEW_TYPES/);
+});

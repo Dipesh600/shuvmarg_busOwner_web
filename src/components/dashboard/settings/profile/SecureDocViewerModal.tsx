@@ -6,23 +6,30 @@ import React, { useState, useEffect } from "react";
 import { FileText, X, ExternalLink, Loader2 } from "lucide-react";
 import { authFetch } from "@/lib/auth";
 
-export const blobCache = new Map<string, string>();
-export const pendingFetches = new Map<string, Promise<string>>();
+interface SecureDocumentBlob {
+  objectUrl: string;
+  mediaType: string;
+}
+
+const ALLOWED_PREVIEW_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+
+export const blobCache = new Map<string, SecureDocumentBlob>();
+export const pendingFetches = new Map<string, Promise<SecureDocumentBlob>>();
 
 interface SecureDocMediaProps {
   url: string;
   alt: string;
   className?: string;
-  type?: "img" | "iframe";
 }
 
 export function SecureDocMedia({
   url,
   alt,
   className,
-  type = "img",
 }: SecureDocMediaProps) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(() => blobCache.get(url) || null);
+  const [documentBlob, setDocumentBlob] = useState<SecureDocumentBlob | null>(
+    () => blobCache.get(url) || null
+  );
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(() => !blobCache.has(url));
 
@@ -38,9 +45,15 @@ export function SecureDocMedia({
           return res.blob();
         })
         .then((blob) => {
-          const objectUrl = URL.createObjectURL(blob);
-          blobCache.set(url, objectUrl);
-          return objectUrl;
+          if (!ALLOWED_PREVIEW_TYPES.has(blob.type)) {
+            throw new Error(`Unsupported secure document type: ${blob.type || "unknown"}`);
+          }
+          const document = {
+            objectUrl: URL.createObjectURL(blob),
+            mediaType: blob.type,
+          };
+          blobCache.set(url, document);
+          return document;
         });
       pendingFetches.set(url, fetchPromise);
 
@@ -50,9 +63,9 @@ export function SecureDocMedia({
     }
 
     fetchPromise
-      .then((objectUrl) => {
+      .then((document) => {
         if (revoked) return;
-        setBlobUrl(objectUrl);
+        setDocumentBlob(document);
         setLoading(false);
       })
       .catch((err) => {
@@ -76,7 +89,7 @@ export function SecureDocMedia({
     );
   }
 
-  if (error || !blobUrl) {
+  if (error || !documentBlob) {
     return (
       <div className={`flex items-center justify-center bg-neutral-100 ${className}`}>
         <FileText className="w-6 h-6 text-neutral-400" />
@@ -84,11 +97,18 @@ export function SecureDocMedia({
     );
   }
 
-  if (type === "iframe") {
-    return <iframe src={blobUrl} title={alt} className={className} style={{ border: 0 }} />;
+  if (documentBlob.mediaType === "application/pdf") {
+    return (
+      <iframe
+        src={documentBlob.objectUrl}
+        title={alt}
+        className={`h-[70vh] w-full rounded-lg bg-white ${className || ""}`}
+        style={{ border: 0 }}
+      />
+    );
   }
 
-  return <img src={blobUrl} alt={alt} className={className} />;
+  return <img src={documentBlob.objectUrl} alt={alt} className={className} />;
 }
 
 interface SecureDocViewerModalProps {
@@ -116,15 +136,19 @@ export default function SecureDocViewerModal({
 
   const handleOpenInNewTab = async () => {
     try {
-      let objectUrl = blobCache.get(selectedDoc.url);
-      if (!objectUrl) {
+      let document = blobCache.get(selectedDoc.url);
+      if (!document) {
         const res = await authFetch(selectedDoc.url);
         if (!res.ok) return;
         const blob = await res.blob();
-        objectUrl = URL.createObjectURL(blob);
-        blobCache.set(selectedDoc.url, objectUrl);
+        if (!ALLOWED_PREVIEW_TYPES.has(blob.type)) return;
+        document = {
+          objectUrl: URL.createObjectURL(blob),
+          mediaType: blob.type,
+        };
+        blobCache.set(selectedDoc.url, document);
       }
-      const tab = window.open(objectUrl, "_blank");
+      const tab = window.open(document.objectUrl, "_blank");
       if (!tab) alert("Please allow pop-ups to open the document in a new tab.");
     } catch {
       /* silent */
