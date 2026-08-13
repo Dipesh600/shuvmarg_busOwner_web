@@ -281,7 +281,7 @@ export default function BusinessSetupModal({
     field: KycDocumentField,
     selectedFiles: File[]
   ) => {
-    const limit = field === "insuranceCertificates" ? 5 : 1;
+    const limit = 1;
     if (selectedFiles.length > limit) {
       setError(`Select no more than ${limit} file${limit > 1 ? "s" : ""}.`);
       return;

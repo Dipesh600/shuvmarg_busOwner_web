@@ -142,12 +142,6 @@ export function isFirstLoginOverview(
   );
 }
 
-export function shouldFetchProtectedFleet(
-  verificationStatus: VerificationStatus
-): boolean {
-  return verificationStatus === "approved";
-}
-
 export function hasKycSubmissionEvidence(
   kycStatus: BusOwnerKycStatus | null
 ): boolean {

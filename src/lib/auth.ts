@@ -8,7 +8,7 @@
 
 const ACCESS_TOKEN_KEY = "busowner_access_token";
 
-import { API_URL as API } from "./config";
+import { API_URL as API } from "./config.ts";
 
 // ── Token storage ────────────────────────────────────────────────────────────
 
