@@ -31,6 +31,7 @@ import DashboardGreeting from "./DashboardGreeting";
 import OperationalReadiness from "./OperationalReadiness";
 import BusinessSetupModal from "./BusinessSetupModal";
 import SubmittedBusinessPreviewModal from "./business-setup-modal/SubmittedBusinessPreviewModal";
+import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 
 type SetupTrack = "business" | "fleet";
 
@@ -49,6 +50,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [fleetRegistrationOpen, setFleetRegistrationOpen] = useState(false);
   const [modalStep, setModalStep] = useState<0 | 1 | 2 | 3>(0);
   const [draftProgress, setDraftProgress] =
     useState<BusinessDraftProgress>(INITIAL_PROGRESS);
@@ -395,7 +397,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
               </div>
               <div className="mt-4 text-xs font-bold text-[#211D1A]">{isBusinessApproved ? "Ready for fleet setup" : isPending ? "Available after business approval" : "Resolve business review first"}</div>
               <div className="mt-4 w-full space-y-2 text-left">{["Vehicle and registration details", "Bluebook, insurance and permits", "Photos and operational information"].map((item) => <div key={item} className="flex items-center gap-2 rounded-xl border border-[#E8E1DB] bg-white px-3 py-2.5 text-[10px] font-bold text-[#5F5751]"><Check className="h-3.5 w-3.5 text-[#7A1D1B]" />{item}</div>)}</div>
-              {!isBusinessApproved && <button type="button" onClick={() => setActiveTrack("business")} className="mt-5 text-xs font-bold text-[#7A1D1B] hover:underline">View business status</button>}
+              {isBusinessApproved ? <button type="button" onClick={() => setFleetRegistrationOpen(true)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] px-4 py-3 text-xs font-bold text-white">Register first vehicle<ArrowRight className="size-4" /></button> : <button type="button" onClick={() => setActiveTrack("business")} className="mt-5 text-xs font-bold text-[#7A1D1B] hover:underline">View business status</button>}
             </aside>
           </div>
         )}
@@ -423,6 +425,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           onClose={() => setPreviewOpen(false)}
         />
       )}
+      <FleetRegistrationFlow open={fleetRegistrationOpen} onClose={() => setFleetRegistrationOpen(false)} onRegistered={() => window.location.reload()} />
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { Lock, Plus } from "lucide-react";
 import { VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
+import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 
 interface FleetEmptyStateProps {
   verificationStatus: VerificationStatus;
@@ -13,6 +14,7 @@ export default function FleetEmptyState({
   verificationStatus,
 }: FleetEmptyStateProps) {
   const isApproved = verificationStatus === "approved";
+  const [registrationOpen, setRegistrationOpen] = useState(false);
 
   return (
     <div className="bg-white rounded-3xl border border-[#EEE8E2] p-6 sm:p-7 shadow-2xs space-y-4 flex flex-col justify-between">
@@ -50,16 +52,14 @@ export default function FleetEmptyState({
 
       <div className="pt-2">
         <button
-          disabled
-          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] cursor-not-allowed flex items-center justify-center gap-2"
+          disabled={!isApproved}
+          onClick={() => isApproved && setRegistrationOpen(true)}
+          className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:border-[#CDBDB5]"
         >
           {isApproved ? (
             <>
               <Plus className="w-4 h-4 text-neutral-400" />
-              <span>Prepare your first vehicle</span>
-              <span className="text-[10px] text-neutral-400 font-normal">
-                (Upcoming step)
-              </span>
+              <span>Register your first vehicle</span>
             </>
           ) : (
             <>
@@ -72,6 +72,7 @@ export default function FleetEmptyState({
           )}
         </button>
       </div>
+      <FleetRegistrationFlow open={registrationOpen} onClose={() => setRegistrationOpen(false)} onRegistered={() => window.location.reload()} />
     </div>
   );
 }
