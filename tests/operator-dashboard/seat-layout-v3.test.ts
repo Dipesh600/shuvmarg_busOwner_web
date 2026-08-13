@@ -1,6 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyTool, duplicatePassengerRow, hasPassengerLabel, moveElement, passengerPlaces, removeElements, removePassengerRow, renumberPassengerPlaces, updateElement, updateElements, updatePassengerAttributes } from "../../src/features/seat-layout-v3/layout.ts";
+import {
+  applyTool,
+  duplicatePassengerRow,
+  hasPassengerLabel,
+  insertPassengerSeatRow,
+  insertPassengerSleeperRow,
+  moveElement,
+  passengerPlaces,
+  removeElements,
+  removePassengerRow,
+  renumberPassengerPlaces,
+  updateElement,
+  updateElements,
+  updatePassengerAttributes,
+} from "../../src/features/seat-layout-v3/layout.ts";
 import { layoutPresets } from "../../src/features/seat-layout-v3/presets.ts";
 import { deduplicateLayoutFamilies } from "../../src/features/seat-layout-v3/library.ts";
 import { defaultGuidedLayoutConfig, generateGuidedLayout } from "../../src/features/seat-layout-v3/generator.ts";
@@ -97,3 +111,68 @@ test("bulk updates and removal affect only selected passenger places", () => {
   assert.equal(passengerPlaces(accessible).find((place) => place.elementId === "S-1")?.attributes?.commercialClass, "STANDARD");
   assert.equal(passengerPlaces(accessible).find((place) => place.elementId === "S-1")?.attributes?.accessible, true);
 });
+
+test("insertPassengerSeatRow inserts seats in front section and pushes rear sleepers back", () => {
+  const base = generateGuidedLayout({
+    ...defaultGuidedLayoutConfig("BUS"),
+    lowerRows: 4,
+  });
+  const mixed = insertPassengerSleeperRow(base, "lower");
+  const initialSeatCount = passengerPlaces(mixed).filter((p) => p.kind === "SEAT").length;
+  const initialBerthCount = passengerPlaces(mixed).filter((p) => p.kind === "BERTH").length;
+  const initialHeight = mixed.sections[0].heightUnits;
+
+  const withAddedSeatRow = insertPassengerSeatRow(mixed, "lower");
+  const newSeatCount = passengerPlaces(withAddedSeatRow).filter((p) => p.kind === "SEAT").length;
+  const newBerthCount = passengerPlaces(withAddedSeatRow).filter((p) => p.kind === "BERTH").length;
+
+  assert.equal(newSeatCount, initialSeatCount + 4);
+  assert.equal(newBerthCount, initialBerthCount);
+  assert.equal(withAddedSeatRow.sections[0].heightUnits, initialHeight + 1);
+
+  // Verify that all sleeper berths remain behind the seat zone
+  const maxSeatY = Math.max(...passengerPlaces(withAddedSeatRow).filter((p) => p.kind === "SEAT").map((p) => p.position.y));
+  const minBerthY = Math.min(...passengerPlaces(withAddedSeatRow).filter((p) => p.kind === "BERTH").map((p) => p.position.y));
+  assert.ok(minBerthY > maxSeatY, "Sleeper berths must remain behind the upright seat zone");
+});
+
+test("insertPassengerSleeperRow appends 2-unit berths in rear sleeper section", () => {
+  const base = generateGuidedLayout({
+    ...defaultGuidedLayoutConfig("BUS"),
+    lowerRows: 4,
+  });
+  const initialBerthCount = passengerPlaces(base).filter((p) => p.kind === "BERTH").length;
+  const initialHeight = base.sections[0].heightUnits;
+
+  const withAddedSleeper = insertPassengerSleeperRow(base, "lower");
+  const newBerthCount = passengerPlaces(withAddedSleeper).filter((p) => p.kind === "BERTH").length;
+
+  assert.ok(newBerthCount > initialBerthCount);
+  assert.equal(withAddedSleeper.sections[0].heightUnits, initialHeight + 2);
+});
+
+test("adding rows intelligently adapts and preserves active numbering scheme", () => {
+  // Test Side A / Side B adaptation
+  const baseLayout = generateGuidedLayout(defaultGuidedLayoutConfig("BUS"));
+  const sideABLayout = renumberPassengerPlaces(baseLayout, "SIDE_AB");
+  assert.ok(passengerPlaces(sideABLayout).some((p) => p.label?.startsWith("A")));
+  assert.ok(passengerPlaces(sideABLayout).some((p) => p.label?.startsWith("B")));
+
+  const withNewRowAB = insertPassengerSeatRow(sideABLayout, "lower");
+  // Check that new seats continue with Side A and Side B labels rather than resetting to S1..
+  const newLabelsAB = passengerPlaces(withNewRowAB).map((p) => p.label);
+  assert.ok(newLabelsAB.every((label) => /^[AB]\d+$/.test(label || "")), "All labels must maintain A1.. / B1.. series");
+
+  // Test Ka / Kha adaptation
+  const kaKhaLayout = renumberPassengerPlaces(baseLayout, "SIDE_KHA");
+  const withNewRowKaKha = insertPassengerSeatRow(kaKhaLayout, "lower");
+  const newLabelsKaKha = passengerPlaces(withNewRowKaKha).map((p) => p.label);
+  assert.ok(newLabelsKaKha.every((label) => /^(Ka|Kha)\d+$/.test(label || "")), "All labels must maintain Ka.. / Kha.. series");
+
+  // Test Numeric Only adaptation
+  const numericLayout = renumberPassengerPlaces(baseLayout, "NUMERIC_ONLY");
+  const withNewRowNumeric = insertPassengerSeatRow(numericLayout, "lower");
+  const newLabelsNumeric = passengerPlaces(withNewRowNumeric).map((p) => p.label);
+  assert.ok(newLabelsNumeric.every((label) => /^\d+$/.test(label || "")), "All labels must maintain pure numbers 1, 2, 3..");
+});
+

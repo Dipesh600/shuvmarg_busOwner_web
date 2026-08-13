@@ -1,3 +1,50 @@
 import UploadCard from "../components/UploadCard";
 import type { FleetRegistrationDraft } from "../types";
-export default function VehiclePhotosStep({ draft, update }: { draft: FleetRegistrationDraft; update: (next: FleetRegistrationDraft) => void }) { const set = (key: keyof FleetRegistrationDraft["files"]["photos"], files: File[]) => update({ ...draft, files: { ...draft.files, photos: { ...draft.files.photos, [key]: files[0] || null } } }); const card = (label: string, key: keyof FleetRegistrationDraft["files"]["photos"]) => <UploadCard label={label} files={draft.files.photos[key] ? [draft.files.photos[key]!] : []} accept="image/jpeg,image/png,image/webp" onChange={(files) => set(key, files)} />; return <div className="grid gap-4 sm:grid-cols-2">{card("Front", "front")}{card("Back", "rear")}{card("Side", "side")}{card("Inside", "cabin")}</div>; }
+
+export default function VehiclePhotosStep({
+  draft,
+  update,
+}: {
+  draft: FleetRegistrationDraft;
+  update: (next: FleetRegistrationDraft) => void;
+}) {
+  const set = (key: keyof FleetRegistrationDraft["files"]["photos"], files: File[]) =>
+    update({
+      ...draft,
+      files: {
+        ...draft.files,
+        photos: {
+          ...draft.files.photos,
+          [key]: files[0] || null,
+        },
+      },
+    });
+
+  const card = (label: string, description: string, key: keyof FleetRegistrationDraft["files"]["photos"]) => (
+    <UploadCard
+      label={label}
+      description={description}
+      files={draft.files.photos[key] ? [draft.files.photos[key]!] : []}
+      accept="image/jpeg,image/png,image/webp"
+      onChange={(files) => set(key, files)}
+    />
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h4 className="font-black text-[#211D1A]">Vehicle Photos</h4>
+        <p className="mt-1 text-xs text-[#746E69]">
+          Upload clear photos of your vehicle. These appear on passenger booking receipts and boarding guides.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {card("Front View", "Windshield & front license plate", "front")}
+        {card("Rear View", "Rear view with bus number", "rear")}
+        {card("Side Profile", "Exterior side livery & windows", "side")}
+        {card("Interior Cabin", "Passenger seats & central aisle", "cabin")}
+      </div>
+    </div>
+  );
+}

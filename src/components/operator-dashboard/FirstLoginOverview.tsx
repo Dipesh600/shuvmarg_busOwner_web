@@ -32,6 +32,7 @@ import BusinessSetupModal from "./BusinessSetupModal";
 import SubmittedBusinessPreviewModal from "./business-setup-modal/SubmittedBusinessPreviewModal";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 import FleetSetupOverview from "./FleetSetupOverview";
+import { setActiveDraftId } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
 type SetupTrack = "business" | "fleet";
 
@@ -378,7 +379,12 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           <FleetSetupOverview
             fleets={state.fleet.items}
             businessApproved={isBusinessApproved}
-            onAddVehicle={() => setFleetRegistrationOpen(true)}
+            onAddVehicle={(draftId?: string) => {
+              if (draftId) {
+                setActiveDraftId(draftId);
+              }
+              setFleetRegistrationOpen(true);
+            }}
           />
         )}
       </section>
@@ -405,7 +411,18 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           onClose={() => setPreviewOpen(false)}
         />
       )}
-      <FleetRegistrationFlow open={fleetRegistrationOpen} canSubmitForReview={isBusinessApproved} onClose={() => setFleetRegistrationOpen(false)} onRegistered={() => window.location.reload()} />
+      <FleetRegistrationFlow
+        open={fleetRegistrationOpen}
+        canSubmitForReview={isBusinessApproved}
+        onClose={() => setFleetRegistrationOpen(false)}
+        onRegistered={() => {
+          setFleetRegistrationOpen(false);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("storage"));
+          }
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

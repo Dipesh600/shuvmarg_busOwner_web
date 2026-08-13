@@ -1,34 +1,133 @@
 "use client";
 
-import { useRef, useState, type PointerEvent } from "react";
-import { Armchair, BedDouble, CircleGauge, DoorOpen } from "lucide-react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { applyTool, canPlacePassenger } from "./layout";
+import { applyTool, canMoveElement, canPlacePassenger } from "./layout";
 import type { BuilderTool, LayoutElement, LayoutSection, SeatLayoutV3 } from "./types";
 
-const colors: Record<LayoutElement["kind"], string> = {
-  SEAT: "border-[#C6655D] bg-[#FFF7F4] text-[#722A25]",
-  BERTH: "border-[#7463A5] bg-[#F7F4FF] text-[#463778]",
-  AISLE: "border-[#E8E1DB] bg-[#FAF8F5] text-[#9A9189]",
-  DOOR: "border-emerald-500 bg-emerald-50 text-emerald-700",
-  DRIVER: "border-amber-500 bg-amber-50 text-amber-800",
-};
+function SteeringWheelIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M12 2v6.5" />
+      <path d="M4.93 16.07 9.88 13.9" />
+      <path d="m19.07 16.07-4.95-2.17" />
+    </svg>
+  );
+}
 
-function PlaceContent({ element }: { element: LayoutElement }) {
-  if (element.kind === "BERTH") return <><BedDouble className="size-4 shrink-0" /><span>{element.label}</span></>;
-  if (element.kind === "DOOR") return <><DoorOpen className="size-4" /><span className="sr-only">Door</span></>;
-  if (element.kind === "DRIVER") return <><CircleGauge className="size-4" /><span className="sr-only">Driver</span></>;
+function EntryDoorIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14" />
+      <path d="M2 20h20" />
+      <path d="M14 12v.01" />
+      <path d="m10 10 3 2-3 2" />
+    </svg>
+  );
+}
+
+function PlaceContent({ element, isSelected }: { element: LayoutElement; isSelected: boolean }) {
+  if (element.kind === "BERTH") {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-between py-2 px-1">
+        {/* Pillow Headrest Notch */}
+        <div
+          className={cn(
+            "h-1.5 w-7 rounded-full transition-colors",
+            isSelected ? "bg-white/40" : "bg-[#D6CEC5]"
+          )}
+        />
+        {/* Berth Label */}
+        <span className="text-xs font-bold tracking-tight">{element.label}</span>
+        {/* Footrest line */}
+        <div
+          className={cn(
+            "h-1 w-4 rounded-full transition-colors",
+            isSelected ? "bg-white/20" : "bg-[#EAE4DC]"
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (element.kind === "DOOR") {
+    return (
+      <div className="flex flex-col items-center gap-1 text-[#78716C]">
+        <EntryDoorIcon className="size-4 text-[#7A1D1B]" />
+        <span className="text-[10px] font-bold uppercase tracking-wider">Entry</span>
+      </div>
+    );
+  }
+
+  if (element.kind === "DRIVER") {
+    return (
+      <div className="flex flex-col items-center gap-1 text-[#78716C]">
+        <SteeringWheelIcon className="size-4 text-[#7A1D1B]" />
+        <span className="text-[10px] font-bold uppercase tracking-wider">Driver</span>
+      </div>
+    );
+  }
+
   if (element.kind === "AISLE") return null;
-  return <><Armchair className="size-3.5 shrink-0" /><span>{element.label}</span></>;
+
+  return (
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-1">
+      <span className="text-xs font-bold tracking-tight">{element.label}</span>
+      <div
+        className={cn(
+          "h-1 w-5 rounded-full transition-colors",
+          isSelected ? "bg-white/40" : "bg-[#D6CEC5]"
+        )}
+      />
+    </div>
+  );
 }
 
 function FrontCabin({ section }: { section: LayoutSection }) {
   const upper = section.role.startsWith("UPPER");
-  return <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center rounded-t-[26px] border-b border-[#E8E1DB] bg-[#F7F3EE] px-4 py-3">
-    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-[#817870]">{!upper && <><DoorOpen className="size-4" />Entry</>}</div>
-    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#A0978F]">Front</span>
-    <div className="flex justify-end text-[#4E4843]">{!upper && <CircleGauge className="size-6" aria-label="Driver" />}</div>
-  </div>;
+  return (
+    <div className="flex items-center justify-between rounded-t-[24px] border-b border-[#EAE4DC] bg-[#FAF8F5] px-4 sm:px-5 py-3.5">
+      {!upper ? (
+        <>
+          <div className="flex items-center gap-2 text-xs font-bold text-[#292524]">
+            <div className="flex size-7 items-center justify-center rounded-lg border border-[#E5DFD9] bg-white shadow-xs">
+              <EntryDoorIcon className="size-4 text-[#7A1D1B]" />
+            </div>
+            <span>Entry</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-bold text-[#292524]">
+            <span>Driver</span>
+            <div className="flex size-7 items-center justify-center rounded-lg border border-[#E5DFD9] bg-white shadow-xs">
+              <SteeringWheelIcon className="size-4 text-[#7A1D1B]" />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex w-full items-center justify-center py-0.5">
+          <span className="text-xs font-bold tracking-wide text-[#78716C]">Upper Deck</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 type CanvasProps = {
@@ -42,81 +141,369 @@ type CanvasProps = {
   onMove?: (sectionId: string, elementId: string, x: number, y: number) => void;
 };
 
-function Deck({ section, layout, tool, selectedId, selectedIds = [], editable, onChange, onSelect, onMove }: CanvasProps & { section: LayoutSection }) {
+interface ActiveDrag {
+  element: LayoutElement;
+  clientX: number;
+  clientY: number;
+  targetCol: number;
+  targetRow: number;
+  isValid: boolean;
+}
+
+function Deck({
+  section,
+  layout,
+  tool,
+  selectedId,
+  selectedIds = [],
+  editable,
+  onChange,
+  onSelect,
+  onMove,
+}: CanvasProps & { section: LayoutSection }) {
   const isEditable = editable ?? Boolean(onMove);
   const gridRef = useRef<HTMLDivElement | null>(null);
-  const drag = useRef<{ pointerId: number; elementId: string; startX: number; startY: number; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [targetCell, setTargetCell] = useState<{ x: number; y: number } | null>(null);
+
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
-  const cells = Array.from({ length: section.widthUnits * section.heightUnits }, (_, index) => ({ x: index % section.widthUnits, y: Math.floor(index / section.widthUnits) }));
+
+  const cells = Array.from({ length: section.widthUnits * section.heightUnits }, (_, index) => ({
+    x: index % section.widthUnits,
+    y: Math.floor(index / section.widthUnits),
+  }));
+
   const places = section.elements.filter((element) => element.kind === "SEAT" || element.kind === "BERTH");
-  function cellAtPoint(clientX: number, clientY: number) {
+
+  // Calculate target grid coordinate from a pointer point
+  function computeTarget(
+    clientX: number,
+    clientY: number,
+    kind: "SEAT" | "BERTH",
+    elementId?: string
+  ): { col: number; row: number; isValid: boolean } | null {
     const grid = gridRef.current;
     if (!grid) return null;
     const bounds = grid.getBoundingClientRect();
-    if (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) return null;
-    const cells = [...grid.querySelectorAll<HTMLElement>("[data-layout-cell='true']")];
-    const containing = cells.find((cell) => { const box = cell.getBoundingClientRect(); return clientX >= box.left && clientX <= box.right && clientY >= box.top && clientY <= box.bottom; });
-    const cell = containing || cells.reduce<{ node: HTMLElement; distance: number } | null>((best, node) => {
-      const box = node.getBoundingClientRect();
-      const distance = Math.hypot(clientX - (box.left + box.width / 2), clientY - (box.top + box.height / 2));
-      return !best || distance < best.distance ? { node, distance } : best;
-    }, null)?.node;
-    return cell ? { x: Number(cell.dataset.x), y: Number(cell.dataset.y) } : null;
-  }
-  function beginMove(event: PointerEvent<HTMLButtonElement>, element: LayoutElement) {
-    if (!isEditable || !onMove || tool !== "SELECT" || !["SEAT", "BERTH"].includes(element.kind)) return;
-    drag.current = { pointerId: event.pointerId, elementId: element.elementId, startX: event.clientX, startY: event.clientY, moved: false };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setDraggingId(element.elementId);
-  }
-  function trackMove(event: PointerEvent<HTMLButtonElement>) {
-    const current = drag.current;
-    if (!current || current.pointerId !== event.pointerId) return;
-    if (Math.hypot(event.clientX - current.startX, event.clientY - current.startY) > 5) {
-      current.moved = true;
-      event.preventDefault();
-      setTargetCell(cellAtPoint(event.clientX, event.clientY));
+    if (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) {
+      return null;
     }
+
+    const colWidth = bounds.width / section.widthUnits;
+    const rowHeight = bounds.height / section.heightUnits;
+
+    const relX = clientX - bounds.left;
+    const relY = clientY - bounds.top;
+
+    const spanWidth = 1;
+    const spanHeight = kind === "BERTH" ? 2 : 1;
+
+    let col = Math.floor(relX / colWidth);
+    let row = Math.floor(relY / rowHeight);
+
+    col = Math.max(0, Math.min(section.widthUnits - spanWidth, col));
+    row = Math.max(0, Math.min(section.heightUnits - spanHeight, row));
+
+    const isValid = elementId
+      ? canMoveElement(layout, section.sectionId, elementId, col, row)
+      : canPlacePassenger(layout, section.sectionId, col, row, kind);
+
+    return { col, row, isValid };
   }
-  function finishMove(event: PointerEvent<HTMLButtonElement>) {
-    const current = drag.current;
-    if (!current || current.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    if (current.moved) {
-      const target = cellAtPoint(event.clientX, event.clientY);
-      if (target) onMove?.(section.sectionId, current.elementId, target.x, target.y);
-      suppressClick.current = true;
-    }
-    drag.current = null;
-    setDraggingId(null);
-    setTargetCell(null);
+
+  function handleStartDrag(e: React.PointerEvent<HTMLButtonElement>, element: LayoutElement) {
+    if (!isEditable || !onMove || tool !== "SELECT" || (element.kind !== "SEAT" && element.kind !== "BERTH")) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return; // only primary mouse button
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let hasMoved = false;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const dist = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+      if (!hasMoved && dist > 4) {
+        hasMoved = true;
+      }
+      if (!hasMoved) return;
+
+      // Prevent native touch scrolling when dragging a seat
+      if (moveEvent.cancelable) {
+        moveEvent.preventDefault();
+      }
+
+      const target = computeTarget(
+        moveEvent.clientX,
+        moveEvent.clientY,
+        element.kind as "SEAT" | "BERTH",
+        element.elementId
+      );
+
+      if (target) {
+        setActiveDrag({
+          element,
+          clientX: moveEvent.clientX,
+          clientY: moveEvent.clientY,
+          targetCol: target.col,
+          targetRow: target.row,
+          isValid: target.isValid,
+        });
+      }
+    };
+
+    const onPointerUp = (upEvent: PointerEvent) => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+
+      if (hasMoved) {
+        suppressClick.current = true;
+        const target = computeTarget(
+          upEvent.clientX,
+          upEvent.clientY,
+          element.kind as "SEAT" | "BERTH",
+          element.elementId
+        );
+
+        if (target && target.isValid) {
+          onMove?.(section.sectionId, element.elementId, target.col, target.row);
+          onSelect(element.elementId);
+        }
+      }
+
+      setActiveDrag(null);
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   }
-  function cancelMove(event: PointerEvent<HTMLButtonElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    drag.current = null;
-    setDraggingId(null);
-    setTargetCell(null);
-  }
-  return <section className="min-w-0 overflow-hidden rounded-[30px] border border-[#DED5CD] bg-white shadow-[0_12px_34px_rgba(44,35,29,0.08)]">
-    <div className="flex items-center justify-between px-5 pb-3 pt-4"><div><p className="text-sm font-black text-[#191512]">{section.name}</p><p className="mt-0.5 text-[10px] font-bold text-[#938A82]">{section.role.startsWith("UPPER") ? "Upper level" : "Main passenger cabin"}</p></div><span className="rounded-full bg-[#FAF8F5] px-2.5 py-1 text-[10px] font-bold text-[#746E69]">{places.length} places</span></div>
-    <div className="mx-auto mb-5 w-[calc(100%_-_24px)] max-w-[430px] overflow-hidden rounded-[30px] border-2 border-[#D8CEC5] bg-[#FCFAF7] shadow-inner">
-      <FrontCabin section={section} />
-      <div className="relative px-3 pb-4">
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 w-8 -translate-x-1/2 rounded-full bg-[#F4F0EB]" aria-hidden="true" />
-        <div ref={gridRef} onPointerMove={(event) => { if (tool === "SEAT" || tool === "BERTH") setHoverCell(cellAtPoint(event.clientX, event.clientY)); }} onPointerLeave={() => setHoverCell(null)} className="relative grid gap-2" style={{ gridTemplateColumns: `repeat(${section.widthUnits}, minmax(34px, 1fr))`, gridTemplateRows: `repeat(${section.heightUnits}, 48px)` }}>
-          {cells.map(({ x, y }) => <button key={`${x}:${y}`} type="button" disabled={!isEditable} data-layout-cell="true" data-section-id={section.sectionId} data-x={x} data-y={y} aria-label={`Position ${x + 1}, ${y + 1}`} onClick={() => { if (!isEditable) return; if (tool === "SELECT") return onSelect(null); if ((tool === "SEAT" || tool === "BERTH") && !canPlacePassenger(layout, section.sectionId, x, y, tool)) return; onChange(applyTool(layout, section.sectionId, x, y, tool)); }} className={cn("rounded-xl border border-transparent transition", isEditable && "hover:border-dashed hover:border-[#CFC3B9] hover:bg-white/70 focus-visible:border-[#7A1D1B]", targetCell?.x === x && targetCell?.y === y && "border-[#7A1D1B] bg-[#FFF1EE]", !isEditable && "pointer-events-none")} />)}
-          {hoverCell && (tool === "SEAT" || tool === "BERTH") && <div aria-hidden="true" className={cn("pointer-events-none z-20 m-0.5 rounded-[13px] border-2 border-dashed", canPlacePassenger(layout, section.sectionId, hoverCell.x, hoverCell.y, tool) ? tool === "SEAT" ? "border-[#C6655D] bg-[#FFF1F0]/90" : "border-[#7463A5] bg-[#F2EEFF]/90" : "border-red-500 bg-red-100/80")} style={{ gridColumn: `${hoverCell.x + 1} / span 1`, gridRow: `${hoverCell.y + 1} / span ${tool === "BERTH" ? 2 : 1}` }} />}
-          {section.elements.map((element) => <button key={element.elementId} type="button" disabled={!isEditable} onPointerDown={(event) => beginMove(event, element)} onPointerMove={trackMove} onPointerUp={finishMove} onPointerCancel={cancelMove} onClick={() => { if (suppressClick.current) { suppressClick.current = false; return; } if (!isEditable) return; if (tool === "SELECT") onSelect(element.elementId); else onChange(applyTool(layout, section.sectionId, element.position.x, element.position.y, tool)); }} className={cn("z-10 flex min-h-0 touch-none select-none items-center justify-center gap-1 overflow-hidden rounded-[13px] border text-[10px] font-black shadow-[0_2px_0_rgba(92,72,59,0.14)] transition", colors[element.kind], element.kind === "SEAT" && "after:absolute after:inset-x-1.5 after:bottom-1 after:h-1 after:rounded-full after:bg-current after:opacity-15", element.kind === "BERTH" && "m-0.5 rounded-[15px]", (selectedId === element.elementId || selectedIds.includes(element.elementId)) && "ring-2 ring-[#7A1D1B] ring-offset-2", draggingId === element.elementId && "scale-105 opacity-75 ring-2 ring-[#7A1D1B]", isEditable && tool === "SELECT" && (element.kind === "SEAT" || element.kind === "BERTH") && "cursor-grab hover:-translate-y-0.5 active:cursor-grabbing", !isEditable && "pointer-events-none")} style={{ gridColumn: `${element.position.x + 1} / span ${element.size.width}`, gridRow: `${element.position.y + 1} / span ${element.size.height}`, position: "relative" }}><PlaceContent element={element} /></button>)}
+
+  return (
+    <div className="flex flex-col items-center">
+      {/* Deck Title and Counter */}
+      <div className="mb-2.5 flex w-full max-w-[340px] sm:max-w-[380px] items-center justify-between px-1">
+        <span className="text-xs font-semibold text-[#44403C]">{section.name}</span>
+        <span className="text-xs text-[#78716C]">{places.length} places</span>
+      </div>
+
+      {/* Bus Shell Container */}
+      <div className="w-full max-w-[340px] sm:max-w-[380px] rounded-[26px] border border-[#E5DFD9] bg-white shadow-sm overflow-hidden select-none">
+        <FrontCabin section={section} />
+
+        {/* Interior Floor */}
+        <div className="p-3.5 sm:p-5 bg-[#FAF8F5]">
+          <div
+            ref={gridRef}
+            onPointerMove={(event) => {
+              if (tool === "SEAT" || tool === "BERTH") {
+                const target = computeTarget(event.clientX, event.clientY, tool);
+                if (target && target.isValid) {
+                  setHoverCell({ x: target.col, y: target.row });
+                } else {
+                  setHoverCell(null);
+                }
+              }
+            }}
+            onPointerLeave={() => setHoverCell(null)}
+            className="relative grid gap-2 sm:gap-2.5"
+            style={{
+              gridTemplateColumns: `repeat(${section.widthUnits}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${section.heightUnits}, minmax(44px, 48px))`,
+            }}
+          >
+            {/* Grid cell buttons with explicit gridColumn and gridRow */}
+            {cells.map(({ x, y }) => (
+              <button
+                key={`${x}:${y}`}
+                type="button"
+                disabled={!isEditable}
+                data-layout-cell="true"
+                data-section-id={section.sectionId}
+                data-x={x}
+                data-y={y}
+                aria-label={`Position ${x + 1}, ${y + 1}`}
+                onClick={() => {
+                  if (!isEditable) return;
+                  if (tool === "SELECT") {
+                    if (selectedId) {
+                      const selectedElement = section.elements.find((el) => el.elementId === selectedId);
+                      if (selectedElement && canMoveElement(layout, section.sectionId, selectedId, x, y)) {
+                        onMove?.(section.sectionId, selectedId, x, y);
+                        return;
+                      }
+                    }
+                    return onSelect(null);
+                  }
+                  if (
+                    (tool === "SEAT" || tool === "BERTH") &&
+                    !canPlacePassenger(layout, section.sectionId, x, y, tool)
+                  )
+                    return;
+
+                  setHoverCell(null);
+                  const nextLayout = applyTool(layout, section.sectionId, x, y, tool);
+                  onChange(nextLayout);
+
+                  // Auto-select the placed element so it's immediately editable
+                  const placed = nextLayout.sections
+                    .find((s) => s.sectionId === section.sectionId)
+                    ?.elements.find((el) => el.position.x === x && el.position.y === y);
+                  if (placed) {
+                    onSelect(placed.elementId);
+                  }
+                }}
+                className={cn(
+                  "rounded-xl border border-transparent transition min-h-[44px] sm:min-h-[48px]",
+                  isEditable &&
+                    tool !== "SELECT" &&
+                    tool !== "ERASE" &&
+                    "hover:border-dashed hover:border-[#D6CEC5] hover:bg-[#F2EDE5]/50 cursor-pointer",
+                  !isEditable && "pointer-events-none"
+                )}
+                style={{
+                  gridColumn: `${x + 1} / span 1`,
+                  gridRow: `${y + 1} / span 1`,
+                }}
+              />
+            ))}
+
+            {/* Add Tool Placement Ghost Preview (Only when cell is free & valid) */}
+            {!activeDrag &&
+              hoverCell &&
+              (tool === "SEAT" || tool === "BERTH") &&
+              canPlacePassenger(layout, section.sectionId, hoverCell.x, hoverCell.y, tool) && (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none z-20 rounded-xl border-2 border-dashed border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B] flex items-center justify-center text-xs font-bold transition-all"
+                  style={{
+                    gridColumn: `${hoverCell.x + 1} / span 1`,
+                    gridRow: `${hoverCell.y + 1} / span ${tool === "BERTH" ? 2 : 1}`,
+                  }}
+                >
+                  <span>{tool === "BERTH" ? "Sleeper" : "Seat"}</span>
+                </div>
+              )}
+
+            {/* Snapped Drag Target Ghost Footprint */}
+            {activeDrag && (
+              <div
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none z-30 flex items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold transition-all",
+                  activeDrag.isValid
+                    ? "border-[#7A1D1B] bg-[#7A1D1B]/10 text-[#7A1D1B]"
+                    : "border-[#DC2626] bg-[#DC2626]/10 text-[#DC2626]"
+                )}
+                style={{
+                  gridColumn: `${activeDrag.targetCol + 1} / span ${activeDrag.element.size.width}`,
+                  gridRow: `${activeDrag.targetRow + 1} / span ${activeDrag.element.size.height}`,
+                }}
+              >
+                <span>{activeDrag.element.label}</span>
+              </div>
+            )}
+
+            {/* Layout Elements (Seats and Sleepers) */}
+            {section.elements.map((element) => {
+              const isSelected = selectedId === element.elementId || selectedIds.includes(element.elementId);
+              const isCurrentlyDragging = activeDrag?.element.elementId === element.elementId;
+
+              // If currently being dragged, show an empty dashed origin placeholder in the grid
+              if (isCurrentlyDragging) {
+                return (
+                  <div
+                    key={element.elementId}
+                    className="z-0 rounded-xl border-2 border-dashed border-[#D6CEC5] bg-transparent opacity-30 pointer-events-none"
+                    style={{
+                      gridColumn: `${element.position.x + 1} / span ${element.size.width}`,
+                      gridRow: `${element.position.y + 1} / span ${element.size.height}`,
+                    }}
+                  />
+                );
+              }
+
+              return (
+                <button
+                  key={element.elementId}
+                  type="button"
+                  disabled={!isEditable}
+                  onPointerDown={(event) => handleStartDrag(event, element)}
+                  onClick={() => {
+                    if (suppressClick.current) {
+                      suppressClick.current = false;
+                      return;
+                    }
+                    if (!isEditable) return;
+                    if (tool === "SELECT") onSelect(element.elementId);
+                    else onChange(applyTool(layout, section.sectionId, element.position.x, element.position.y, tool));
+                  }}
+                  className={cn(
+                    "z-10 flex min-h-0 select-none items-center justify-center rounded-xl border transition-all duration-100",
+                    !isSelected &&
+                      !isCurrentlyDragging &&
+                      "bg-white border-[#E5DFD9] text-[#1C1917] hover:border-[#C4B9AD] shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+                    isSelected &&
+                      !isCurrentlyDragging &&
+                      "bg-[#7A1D1B] border-[#7A1D1B] text-white shadow-sm ring-2 ring-[#7A1D1B] ring-offset-2",
+                    isCurrentlyDragging &&
+                      "opacity-25 border-2 border-dashed border-[#D6CEC5] bg-transparent text-transparent",
+                    isEditable &&
+                      tool === "SELECT" &&
+                      (element.kind === "SEAT" || element.kind === "BERTH") &&
+                      "cursor-grab active:cursor-grabbing hover:-translate-y-0.5 touch-none",
+                    !isEditable && "pointer-events-none"
+                  )}
+                  style={{
+                    gridColumn: `${element.position.x + 1} / span ${element.size.width}`,
+                    gridRow: `${element.position.y + 1} / span ${element.size.height}`,
+                  }}
+                >
+                  <PlaceContent element={element} isSelected={isSelected && !isCurrentlyDragging} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Subtle Bus Rear Bumper */}
+        <div className="h-2.5 bg-[#FAF8F5] border-t border-[#EAE4DC] flex items-center justify-center">
+          <div className="h-0.5 w-10 rounded-full bg-[#E5DFD9]" />
         </div>
       </div>
+
+      {/* Floating Drag Avatar Following Cursor Smoothly */}
+      {activeDrag && (
+        <div
+          className={cn(
+            "pointer-events-none fixed z-50 flex select-none items-center justify-center rounded-xl border text-xs font-bold shadow-2xl transition-transform",
+            "bg-[#7A1D1B] border-[#7A1D1B] text-white",
+            activeDrag.isValid ? "scale-105" : "scale-95 opacity-80 bg-stone-800 border-stone-800"
+          )}
+          style={{
+            left: activeDrag.clientX - (activeDrag.element.kind === "BERTH" ? 32 : 28),
+            top: activeDrag.clientY - (activeDrag.element.kind === "BERTH" ? 48 : 24),
+            width: activeDrag.element.kind === "BERTH" ? 64 : 56,
+            height: activeDrag.element.kind === "BERTH" ? 96 : 48,
+          }}
+        >
+          <PlaceContent element={activeDrag.element} isSelected={true} />
+        </div>
+      )}
     </div>
-    {isEditable && <p className="border-t border-[#EEE8E2] px-5 py-3 text-center text-[10px] font-bold text-[#938A82]">Select a place to edit · drag to reposition</p>}
-  </section>;
+  );
 }
 
 export default function SeatLayoutCanvas(props: CanvasProps) {
-  return <div className={cn("grid items-start gap-4", props.layout.sections.length > 1 && "lg:grid-cols-2")}>{props.layout.sections.map((section) => <Deck key={section.sectionId} section={section} {...props} />)}</div>;
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-start justify-center gap-6 md:gap-8 py-2",
+        props.layout.sections.length > 1 ? "grid md:grid-cols-2 max-w-3xl mx-auto" : "max-w-sm mx-auto"
+      )}
+    >
+      {props.layout.sections.map((section) => (
+        <Deck key={section.sectionId} section={section} {...props} />
+      ))}
+    </div>
+  );
 }
