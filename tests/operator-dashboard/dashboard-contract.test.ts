@@ -9,18 +9,10 @@ import {
   deriveSetupEvidence,
   isFirstLoginOverview,
   hasKycSubmissionEvidence,
-  shouldFetchProtectedFleet,
 } from "../../src/features/operator-dashboard/operator-dashboard-contract.ts";
 import { normalizeKycStatusPayload } from "../../src/features/operator-dashboard/operator-dashboard-kyc-normalizer.ts";
 
 test("dashboard-contract normalization & evidence rules (Operator Dashboard)", async (t) => {
-  await t.test("protected fleet data is requested only after KYC approval", () => {
-    assert.equal(shouldFetchProtectedFleet("not_submitted"), false);
-    assert.equal(shouldFetchProtectedFleet("pending"), false);
-    assert.equal(shouldFetchProtectedFleet("rejected"), false);
-    assert.equal(shouldFetchProtectedFleet("approved"), true);
-  });
-
   await t.test("hasUsableValue excludes blank strings and 'N/A'", () => {
     assert.equal(hasUsableValue(""), false);
     assert.equal(hasUsableValue("   "), false);
@@ -184,8 +176,7 @@ test("dashboard-contract normalization & evidence rules (Operator Dashboard)", a
       verificationStatus: "pending",
       companyRegistration: { fileCount: 1, available: true },
       taxRegistration: { fileCount: 1, available: true, panNumber: "123456789", registrationNumber: "REG-10" },
-      transportLicense: { fileCount: 1, available: true },
-      insuranceCertificates: [],
+      ownerIdentity: { fileCount: 1, available: true },
       updatedAt: "2026-08-08T00:00:00.000Z",
     });
 

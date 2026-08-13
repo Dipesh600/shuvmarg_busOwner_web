@@ -8,9 +8,10 @@ const FILE_STORE = "kyc-files";
 export const KYC_DOCUMENT_FIELDS = [
   "companyRegistration",
   "taxRegistration",
-  "transportLicense",
-  "insuranceCertificates",
+  "ownerIdentity",
 ] as const;
+
+const RETIRED_KYC_DOCUMENT_FIELDS = ["transportLicense", "insuranceCertificates"] as const;
 
 export type KycDocumentField = (typeof KYC_DOCUMENT_FIELDS)[number];
 export type KycDraftFiles = Partial<Record<KycDocumentField, File[]>>;
@@ -77,6 +78,17 @@ function fileKey(ownerKey: string, field: KycDocumentField): string {
   return `${ownerKey}:${field}`;
 }
 
+function deleteRetiredDraftFiles(database: IDBDatabase, ownerKey: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(FILE_STORE, "readwrite");
+    for (const field of RETIRED_KYC_DOCUMENT_FIELDS) {
+      transaction.objectStore(FILE_STORE).delete(`${ownerKey}:${field}`);
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+}
+
 export async function loadDraftFiles(ownerKey: string): Promise<KycDraftFiles> {
   if (typeof window === "undefined" || !window.indexedDB) return {};
   const database = await openDraftDatabase();
@@ -95,6 +107,8 @@ export async function loadDraftFiles(ownerKey: string): Promise<KycDraftFiles> {
           })
       )
     );
+
+    await deleteRetiredDraftFiles(database, ownerKey);
 
     return Object.fromEntries(entries.filter(([, files]) => files.length > 0));
   } finally {
@@ -128,4 +142,12 @@ export async function clearDraftFiles(ownerKey: string): Promise<void> {
   await Promise.all(
     KYC_DOCUMENT_FIELDS.map((field) => saveDraftFiles(ownerKey, field, []))
   );
+
+  if (typeof window === "undefined" || !window.indexedDB) return;
+  const database = await openDraftDatabase();
+  try {
+    await deleteRetiredDraftFiles(database, ownerKey);
+  } finally {
+    database.close();
+  }
 }
