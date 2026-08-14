@@ -418,7 +418,6 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         onRegistered={() => {
           setFleetRegistrationOpen(false);
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("storage"));
           }
           window.location.reload();
         }}

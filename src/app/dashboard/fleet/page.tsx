@@ -6,10 +6,11 @@ import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBa
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 import { listOperatorFleets, submitFleetDraft, type FleetListItem } from "@/features/fleet-registration/api";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import { subscribeToDataRefresh } from "@/lib/data-refresh";
 import {
-  generateDraftId,
   hasFleetRegistrationDraft,
   setActiveDraftId,
+  subscribeToFleetDraftChanges,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
 export default function FleetPage() {
@@ -22,9 +23,9 @@ export default function FleetPage() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    if (!silent) setError(null);
     try {
       const [fleets, dashboard] = await Promise.all([listOperatorFleets(), fetchOperatorDashboardState()]);
       setItems(fleets);
@@ -55,16 +56,16 @@ export default function FleetPage() {
     };
   }, []);
 
+  useEffect(() => subscribeToDataRefresh(() => { void load(true); }), [load]);
+
   useEffect(() => {
     const updateDraftState = () => setHasLocalDraft(hasFleetRegistrationDraft());
     updateDraftState();
-    window.addEventListener("storage", updateDraftState);
-    return () => window.removeEventListener("storage", updateDraftState);
+    return subscribeToFleetDraftChanges(updateDraftState);
   }, [open]);
 
   function handleStartFresh() {
-    const newId = generateDraftId();
-    setActiveDraftId(newId);
+    setActiveDraftId(null);
     setOpen(true);
   }
 

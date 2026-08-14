@@ -15,6 +15,7 @@ import {
   deleteFleetRegistrationDraft,
   listFleetDrafts,
   setActiveDraftId,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "../fleet-registration-draft-storage";
 
@@ -61,17 +62,13 @@ export default function FleetDraftManagerModal({
   useEffect(() => {
     if (!isOpen) return;
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   async function handleDelete(draftId: string) {
     await deleteFleetRegistrationDraft(draftId);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new Event("storage"));
-    }
     const remaining = listFleetDrafts();
     setDrafts(remaining);
     setDeletingId(null);

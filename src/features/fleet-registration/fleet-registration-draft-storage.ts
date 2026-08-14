@@ -1,10 +1,11 @@
 import { getAccessToken } from "../../lib/auth.ts";
 import { deleteDraftFiles, loadDraftFiles, saveDraftFiles } from "./draft-file-storage.ts";
-import { type FleetRegistrationDraft, type FleetStep } from "./types.ts";
+import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft, type FleetStep } from "./types.ts";
 
 const REGISTRY_PREFIX = "shuvmarg:fleet-registration:registry:v2";
 const ACTIVE_DRAFT_KEY = "shuvmarg:fleet-registration:active-id:v2";
 const LEGACY_V1_PREFIX = "shuvmarg:fleet-registration:v1";
+export const FLEET_DRAFTS_CHANGED_EVENT = "shuvmarg:fleet-drafts-changed";
 
 export interface DraftMetadata {
   id: string;
@@ -30,6 +31,22 @@ interface StoredDraftRecord {
 }
 
 const memoryStore = new Map<string, string>();
+
+function notifyDraftsChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(FLEET_DRAFTS_CHANGED_EVENT));
+  }
+}
+
+export function subscribeToFleetDraftChanges(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => undefined;
+  window.addEventListener("storage", listener);
+  window.addEventListener(FLEET_DRAFTS_CHANGED_EVENT, listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(FLEET_DRAFTS_CHANGED_EVENT, listener);
+  };
+}
 
 function getStorageItem(key: string): string | null {
   try {
@@ -107,10 +124,47 @@ export function listFleetDrafts(): DraftMetadata[] {
     const raw = getStorageItem(getRegistryKey());
     if (!raw) return [];
     const list = JSON.parse(raw);
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    const drafts = list as DraftMetadata[];
+    const meaningful = drafts.filter((item) => !(
+      item.name === "Untitled bus draft"
+      && !item.busNumber
+      && item.step === "vehicle"
+      && item.totalPlaces === 0
+      && !item.hasFiles
+      && !item.serverFleetId
+    ));
+    if (meaningful.length !== drafts.length) {
+      const retainedIds = new Set(meaningful.map((item) => item.id));
+      drafts.filter((item) => !retainedIds.has(item.id)).forEach((item) => {
+        removeStorageItem(getDraftStorageKey(item.id));
+      });
+      saveRegistry(meaningful);
+      const activeId = getActiveDraftId();
+      if (activeId && !retainedIds.has(activeId)) setActiveDraftId(meaningful[0]?.id || null);
+    }
+    return meaningful;
   } catch {
     return [];
   }
+}
+
+export function hasMeaningfulFleetDraft(draft: FleetRegistrationDraft): boolean {
+  const hasFiles = Object.values(draft.files.photos).some(Boolean)
+    || Boolean(draft.files.fitnessCert || draft.files.insurance || draft.files.bluebook || draft.files.routePermit);
+  return Boolean(
+    draft.vehicle.brandId.trim()
+    || draft.vehicle.busName.trim()
+    || draft.vehicle.busNumber.trim()
+    || draft.vehicle.registrationYear.trim()
+    || draft.vehicle.amenityIds.length
+    || draft.route.origin.trim()
+    || draft.route.destination.trim()
+    || draft.route.viaStops.trim()
+    || draft.layout
+    || Object.values(draft.documents).some((value) => value.trim())
+    || hasFiles
+  );
 }
 
 function saveRegistry(list: DraftMetadata[]): void {
@@ -138,11 +192,21 @@ function migrateLegacyDraft() {
     const legacy = JSON.parse(legacyRaw);
     if (legacy?.draft?.vehicle) {
       const draftId = generateDraftId();
+      const normalizedVehicle = {
+        ...EMPTY_FLEET_DRAFT.vehicle,
+        ...legacy.draft.vehicle,
+        brandId: legacy.draft.vehicle.brandId || "",
+      };
+      const normalizedDraft = {
+        ...legacy.draft,
+        vehicle: normalizedVehicle,
+      };
+
       const metadata: DraftMetadata = {
         id: draftId,
-        name: deriveDraftName(legacy.draft),
-        busNumber: legacy.draft.vehicle.busNumber || "",
-        vehicleType: legacy.draft.vehicle.vehicleType || "BUS",
+        name: deriveDraftName(normalizedDraft),
+        busNumber: normalizedVehicle.busNumber || "",
+        vehicleType: normalizedVehicle.vehicleType || "BUS",
         step: legacy.step || "vehicle",
         totalPlaces: legacy.draft.layout?.totalPlaces || 0,
         updatedAt: new Date().toISOString(),
@@ -152,7 +216,7 @@ function migrateLegacyDraft() {
       const record: StoredDraftRecord = {
         version: 2,
         id: draftId,
-        draft: legacy.draft,
+        draft: normalizedDraft,
         step: legacy.step || "vehicle",
         completed: legacy.completed || [],
         hasFiles: legacy.hadFileSelections || false,
@@ -160,7 +224,9 @@ function migrateLegacyDraft() {
       };
 
       setStorageItem(getDraftStorageKey(draftId), JSON.stringify(record));
-      const existing = listFleetDrafts();
+      const existingRaw = getStorageItem(getRegistryKey());
+      const parsed = existingRaw ? JSON.parse(existingRaw) : [];
+      const existing: DraftMetadata[] = Array.isArray(parsed) ? parsed : [];
       saveRegistry([metadata, ...existing.filter((d) => d.id !== draftId)]);
       setActiveDraftId(draftId);
     }
@@ -177,6 +243,7 @@ export async function saveFleetRegistrationDraft(
   completed: FleetStep[],
   serverFleetId?: string
 ): Promise<void> {
+  if (!serverFleetId && !hasMeaningfulFleetDraft(draft)) return;
   const hasFiles = Boolean(
     Object.values(draft.files.photos).some(Boolean) ||
       draft.files.fitnessCert ||
@@ -228,6 +295,7 @@ export async function saveFleetRegistrationDraft(
 
     // Save files to IndexedDB if available
     await saveDraftFiles(draftId, draft.files);
+    notifyDraftsChanged();
   } catch (err) {
     console.warn("Failed to save fleet registration draft:", err);
   }
@@ -260,10 +328,17 @@ export async function loadFleetRegistrationDraft(
     // Load persisted files from IndexedDB
     const files = await loadDraftFiles(id);
 
+    const normalizedVehicle = {
+      ...EMPTY_FLEET_DRAFT.vehicle,
+      ...record.draft.vehicle,
+      brandId: record.draft.vehicle.brandId || "",
+    };
+
     return {
       draftId: id,
       draft: {
         ...record.draft,
+        vehicle: normalizedVehicle,
         files,
       },
       step: record.step || "vehicle",
@@ -287,6 +362,7 @@ export async function deleteFleetRegistrationDraft(draftId: string): Promise<voi
     }
 
     await deleteDraftFiles(draftId);
+    notifyDraftsChanged();
   } catch (err) {
     console.warn("Failed to delete fleet draft:", err);
   }

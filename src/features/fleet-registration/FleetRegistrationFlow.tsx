@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -28,7 +28,6 @@ import {
   listFleetDrafts,
   loadFleetRegistrationDraft,
   saveFleetRegistrationDraft,
-  setActiveDraftId,
 } from "./fleet-registration-draft-storage";
 
 interface Props {
@@ -52,13 +51,16 @@ export default function FleetRegistrationFlow({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<RegisterFleetProgress | null>(null);
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  const hydratedDraftIdRef = useRef<string | null>(null);
   const [showDraftManager, setShowDraftManager] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Load active draft on modal open
   useEffect(() => {
-    if (!open || draftLoaded) return;
+    if (!open) {
+      hydratedDraftIdRef.current = null;
+      return;
+    }
     let active = true;
 
     async function init() {
@@ -67,6 +69,7 @@ export default function FleetRegistrationFlow({
       if (!active) return;
 
       if (saved) {
+        hydratedDraftIdRef.current = saved.draftId;
         setDraftIdState(saved.draftId);
         setDraft(saved.draft);
         setStep(saved.step);
@@ -74,27 +77,27 @@ export default function FleetRegistrationFlow({
         setServerFleetId(saved.serverFleetId);
       } else {
         const newId = generateDraftId();
+        hydratedDraftIdRef.current = newId;
         setDraftIdState(newId);
-        setActiveDraftId(newId);
         setDraft(EMPTY_FLEET_DRAFT);
         setStep("vehicle");
         setCompleted([]);
         setServerFleetId(undefined);
       }
-      setDraftLoaded(true);
     }
 
     void init();
     return () => {
       active = false;
+      hydratedDraftIdRef.current = null;
     };
-  }, [open, draftLoaded]);
+  }, [open]);
 
   // Continuous auto-save to localStorage + IndexedDB
   useEffect(() => {
-    if (!open || !draftLoaded || !draftId) return;
+    if (!open || hydratedDraftIdRef.current !== draftId) return;
     void saveFleetRegistrationDraft(draftId, draft, step, completed, serverFleetId);
-  }, [open, draftLoaded, draftId, draft, step, completed, serverFleetId]);
+  }, [open, draftId, draft, step, completed, serverFleetId]);
 
   if (!open) return null;
 
@@ -144,7 +147,6 @@ export default function FleetRegistrationFlow({
   function handleStartNewBus() {
     const newId = generateDraftId();
     setDraftIdState(newId);
-    setActiveDraftId(newId);
     setDraft(EMPTY_FLEET_DRAFT);
     setStep("vehicle");
     setCompleted([]);

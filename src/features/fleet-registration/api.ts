@@ -53,6 +53,7 @@ async function createDraft(draft: FleetRegistrationDraft): Promise<string> {
     method: "POST",
     body: JSON.stringify({
       ...draft.vehicle,
+      vehicleType: draft.vehicle.vehicleType.toLowerCase(),
       totalSeats: draft.layout!.totalPlaces,
       requestOriginCity: draft.route.origin.trim() || undefined,
       requestDestinationCity: draft.route.destination.trim() || undefined,
@@ -83,6 +84,15 @@ async function upload(
     body.append(slot, file);
   }
   await read(await authFetch(`/busowner/fleets/${fleetId}/documents/${slot}`, { method: "PUT", body }));
+}
+
+async function uploadFleetPhotos(fleetId: string, photos: FleetRegistrationDraft["files"]["photos"]) {
+  const body = new FormData();
+  body.append("imageFront", photos.front!);
+  body.append("imageSide", photos.side!);
+  body.append("imageBack", photos.rear!);
+  body.append("imageInside", photos.cabin!);
+  await read(await authFetch(`/busowner/fleets/${fleetId}/documents/fleetImages`, { method: "PUT", body }));
 }
 
 export async function registerFleet(
@@ -116,10 +126,7 @@ export async function registerFleet(
 
   // Step 2: Upload vehicle exterior & interior photos
   notify("Uploading vehicle photos…");
-  const photos = Object.values(draft.files.photos).filter((file): file is File => Boolean(file));
-  if (photos.length > 0) {
-    await upload(fleetId, "fleetImages", photos);
-  }
+  await uploadFleetPhotos(fleetId, draft.files.photos);
 
   // Step 3: Upload fitness & insurance documents
   notify("Uploading fitness & insurance certificates…");
