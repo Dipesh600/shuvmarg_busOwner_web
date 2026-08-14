@@ -4,6 +4,10 @@ function places(prefix: string, kind: "SEAT" | "BERTH", rows: number, columns: n
 function section(sectionId: string, name: string, role: LayoutSection["role"], order: number, widthUnits: number, heightUnits: number, elements: LayoutElement[]): LayoutSection { return { sectionId, name, role, order, widthUnits, heightUnits, elements }; }
 const layout = (vehicleCategory: VehicleCategory, sections: LayoutSection[]): SeatLayoutV3 => ({ schemaVersion: 3, vehicleCategory, sections });
 export const createBlankBusLayout = (): SeatLayoutV3 => layout("BUS", [section("lower", "Passenger cabin", "LOWER_CABIN", 0, 5, 2, [])]);
+export const createBlankDoubleDeckLayout = (): SeatLayoutV3 => layout("BUS", [
+  section("lower", "Lower cabin", "LOWER_CABIN", 0, 5, 2, []),
+  section("upper", "Upper sleeper deck", "UPPER_BERTH_LEVEL", 1, 4, 2, []),
+]);
 export const layoutPresets = [
   { id: "standard-2x2", name: "Standard 2 × 2", detail: "32 upright seats", create: () => layout("BUS", [section("lower", "Passenger cabin", "LOWER_CABIN", 0, 5, 8, places("S", "SEAT", 8, [0, 1, 3, 4]))]) },
   { id: "deluxe-2x1", name: "Deluxe 2 × 1", detail: "21 reclining-ready seats", create: () => layout("BUS", [section("lower", "Passenger cabin", "LOWER_CABIN", 0, 4, 7, places("D", "SEAT", 7, [0, 1, 3]))]) },
@@ -11,5 +15,6 @@ export const layoutPresets = [
   { id: "lower-upper", name: "Lower seats + upper sleepers", detail: "Side-by-side lower and upper plans", create: () => layout("BUS", [section("lower", "Lower cabin", "LOWER_CABIN", 0, 5, 7, places("L", "SEAT", 7, [0, 1, 3, 4])), section("upper", "Upper berths", "UPPER_BERTH_LEVEL", 1, 4, 8, places("U", "BERTH", 4, [0, 2], 2))]) },
   { id: "full-sleeper", name: "Full sleeper", detail: "Lower and upper berth levels", create: () => layout("BUS", [section("lower-berths", "Lower berths", "LOWER_BERTH_LEVEL", 0, 4, 8, places("LB", "BERTH", 4, [0, 2], 2)), section("upper-berths", "Upper berths", "UPPER_BERTH_LEVEL", 1, 4, 8, places("UB", "BERTH", 4, [0, 2], 2))]) },
   { id: "mini", name: "Minibus 2 × 1", detail: "Compact 18-seat cabin", create: () => layout("MINIBUS", [section("mini", "Passenger cabin", "LOWER_CABIN", 0, 4, 6, places("H", "SEAT", 6, [0, 1, 3]))]) },
-  { id: "blank-bus", name: "Empty bus", detail: "Start with a blank passenger cabin", create: createBlankBusLayout },
+  { id: "blank-bus", name: "Empty single deck", detail: "Build one passenger cabin from scratch", create: createBlankBusLayout },
+  { id: "blank-double-deck", name: "Empty double decker", detail: "Build a lower cabin and upper sleeper deck from scratch", create: createBlankDoubleDeckLayout },
 ];

@@ -327,20 +327,22 @@ export default function SeatLayoutBuilder({
                   <span className="text-[11px] text-[#78716C]">{section.heightUnits} rows</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => addSeatRow(section.sectionId)}
-                    disabled={section.heightUnits >= 40}
-                    className="flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs"
-                  >
-                    <Plus className="size-3 text-[#7A1D1B]" />
-                    Seat row
-                  </button>
+                  {!section.role.endsWith("BERTH_LEVEL") && (
+                    <button
+                      type="button"
+                      onClick={() => addSeatRow(section.sectionId)}
+                      disabled={section.heightUnits >= 40}
+                      className="flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs"
+                    >
+                      <Plus className="size-3 text-[#7A1D1B]" />
+                      Seat row
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => addSleeperRow(section.sectionId)}
                     disabled={section.heightUnits + 2 > 40}
-                    className="flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs"
+                    className={cn("flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs", section.role.endsWith("BERTH_LEVEL") && "col-span-2")}
                   >
                     <Plus className="size-3 text-[#7A1D1B]" />
                     Sleeper (1×2)

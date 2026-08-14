@@ -127,6 +127,7 @@ export function canPlacePassenger(
 ) {
   const section = layout.sections.find((item) => item.sectionId === sectionId);
   if (!section) return false;
+  if (kind === "SEAT" && section.role.endsWith("BERTH_LEVEL")) return false;
   const size = kind === "BERTH" ? { width: 1, height: 2 } : { width: 1, height: 1 };
   if (x < 0 || y < 0 || x + size.width > section.widthUnits) return false;
   if (y + size.height > section.heightUnits) {
@@ -175,6 +176,8 @@ export function applyTool(layout: SeatLayoutV3, sectionId: string, x: number, y:
     if (hit) section.elements = section.elements.filter((element) => element.elementId !== hit.elementId);
     return next;
   }
+
+  if (tool === "SEAT" && section.role.endsWith("BERTH_LEVEL")) return layout;
 
   if (hit) return layout;
 
@@ -504,7 +507,7 @@ export function insertPassengerSeatRow(layout: SeatLayoutV3, sectionId: string) 
   const activeScheme = detectActiveNumberingScheme(layout);
   const next = cloneLayout(layout);
   const section = next.sections.find((item) => item.sectionId === sectionId);
-  if (!section || section.heightUnits >= 40) return layout;
+  if (!section || section.heightUnits >= 40 || section.role.endsWith("BERTH_LEVEL")) return layout;
 
   const seats = section.elements.filter((el) => el.kind === "SEAT");
   const used = new Set(section.elements.map((el) => el.elementId));
@@ -619,7 +622,7 @@ export function insertPassengerSleeperRow(layout: SeatLayoutV3, sectionId: strin
     0
   );
   const width = section.widthUnits;
-  const cols = width >= 4 ? [0, 1, width - 2, width - 1] : width >= 3 ? [0, width - 1] : [0];
+  const cols = width >= 3 ? [0, width - 1] : [0];
 
   cols.forEach((col) => {
     const elementId = `berth-${crypto.randomUUID().slice(0, 8)}`;
