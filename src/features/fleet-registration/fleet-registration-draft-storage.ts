@@ -1,6 +1,6 @@
 import { getAccessToken } from "../../lib/auth.ts";
 import { deleteDraftFiles, loadDraftFiles, saveDraftFiles } from "./draft-file-storage.ts";
-import { type FleetRegistrationDraft, type FleetStep } from "./types.ts";
+import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft, type FleetStep } from "./types.ts";
 
 const REGISTRY_PREFIX = "shuvmarg:fleet-registration:registry:v2";
 const ACTIVE_DRAFT_KEY = "shuvmarg:fleet-registration:active-id:v2";
@@ -153,7 +153,8 @@ export function hasMeaningfulFleetDraft(draft: FleetRegistrationDraft): boolean 
   const hasFiles = Object.values(draft.files.photos).some(Boolean)
     || Boolean(draft.files.fitnessCert || draft.files.insurance || draft.files.bluebook || draft.files.routePermit);
   return Boolean(
-    draft.vehicle.busName.trim()
+    draft.vehicle.brandId.trim()
+    || draft.vehicle.busName.trim()
     || draft.vehicle.busNumber.trim()
     || draft.vehicle.registrationYear.trim()
     || draft.vehicle.amenityIds.length
@@ -191,11 +192,21 @@ function migrateLegacyDraft() {
     const legacy = JSON.parse(legacyRaw);
     if (legacy?.draft?.vehicle) {
       const draftId = generateDraftId();
+      const normalizedVehicle = {
+        ...EMPTY_FLEET_DRAFT.vehicle,
+        ...legacy.draft.vehicle,
+        brandId: legacy.draft.vehicle.brandId || "",
+      };
+      const normalizedDraft = {
+        ...legacy.draft,
+        vehicle: normalizedVehicle,
+      };
+
       const metadata: DraftMetadata = {
         id: draftId,
-        name: deriveDraftName(legacy.draft),
-        busNumber: legacy.draft.vehicle.busNumber || "",
-        vehicleType: legacy.draft.vehicle.vehicleType || "BUS",
+        name: deriveDraftName(normalizedDraft),
+        busNumber: normalizedVehicle.busNumber || "",
+        vehicleType: normalizedVehicle.vehicleType || "BUS",
         step: legacy.step || "vehicle",
         totalPlaces: legacy.draft.layout?.totalPlaces || 0,
         updatedAt: new Date().toISOString(),
@@ -205,7 +216,7 @@ function migrateLegacyDraft() {
       const record: StoredDraftRecord = {
         version: 2,
         id: draftId,
-        draft: legacy.draft,
+        draft: normalizedDraft,
         step: legacy.step || "vehicle",
         completed: legacy.completed || [],
         hasFiles: legacy.hadFileSelections || false,
@@ -317,10 +328,17 @@ export async function loadFleetRegistrationDraft(
     // Load persisted files from IndexedDB
     const files = await loadDraftFiles(id);
 
+    const normalizedVehicle = {
+      ...EMPTY_FLEET_DRAFT.vehicle,
+      ...record.draft.vehicle,
+      brandId: record.draft.vehicle.brandId || "",
+    };
+
     return {
       draftId: id,
       draft: {
         ...record.draft,
+        vehicle: normalizedVehicle,
         files,
       },
       step: record.step || "vehicle",

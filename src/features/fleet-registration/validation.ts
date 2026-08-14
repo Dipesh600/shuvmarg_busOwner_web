@@ -2,9 +2,10 @@ import type { FleetRegistrationDraft, FleetStep } from "./types";
 
 export function validateFleetStep(step: FleetStep, draft: FleetRegistrationDraft): string | null {
   if (step === "vehicle") {
-    if (!draft.vehicle.busName.trim() || !draft.vehicle.busNumber.trim()) return "Add the vehicle name and plate number.";
+    if (!draft.vehicle.brandId || !draft.vehicle.brandId.trim()) return "Select an active operator brand.";
+    if (!draft.vehicle.busName.trim() || !draft.vehicle.busNumber.trim() || !draft.vehicle.registrationYear.trim()) return "Add the vehicle name, plate number and registration year.";
     const year = Number(draft.vehicle.registrationYear);
-    if (draft.vehicle.registrationYear && (!Number.isInteger(year) || year < 1980 || year > new Date().getFullYear() + 1)) return "Enter a valid registration year.";
+    if (!Number.isInteger(year) || year < 1980 || year > new Date().getFullYear() + 1) return "Enter a valid registration year.";
   }
   if (step === "layout" && !draft.layout) return "Choose a published seat layout before continuing.";
   if (step === "photos" && Object.values(draft.files.photos).some((file) => !file)) return "Add front, rear, side and interior photos.";
