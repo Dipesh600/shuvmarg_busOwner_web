@@ -5,8 +5,6 @@ import {
   Armchair,
   BedDouble,
   ChevronDown,
-  CircleGauge,
-  DoorOpen,
   Eraser,
   ListOrdered,
   Minus,
@@ -14,7 +12,6 @@ import {
   Plus,
   RotateCcw,
   RotateCw,
-  Rows3,
   Save,
   Trash2,
 } from "lucide-react";
@@ -41,9 +38,6 @@ const tools: { id: BuilderTool; label: string; icon: typeof MousePointer2 }[] = 
   { id: "SELECT", label: "Select", icon: MousePointer2 },
   { id: "SEAT", label: "Add seats", icon: Armchair },
   { id: "BERTH", label: "Add sleeper seat", icon: BedDouble },
-  { id: "AISLE", label: "Add aisle", icon: Rows3 },
-  { id: "DOOR", label: "Add door", icon: DoorOpen },
-  { id: "DRIVER", label: "Add driver", icon: CircleGauge },
   { id: "ERASE", label: "Remove seats", icon: Eraser },
 ];
 

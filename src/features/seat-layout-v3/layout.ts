@@ -536,7 +536,10 @@ export function insertPassengerSeatRow(layout: SeatLayoutV3, sectionId: string) 
       });
     });
 
-    section.heightUnits += 1;
+    section.heightUnits = Math.max(
+      2,
+      ...section.elements.map((element) => element.position.y + element.size.height)
+    );
     return renumberPassengerPlaces(next, activeScheme);
   }
 
@@ -559,7 +562,10 @@ export function insertPassengerSeatRow(layout: SeatLayoutV3, sectionId: string) 
     });
   });
 
-  section.heightUnits += 1;
+  section.heightUnits = Math.max(
+    2,
+    ...section.elements.map((element) => element.position.y + element.size.height)
+  );
   return renumberPassengerPlaces(next, activeScheme);
 }
 
@@ -600,12 +606,18 @@ export function insertPassengerSleeperRow(layout: SeatLayoutV3, sectionId: strin
       });
     });
 
-    section.heightUnits += 2;
+    section.heightUnits = Math.max(
+      2,
+      ...section.elements.map((element) => element.position.y + element.size.height)
+    );
     return renumberPassengerPlaces(next, activeScheme);
   }
 
   // Fallback: If no berths exist yet, append 1x2 berths at the rear of the bus
-  const insertY = section.heightUnits;
+  const insertY = section.elements.reduce(
+    (end, element) => Math.max(end, element.position.y + element.size.height),
+    0
+  );
   const width = section.widthUnits;
   const cols = width >= 4 ? [0, 1, width - 2, width - 1] : width >= 3 ? [0, width - 1] : [0];
 
@@ -621,7 +633,7 @@ export function insertPassengerSleeperRow(layout: SeatLayoutV3, sectionId: strin
     });
   });
 
-  section.heightUnits += 2;
+  section.heightUnits = Math.max(2, insertY + 2);
   return renumberPassengerPlaces(next, activeScheme);
 }
 
