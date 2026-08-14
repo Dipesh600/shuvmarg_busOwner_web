@@ -6,9 +6,9 @@ import { ArrowRight, BusFront, Plus, Trash2 } from "lucide-react";
 import type { OperatorFleetListItem } from "@/features/operator-dashboard/operator-dashboard-contract";
 import {
   deleteFleetRegistrationDraft,
-  generateDraftId,
   listFleetDrafts,
   setActiveDraftId,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
@@ -25,8 +25,7 @@ export default function FleetSetupOverview({
 
   useEffect(() => {
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
   const totalItems = drafts.length + fleets.length;
@@ -50,9 +49,8 @@ export default function FleetSetupOverview({
             <button
               type="button"
               onClick={() => {
-                const newId = generateDraftId();
-                setActiveDraftId(newId);
-                onAddVehicle(newId);
+                setActiveDraftId(null);
+                onAddVehicle();
               }}
               className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#DCD4CD] bg-white px-3.5 text-xs font-bold text-[#655E58] hover:border-[#7A1D1B] hover:text-[#7A1D1B] transition shadow-2xs"
             >
@@ -103,9 +101,6 @@ export default function FleetSetupOverview({
                   if (window.confirm(`Are you sure you want to discard "${draft.name}"?`)) {
                     await deleteFleetRegistrationDraft(draft.id);
                     setDrafts(listFleetDrafts());
-                    if (typeof window !== "undefined") {
-                      window.dispatchEvent(new Event("storage"));
-                    }
                   }
                 }}
                 title="Discard this unfinished draft"

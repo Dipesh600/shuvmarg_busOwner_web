@@ -6,6 +6,7 @@ import type { FleetListItem } from "@/features/fleet-registration/api";
 import {
   deleteFleetRegistrationDraft,
   listFleetDrafts,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
@@ -29,8 +30,7 @@ export default function FleetSetupResumeBar({
 
   useEffect(() => {
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
   const activeDraft = drafts[0] || null;
@@ -63,9 +63,6 @@ export default function FleetSetupResumeBar({
                 if (window.confirm("Are you sure you want to discard this unfinished bus draft?")) {
                   await deleteFleetRegistrationDraft(activeDraft.id);
                   setDrafts(listFleetDrafts());
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new Event("storage"));
-                  }
                 }
               }}
               title="Discard unfinished local setup"
