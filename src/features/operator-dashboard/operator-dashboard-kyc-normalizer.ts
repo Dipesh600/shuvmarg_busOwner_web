@@ -6,8 +6,7 @@ import type {
 const KYC_DOCUMENT_FIELDS = [
   ["companyRegistration", "Company registration"],
   ["taxRegistration", "PAN / tax registration"],
-  ["transportLicense", "Transport licence"],
-  ["insuranceCertificates", "Insurance certificates"],
+  ["ownerIdentity", "Owner citizenship / identity"],
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

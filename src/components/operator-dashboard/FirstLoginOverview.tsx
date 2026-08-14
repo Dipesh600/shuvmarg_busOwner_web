@@ -13,7 +13,6 @@ import {
   Clock3,
   FileText,
   Landmark,
-  LockKeyhole,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
@@ -31,6 +30,9 @@ import DashboardGreeting from "./DashboardGreeting";
 import OperationalReadiness from "./OperationalReadiness";
 import BusinessSetupModal from "./BusinessSetupModal";
 import SubmittedBusinessPreviewModal from "./business-setup-modal/SubmittedBusinessPreviewModal";
+import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
+import FleetSetupOverview from "./FleetSetupOverview";
+import { setActiveDraftId } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
 type SetupTrack = "business" | "fleet";
 
@@ -49,6 +51,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [fleetRegistrationOpen, setFleetRegistrationOpen] = useState(false);
   const [modalStep, setModalStep] = useState<0 | 1 | 2 | 3>(0);
   const [draftProgress, setDraftProgress] =
     useState<BusinessDraftProgress>(INITIAL_PROGRESS);
@@ -133,7 +136,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           ? {
               eyebrow: "Next step",
               title: "Upload required documents",
-              detail: "Company registration, PAN and transport licence.",
+              detail: "Company registration, PAN and owner citizenship or identity.",
               button: "Upload documents",
               step: 2 as const,
             }
@@ -182,7 +185,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
     {
       id: "documents",
       label: "Documents",
-      detail: "Registration, tax and transport licence",
+      detail: "Registration, tax and owner identity",
       complete: isDraft ? draftProgress.documentsComplete : isBusinessApproved,
       stateLabel: isPending ? "Received" : isRejected ? "Check feedback" : isBusinessApproved ? "Approved" : undefined,
       icon: FileText,
@@ -218,7 +221,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
       : {
           eyebrow: "Business approved",
           title: "Move to fleet preparation",
-          detail: "Your business verification is complete. The next milestone is getting your first vehicle ready.",
+          detail: "Your business verification is complete. You can now submit prepared vehicles for review.",
           button: "Open fleet preparedness",
           icon: BadgeCheck,
         };
@@ -373,31 +376,16 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
             </aside>
           </div>
         ) : (
-          <div className="grid min-h-[400px] lg:grid-cols-12">
-            <div className="flex items-center border-b border-[#E8E1DB] p-7 lg:col-span-7 lg:border-b-0 lg:border-r">
-              <div className="max-w-lg">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFF1EE] text-[#7A1D1B]">
-                  <BusFront className="h-6 w-6" />
-                </div>
-                <h3 className="mt-5 font-display text-xl font-bold text-[#211D1A]">
-                  {isBusinessApproved ? "Prepare your first vehicle" : "Fleet preparedness"}
-                </h3>
-                <p className="mt-2 text-xs font-medium leading-relaxed text-[#746E69]">
-                  {isBusinessApproved
-                    ? "Your business is approved. Review what you need for the first vehicle before starting fleet setup."
-                    : "Use this stage to understand the vehicle details and documents you will need after business approval."}
-                </p>
-              </div>
-            </div>
-            <aside className="flex flex-col items-center justify-center bg-[#FFFCFA] p-7 text-center lg:col-span-5">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#E3D8D1] bg-white text-[#7A1D1B]">
-                <LockKeyhole className="h-6 w-6" />
-              </div>
-              <div className="mt-4 text-xs font-bold text-[#211D1A]">{isBusinessApproved ? "Ready for fleet setup" : isPending ? "Available after business approval" : "Resolve business review first"}</div>
-              <div className="mt-4 w-full space-y-2 text-left">{["Vehicle and registration details", "Bluebook, insurance and permits", "Photos and operational information"].map((item) => <div key={item} className="flex items-center gap-2 rounded-xl border border-[#E8E1DB] bg-white px-3 py-2.5 text-[10px] font-bold text-[#5F5751]"><Check className="h-3.5 w-3.5 text-[#7A1D1B]" />{item}</div>)}</div>
-              {!isBusinessApproved && <button type="button" onClick={() => setActiveTrack("business")} className="mt-5 text-xs font-bold text-[#7A1D1B] hover:underline">View business status</button>}
-            </aside>
-          </div>
+          <FleetSetupOverview
+            fleets={state.fleet.items}
+            businessApproved={isBusinessApproved}
+            onAddVehicle={(draftId?: string) => {
+              if (draftId) {
+                setActiveDraftId(draftId);
+              }
+              setFleetRegistrationOpen(true);
+            }}
+          />
         )}
       </section>
 
@@ -423,6 +411,18 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
           onClose={() => setPreviewOpen(false)}
         />
       )}
+      <FleetRegistrationFlow
+        open={fleetRegistrationOpen}
+        canSubmitForReview={isBusinessApproved}
+        onClose={() => setFleetRegistrationOpen(false)}
+        onRegistered={() => {
+          setFleetRegistrationOpen(false);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("storage"));
+          }
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

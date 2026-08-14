@@ -15,7 +15,6 @@ import {
   deriveCapabilities,
   deriveSetupEvidence,
   hasKycSubmissionEvidence,
-  shouldFetchProtectedFleet,
 } from "./operator-dashboard-contract";
 import { normalizeKycStatusPayload } from "./operator-dashboard-kyc-normalizer";
 
@@ -68,25 +67,18 @@ export async function fetchOperatorDashboardState(): Promise<OperatorDashboardSt
       ? "not_submitted"
       : reportedVerificationStatus;
 
-  // Fleet reads are protected by the approved-KYC middleware. Before approval,
-  // the truthful fleet state is locked and empty, not an authorization failure.
-  let fleetItems: OperatorFleetListItem[] = [];
-  let fleetTotalItems = 0;
-  if (shouldFetchProtectedFleet(verificationStatus)) {
-    const fleetRes = await authFetch("/busowner/fleets?limit=50");
-    if (!fleetRes.ok) {
-      if (fleetRes.status === 401) throw new Error("UNAUTHORIZED");
-      throw new Error(`Failed to load fleet status (HTTP ${fleetRes.status})`);
-    }
-
-    const fleetJson = await fleetRes.json();
-    const fleetData = fleetJson.data || fleetJson;
-    fleetItems = Array.isArray(fleetData?.items) ? fleetData.items : [];
-    fleetTotalItems =
-      typeof fleetData?.pagination?.totalItems === "number"
-        ? fleetData.pagination.totalItems
-        : fleetItems.length;
+  // Draft fleet preparation is available before business approval. Only the
+  // submit transition is approval-gated by the backend.
+  const fleetRes = await authFetch("/busowner/fleets?limit=50");
+  if (!fleetRes.ok) {
+    if (fleetRes.status === 401) throw new Error("UNAUTHORIZED");
+    throw new Error(`Failed to load fleet status (HTTP ${fleetRes.status})`);
   }
+  const fleetJson = await fleetRes.json();
+  const fleetData = fleetJson.data || fleetJson;
+  const fleetItems: OperatorFleetListItem[] = Array.isArray(fleetData?.items) ? fleetData.items : [];
+  const fleetTotalItems = typeof fleetData?.pagination?.totalItems === "number"
+    ? fleetData.pagination.totalItems : fleetItems.length;
 
   const evidence = deriveSetupEvidence(profile, kycStatus, verificationStatus);
   const capabilities = deriveCapabilities(verificationStatus);

@@ -1,122 +1,245 @@
 "use client";
 
-const buses = [
-  { id: "BA-2-KHA-3490", type: "AC Deluxe", seats: 32, status: "Active", driver: "Ram Bahadur K.", route: "KTM → Pokhara", occupancy: 85 },
-  { id: "BA-3-KHA-1102", type: "AC Sleeper", seats: 24, status: "Active", driver: "Mohan Shrestha", route: "KTM → Chitwan", occupancy: 62 },
-  { id: "GA-1-CHA-7841", type: "Deluxe",    seats: 40, status: "Active", driver: "Hari Tamang",    route: "PKR → Butwal", occupancy: 91 },
-  { id: "BA-2-KHA-5533", type: "Mini",      seats: 18, status: "Active", driver: "Suman Rai",      route: "KTM → Dharan", occupancy: 40 },
-  { id: "GA-2-KHA-0091", type: "AC Deluxe", seats: 32, status: "Maintenance", driver: "—", route: "—", occupancy: 0 },
-  { id: "JH-1-KHA-9023", type: "Sleeper",   seats: 24, status: "Inactive", driver: "—", route: "—", occupancy: 0 },
-];
-
-const statusStyle: Record<string, { bg: string; color: string }> = {
-  Active:      { bg: "rgba(46,125,50,0.10)",   color: "#2E7D32" },
-  Maintenance: { bg: "rgba(245,158,11,0.10)",  color: "#F59E0B" },
-  Inactive:    { bg: "rgba(136,136,136,0.10)", color: "#888888" },
-};
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, BusFront, Loader2, Plus, RefreshCw, Search } from "lucide-react";
+import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBar";
+import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
+import { listOperatorFleets, submitFleetDraft, type FleetListItem } from "@/features/fleet-registration/api";
+import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import {
+  generateDraftId,
+  hasFleetRegistrationDraft,
+  setActiveDraftId,
+} from "@/features/fleet-registration/fleet-registration-draft-storage";
 
 export default function FleetPage() {
+  const [items, setItems] = useState<FleetListItem[]>([]);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [businessApproved, setBusinessApproved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [hasLocalDraft, setHasLocalDraft] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [fleets, dashboard] = await Promise.all([listOperatorFleets(), fetchOperatorDashboardState()]);
+      setItems(fleets);
+      setBusinessApproved(dashboard.verificationStatus === "approved");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load fleet.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([listOperatorFleets(), fetchOperatorDashboardState()])
+      .then(([fleets, dashboard]) => {
+        if (!active) return;
+        setItems(fleets);
+        setBusinessApproved(dashboard.verificationStatus === "approved");
+      })
+      .catch((cause) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to load fleet.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateDraftState = () => setHasLocalDraft(hasFleetRegistrationDraft());
+    updateDraftState();
+    window.addEventListener("storage", updateDraftState);
+    return () => window.removeEventListener("storage", updateDraftState);
+  }, [open]);
+
+  function handleStartFresh() {
+    const newId = generateDraftId();
+    setActiveDraftId(newId);
+    setOpen(true);
+  }
+
+  async function submitPreparedFleet(fleetId: string) {
+    setSubmittingId(fleetId);
+    setError(null);
+    try {
+      await submitFleetDraft(fleetId);
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to submit the prepared vehicle.");
+    } finally {
+      setSubmittingId(null);
+    }
+  }
+
+  const visible = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    return items.filter((item) => `${item.busName} ${item.busNumber} ${item.busType}`.toLowerCase().includes(value));
+  }, [items, query]);
+
   return (
-    <div className="w-full min-h-full p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Fleet Management</h1>
-          <p className="text-sm text-neutral-500 mt-0.5">
-            {buses.length} buses registered · {buses.filter(b => b.status === "Active").length} active
-          </p>
-        </div>
-        <button className="btn-primary text-sm">
-          <span className="material-symbols-rounded mr-1.5 text-[18px]">add</span>
-          Add Bus
-        </button>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total Buses",  value: buses.length,                                    icon: "directions_bus" },
-          { label: "Active",       value: buses.filter(b => b.status === "Active").length,   icon: "check_circle" },
-          { label: "Maintenance",  value: buses.filter(b => b.status === "Maintenance").length, icon: "build" },
-          { label: "Avg Occupancy", value: `${Math.round(buses.filter(b=>b.occupancy>0).reduce((a,b)=>a+b.occupancy,0)/buses.filter(b=>b.occupancy>0).length)}%`, icon: "reduce_capacity" },
-        ].map((kpi, i) => (
-          <div key={i} className="bg-white rounded-xl border border-neutral-200 p-5 flex items-center gap-4">
-            <div className="w-9 h-9 rounded-lg bg-ivory border border-neutral-200 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-rounded text-maroon text-[18px]">{kpi.icon}</span>
-            </div>
-            <div>
-              <div className="text-xl font-bold text-neutral-900">{kpi.value}</div>
-              <div className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">{kpi.label}</div>
-            </div>
+    <div className="min-h-full bg-[#FAF8F5] p-5 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7A1D1B]">Fleet</p>
+            <h1 className="mt-1 text-3xl font-black text-[#191512]">Your buses</h1>
           </div>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <div className="text-xs font-bold uppercase tracking-widest text-neutral-500">All Vehicles</div>
           <div className="flex items-center gap-2">
+            {hasLocalDraft && (
+              <button
+                onClick={handleStartFresh}
+                className="flex h-11 items-center justify-center rounded-xl border border-[#DCD4CD] bg-white px-4 text-xs font-black text-[#191512] hover:border-[#7A1D1B] transition shadow-2xs"
+              >
+                <Plus className="mr-1.5 size-4 text-[#7A1D1B]" />
+                Start another bus
+              </button>
+            )}
+            <button
+              onClick={() => setOpen(true)}
+              className="flex h-11 items-center justify-center rounded-xl bg-[#7A1D1B] px-5 text-xs font-black text-white shadow-sm transition hover:bg-[#641715]"
+            >
+              <Plus className="mr-2 size-4" />
+              {hasLocalDraft ? "Continue bus setup" : "Add bus"}
+            </button>
+          </div>
+        </header>
+
+        <FleetSetupResumeBar
+          fleets={items}
+          businessApproved={businessApproved}
+          hasLocalDraft={hasLocalDraft}
+          onAdd={() => setOpen(true)}
+          onManageDrafts={() => setOpen(true)}
+          onStartFresh={handleStartFresh}
+        />
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <p className="shrink-0 text-xs font-bold text-[#746E69]">
+            {items.length} bus{items.length === 1 ? "" : "es"}
+          </p>
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-3.5 size-4 text-[#938A82]" />
             <input
-              type="text"
-              placeholder="Search by plate or route..."
-              className="h-9 px-3 text-sm border border-neutral-200 rounded-lg outline-none focus:border-maroon text-neutral-900 w-56"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search buses by name, number, or class"
+              className="h-11 w-full rounded-xl border border-[#E8E1DB] bg-white pl-11 pr-4 text-sm outline-none focus:border-[#7A1D1B]"
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-neutral-100">
-                {["Plate No.", "Type", "Seats", "Driver", "Route", "Occupancy", "Status", ""].map(h => (
-                  <th key={h} className="text-left px-6 py-3 text-[11px] font-bold uppercase tracking-wider text-neutral-400">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {buses.map((bus, i) => (
-                <tr key={i} className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-xs font-bold text-neutral-900">{bus.id}</td>
-                  <td className="px-6 py-4 text-xs text-neutral-700">{bus.type}</td>
-                  <td className="px-6 py-4 text-xs text-neutral-600">{bus.seats}</td>
-                  <td className="px-6 py-4 text-xs text-neutral-700">{bus.driver}</td>
-                  <td className="px-6 py-4 text-xs text-neutral-600">{bus.route}</td>
-                  <td className="px-6 py-4">
-                    {bus.occupancy > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-neutral-100 w-16">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${bus.occupancy}%`,
-                              background: bus.occupancy >= 80 ? "#2E7D32" : bus.occupancy >= 50 ? "#F59E0B" : "#D32F2F",
-                            }}
-                          />
-                        </div>
-                        <span className="text-[11px] font-semibold text-neutral-600">{bus.occupancy}%</span>
-                      </div>
-                    ) : (
-                      <span className="text-neutral-300 text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
-                      style={statusStyle[bus.status]}
-                    >
-                      {bus.status}
+
+        {loading ? (
+          <div className="flex h-56 items-center justify-center rounded-3xl border border-[#E8E1DB] bg-white text-sm text-[#746E69]">
+            <Loader2 className="mr-2 size-4 animate-spin" />
+            Loading fleet…
+          </div>
+        ) : error ? (
+          <div className="rounded-3xl border border-red-200 bg-white p-8 text-center">
+            <AlertCircle className="mx-auto size-6 text-red-700" />
+            <p className="mt-3 text-sm font-bold">{error}</p>
+            <button onClick={() => void load()} className="mt-4 text-xs font-black text-[#7A1D1B]">
+              <RefreshCw className="mr-1 inline size-3.5" />
+              Retry
+            </button>
+          </div>
+        ) : visible.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {visible.map((fleet) => {
+              const status = String(fleet.approvalStatus || "DRAFT").toUpperCase();
+              const statusLabel =
+                status === "APPROVED"
+                  ? "Ready"
+                  : status === "PENDING"
+                    ? "In review"
+                    : status === "REJECTED"
+                      ? "Needs changes"
+                      : "Draft";
+              const isDraft = status === "DRAFT";
+              const documentsReady = Boolean(
+                fleet.documentSummary?.totalSlots &&
+                  fleet.documentSummary.present === fleet.documentSummary.totalSlots
+              );
+              return (
+                <article
+                  id={`fleet-${fleet.fleetId}`}
+                  key={fleet.fleetId}
+                  className="scroll-mt-6 rounded-3xl border border-[#E8E1DB] bg-white p-5 shadow-sm target:border-[#7A1D1B] target:ring-2 target:ring-[#7A1D1B]/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-[#FFF1EE] text-[#7A1D1B]">
+                      <BusFront className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate font-black text-[#191512]">{fleet.busName}</h2>
+                      <p className="mt-0.5 font-mono text-[10px] font-bold text-[#746E69]">
+                        {fleet.busNumber}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#FAF8F5] px-2.5 py-1 text-[9px] font-black text-[#655E58]">
+                      {statusLabel}
                     </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button className="text-neutral-400 hover:text-maroon transition-colors">
-                      <span className="material-symbols-rounded text-[18px]">more_horiz</span>
+                  </div>
+                  <div className="mt-4 flex justify-between border-t border-[#EEE8E2] pt-3 text-[10px] text-[#746E69]">
+                    <span>{fleet.busType}</span>
+                    <span className="font-bold">{fleet.totalSeats} places</span>
+                  </div>
+                  {isDraft && businessApproved && documentsReady ? (
+                    <button
+                      type="button"
+                      onClick={() => void submitPreparedFleet(fleet.fleetId)}
+                      disabled={submittingId === fleet.fleetId}
+                      className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white disabled:opacity-50"
+                    >
+                      {submittingId === fleet.fleetId ? (
+                        <>
+                          <Loader2 className="mr-2 size-3.5 animate-spin" />
+                          Submitting…
+                        </>
+                      ) : (
+                        "Submit for review"
+                      )}
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  ) : isDraft && !businessApproved ? (
+                    <p className="mt-4 rounded-xl bg-[#FAF8F5] px-3 py-2.5 text-center text-[10px] font-bold text-[#746E69]">
+                      Saved. You can finish this bus while verification continues.
+                    </p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-dashed border-[#DCD4CD] bg-white p-10 text-center">
+            <BusFront className="mx-auto size-8 text-[#7A1D1B]" />
+            <h2 className="mt-4 text-lg font-black">Add your first bus</h2>
+            <button
+              onClick={() => setOpen(true)}
+              className="mt-5 rounded-xl bg-[#191512] px-5 py-3 text-xs font-black text-white"
+            >
+              Add bus
+            </button>
+          </div>
+        )}
+
+        <FleetRegistrationFlow
+          open={open}
+          canSubmitForReview={businessApproved}
+          onClose={() => setOpen(false)}
+          onRegistered={() => {
+            setHasLocalDraft(false);
+            void load();
+          }}
+        />
       </div>
     </div>
   );
