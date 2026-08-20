@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import FleetRegistrationStepper, { STEPS } from "./FleetRegistrationStepper";
 import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft, type FleetStep } from "./types";
-import { registerFleet, type RegisterFleetProgress } from "./api";
+import { listOperatorFleets, registerFleet, type RegisterFleetProgress } from "./api";
 import { validateFleetDraft, validateFleetStep } from "./validation";
 import VehicleDetailsStep from "./steps/VehicleDetailsStep";
 import SeatLayoutStep from "./steps/SeatLayoutStep";
@@ -22,6 +22,7 @@ import RouteAssignmentStep from "./steps/RouteAssignmentStep";
 import ReviewStep from "./steps/ReviewStep";
 import FleetDraftManagerModal from "./components/FleetDraftManagerModal";
 import {
+  cleanupLockedServerFleetDrafts,
   deleteFleetRegistrationDraft,
   generateDraftId,
   getActiveDraftId,
@@ -34,6 +35,8 @@ import {
 interface Props {
   open: boolean;
   canSubmitForReview: boolean;
+  readOnly?: boolean;
+  correctionReason?: string | null;
   onClose: () => void;
   onRegistered: (fleetId: string) => void;
 }
@@ -41,6 +44,8 @@ interface Props {
 export default function FleetRegistrationFlow({
   open,
   canSubmitForReview,
+  readOnly = false,
+  correctionReason = null,
   onClose,
   onRegistered,
 }: Props) {
@@ -52,13 +57,18 @@ export default function FleetRegistrationFlow({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<RegisterFleetProgress | null>(null);
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  const hydratedDraftIdRef = useRef<string | null>(null);
   const [showDraftManager, setShowDraftManager] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
+  const [isHydrated, setIsHydrated] = useState(false);
+
   // Load active draft on modal open
   useEffect(() => {
-    if (!open || draftLoaded) return;
+    if (!open) {
+      hydratedDraftIdRef.current = null;
+      return;
+    }
     let active = true;
 
     async function init() {
@@ -67,53 +77,66 @@ export default function FleetRegistrationFlow({
       if (!active) return;
 
       if (saved) {
+        hydratedDraftIdRef.current = saved.draftId;
         setDraftIdState(saved.draftId);
         setDraft(saved.draft);
-        setStep(saved.step);
+        setStep(readOnly ? "review" : saved.step);
         setCompleted(saved.completed);
         setServerFleetId(saved.serverFleetId);
       } else {
         const newId = generateDraftId();
+        hydratedDraftIdRef.current = newId;
         setDraftIdState(newId);
-        setActiveDraftId(newId);
         setDraft(EMPTY_FLEET_DRAFT);
-        setStep("vehicle");
+        setStep(readOnly ? "review" : "vehicle");
         setCompleted([]);
         setServerFleetId(undefined);
       }
-      setDraftLoaded(true);
+      setIsHydrated(true);
     }
 
     void init();
     return () => {
       active = false;
+      hydratedDraftIdRef.current = null;
     };
-  }, [open, draftLoaded]);
+  }, [open, readOnly]);
 
   // Continuous auto-save to localStorage + IndexedDB
   useEffect(() => {
-    if (!open || !draftLoaded || !draftId) return;
+    if (!open || !isHydrated || hydratedDraftIdRef.current !== draftId) return;
     void saveFleetRegistrationDraft(draftId, draft, step, completed, serverFleetId);
-  }, [open, draftLoaded, draftId, draft, step, completed, serverFleetId]);
+  }, [open, isHydrated, draftId, draft, step, completed, serverFleetId]);
 
   if (!open) return null;
+
+  if (!isHydrated || hydratedDraftIdRef.current !== draftId) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs">
+        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-xl">
+          <Loader2 className="size-5 animate-spin text-[#7A1D1B]" />
+          <span className="text-sm font-bold text-[#211D1A]">Restoring your bus draft…</span>
+        </div>
+      </div>
+    );
+  }
 
   const totalSavedDrafts = listFleetDrafts().length;
   const index = STEPS.findIndex((item) => item.id === step);
 
   const content =
     step === "vehicle" ? (
-      <VehicleDetailsStep draft={draft} update={setDraft} />
+      <VehicleDetailsStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : step === "layout" ? (
-      <SeatLayoutStep draft={draft} update={setDraft} />
+      <SeatLayoutStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : step === "photos" ? (
-      <VehiclePhotosStep draft={draft} update={setDraft} />
+      <VehiclePhotosStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : step === "documents" ? (
-      <DocumentsStep draft={draft} update={setDraft} />
+      <DocumentsStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : step === "route" ? (
-      <RouteAssignmentStep draft={draft} update={setDraft} />
+      <RouteAssignmentStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : (
-      <ReviewStep draft={draft} />
+      <ReviewStep draft={draft} onEditStep={readOnly ? undefined : selectStep} readOnly={readOnly} />
     );
 
   function selectStep(value: FleetStep) {
@@ -144,7 +167,6 @@ export default function FleetRegistrationFlow({
   function handleStartNewBus() {
     const newId = generateDraftId();
     setDraftIdState(newId);
-    setActiveDraftId(newId);
     setDraft(EMPTY_FLEET_DRAFT);
     setStep("vehicle");
     setCompleted([]);
@@ -176,8 +198,16 @@ export default function FleetRegistrationFlow({
         submitForReview: canSubmitForReview,
       });
 
-      // Cleanup local draft on successful registration
-      await deleteFleetRegistrationDraft(draftId);
+      // Preserve local draft to allow previewing from the dashboard
+      setActiveDraftId(null);
+      if (canSubmitForReview) {
+        await cleanupLockedServerFleetDrafts(await listOperatorFleets().catch(() => []));
+      }
+
+      const newId = generateDraftId();
+      hydratedDraftIdRef.current = newId;
+      setDraftIdState(newId);
+
       setDraft(EMPTY_FLEET_DRAFT);
       setServerFleetId(undefined);
       setCompleted([]);
@@ -220,8 +250,8 @@ export default function FleetRegistrationFlow({
 
             {/* Header Actions */}
             <div className="flex items-center gap-2">
-              {/* Draft Switcher Button */}
-              {totalSavedDrafts > 0 && (
+              {/* Draft Switcher Button — hidden in read-only mode */}
+              {!readOnly && totalSavedDrafts > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowDraftManager(true)}
@@ -236,17 +266,19 @@ export default function FleetRegistrationFlow({
                 </button>
               )}
 
-              {/* Discard Draft Button */}
-              <button
-                type="button"
-                onClick={() => setShowDiscardConfirm(true)}
-                disabled={busy}
-                title="Discard this draft"
-                className="inline-flex h-9 items-center gap-1 rounded-xl border border-transparent px-2.5 text-xs font-bold text-[#938A82] hover:bg-red-50 hover:text-red-700 transition"
-              >
-                <Trash2 className="size-3.5" />
-                <span className="hidden sm:inline">Discard</span>
-              </button>
+              {/* Discard Draft Button — hidden in read-only mode */}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => setShowDiscardConfirm(true)}
+                  disabled={busy}
+                  title="Discard this draft"
+                  className="inline-flex h-9 items-center gap-1 rounded-xl border border-transparent px-2.5 text-xs font-bold text-[#938A82] hover:bg-red-50 hover:text-red-700 transition"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span className="hidden sm:inline">Discard</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -281,6 +313,12 @@ export default function FleetRegistrationFlow({
               </div>
 
               <main className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
+                {correctionReason && !readOnly && (
+                  <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-red-700">Changes requested by Shuvmarg</p>
+                    <p className="mt-1.5 whitespace-pre-line text-xs font-semibold text-red-900">{correctionReason}</p>
+                  </div>
+                )}
                 {/* Submission Progress Bar */}
                 {busy && progress && (
                   <div className="mb-5 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] p-4 shadow-2xs animate-in fade-in duration-150">
@@ -316,40 +354,49 @@ export default function FleetRegistrationFlow({
 
               {/* Footer Actions */}
               <footer className="flex h-[72px] shrink-0 items-center justify-between border-t border-[#E8E1DB] bg-white px-5 sm:px-7">
-                <button
-                  type="button"
-                  onClick={() => index > 0 && setStep(STEPS[index - 1].id)}
-                  disabled={index === 0 || busy}
-                  className="flex h-10 items-center rounded-xl border border-[#DCD4CD] px-4 text-xs font-black text-[#655E58] hover:bg-[#FAF8F5] transition disabled:opacity-30"
-                >
-                  <ArrowLeft className="mr-2 size-4" />
-                  Back
-                </button>
-
-                {step === "review" ? (
-                  <button
-                    type="button"
-                    onClick={() => void submit()}
-                    disabled={busy}
-                    className="flex h-10 items-center rounded-xl bg-[#7A1D1B] px-5 text-xs font-black text-white shadow-sm transition hover:bg-[#641715] disabled:opacity-50"
-                  >
-                    {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-                    {busy
-                      ? "Saving vehicle…"
-                      : canSubmitForReview
-                        ? "Submit for review"
-                        : "Save bus"}
-                  </button>
+                {readOnly ? (
+                  <div className="flex w-full h-10 items-center justify-center rounded-xl bg-amber-50 px-5 text-xs font-black text-amber-800 border border-amber-200">
+                    <AlertCircle className="mr-2 size-4" />
+                    Submitted for review · Editing locked
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={next}
-                    disabled={busy || (step === "layout" && !draft.layout)}
-                    className="flex h-10 items-center rounded-xl bg-[#191512] px-5 text-xs font-black text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    Continue
-                    <ArrowRight className="ml-2 size-4" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => index > 0 && setStep(STEPS[index - 1].id)}
+                      disabled={index === 0 || busy}
+                      className="flex h-10 items-center rounded-xl border border-[#DCD4CD] px-4 text-xs font-black text-[#655E58] hover:bg-[#FAF8F5] transition disabled:opacity-30"
+                    >
+                      <ArrowLeft className="mr-2 size-4" />
+                      Back
+                    </button>
+
+                    {step === "review" ? (
+                      <button
+                        type="button"
+                        onClick={() => void submit()}
+                        disabled={busy}
+                        className="flex h-10 items-center rounded-xl bg-[#7A1D1B] px-5 text-xs font-black text-white shadow-sm transition hover:bg-[#641715] disabled:opacity-50"
+                      >
+                        {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+                        {busy
+                          ? "Saving vehicle…"
+                          : canSubmitForReview
+                            ? "Submit for review"
+                            : "Save bus"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={next}
+                        disabled={busy || (step === "layout" && !draft.layout)}
+                        className="flex h-10 items-center rounded-xl bg-[#191512] px-5 text-xs font-black text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        Continue
+                        <ArrowRight className="ml-2 size-4" />
+                      </button>
+                    )}
+                  </>
                 )}
               </footer>
             </section>

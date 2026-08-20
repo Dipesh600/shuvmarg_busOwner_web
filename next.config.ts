@@ -12,18 +12,19 @@ try {
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://maps.googleapis.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com https://shuvmarg.vercel.app",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
   "frame-src 'self' blob:",
-  `connect-src 'self'${apiOrigin ? ` ${apiOrigin}` : ""}${isDevelopment ? " ws: wss:" : ""}`,
+  `connect-src 'self' https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com${apiOrigin ? ` ${apiOrigin}` : ""}${isDevelopment ? " ws: wss:" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
   ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
 ].join("; ");
+
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

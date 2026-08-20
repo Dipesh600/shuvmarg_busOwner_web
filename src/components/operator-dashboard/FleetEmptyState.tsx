@@ -9,6 +9,7 @@ import {
   deleteFleetRegistrationDraft,
   listFleetDrafts,
   setActiveDraftId,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
@@ -25,8 +26,7 @@ export default function FleetEmptyState({
 
   useEffect(() => {
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
   const activeDraft = drafts[0] || null;
@@ -67,9 +67,6 @@ export default function FleetEmptyState({
                   if (window.confirm(`Discard "${activeDraft.name}"?`)) {
                     await deleteFleetRegistrationDraft(activeDraft.id);
                     setDrafts(listFleetDrafts());
-                    if (typeof window !== "undefined") {
-                      window.dispatchEvent(new Event("storage"));
-                    }
                   }
                 }}
                 className="text-[10px] font-bold text-[#938A82] hover:text-red-700 transition"
@@ -125,7 +122,6 @@ export default function FleetEmptyState({
         onRegistered={() => {
           setRegistrationOpen(false);
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("storage"));
           }
           window.location.reload();
         }}
