@@ -494,6 +494,10 @@ function Deck({
 }
 
 export default function SeatLayoutCanvas(props: CanvasProps) {
+  if (!props.layout || !props.layout.sections) {
+    return null;
+  }
+
   return (
     <div
       className={cn(

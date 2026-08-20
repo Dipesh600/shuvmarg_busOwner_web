@@ -8,6 +8,7 @@ import {
   deriveCapabilities,
 } from "@/features/operator-dashboard/operator-dashboard-contract";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import DashboardAutoRefresh from "@/components/operator-dashboard/DashboardAutoRefresh";
 
 export default function DashboardLayout({
   children,
@@ -36,6 +37,7 @@ export default function DashboardLayout({
 
   return (
     <AuthGuard>
+      <DashboardAutoRefresh />
       <DashboardShell
         companyName={dashboardState?.profile?.business?.companyName}
         ownerName={dashboardState?.profile?.profile?.name}

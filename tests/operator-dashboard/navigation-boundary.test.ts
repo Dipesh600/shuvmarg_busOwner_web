@@ -17,6 +17,18 @@ test("operator navigation exposes Staff & Agents and retires the standalone Rout
   assert.equal(existsSync(join(projectRoot, "src/app/dashboard/routes/page.tsx")), false);
 });
 
+test("business profile actions do not link to retired route or schedule pages", () => {
+  const operatorCard = readFileSync(
+    join(projectRoot, "src/app/dashboard/business-profile/components/OperatorCard.tsx"),
+    "utf8"
+  );
+
+  assert.doesNotMatch(operatorCard, /href="\/dashboard\/routes"/);
+  assert.doesNotMatch(operatorCard, /href="\/dashboard\/schedules"/);
+  assert.match(operatorCard, /href="\/dashboard\/fleet"/);
+  assert.match(operatorCard, /href="\/dashboard\/trips"/);
+});
+
 test("frontend-only staff workspace contains no staff API or fabricated counters", () => {
   const staffRoot = join(projectRoot, "src/components/dashboard/staff");
   const agents = readFileSync(join(staffRoot, "AgentCountersList.tsx"), "utf8");

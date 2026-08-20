@@ -23,5 +23,11 @@ test("prepared drafts become submittable after business approval", () => {
 test("each fleet lifecycle status has an independent progress state", () => {
   assert.equal(getFleetSetupProgress({ approvalStatus: "PENDING" }, true).label, "Submitted for review");
   assert.equal(getFleetSetupProgress({ approvalStatus: "REJECTED" }, true).label, "Changes requested");
-  assert.equal(getFleetSetupProgress({ approvalStatus: "APPROVED" }, true).percentage, 100);
+  const approved = getFleetSetupProgress({ approvalStatus: "APPROVED", setupComplete: false }, true);
+  assert.equal(approved.percentage, 90);
+  assert.match(approved.label, /operations setup pending/i);
+
+  const live = getFleetSetupProgress({ approvalStatus: "APPROVED", setupComplete: true }, true);
+  assert.equal(live.percentage, 100);
+  assert.equal(live.label, "Live and operational");
 });

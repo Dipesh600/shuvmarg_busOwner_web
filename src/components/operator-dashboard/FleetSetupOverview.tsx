@@ -6,9 +6,9 @@ import { ArrowRight, BusFront, Plus, Trash2 } from "lucide-react";
 import type { OperatorFleetListItem } from "@/features/operator-dashboard/operator-dashboard-contract";
 import {
   deleteFleetRegistrationDraft,
-  generateDraftId,
   listFleetDrafts,
   setActiveDraftId,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
@@ -25,11 +25,30 @@ export default function FleetSetupOverview({
 
   useEffect(() => {
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
-  const totalItems = drafts.length + fleets.length;
+  const lockedFleets = fleets.filter((fleet) => {
+    const status = String(fleet.approvalStatus || "").toUpperCase();
+    return status === "PENDING" || status === "APPROVED";
+  });
+
+  const lockedFleetIds = new Set(
+    lockedFleets.map((fleet) => fleet.fleetId)
+  );
+
+  const lockedFleetNumbers = new Set(
+    lockedFleets
+      .map((fleet) => fleet.busNumber?.trim().toUpperCase())
+      .filter((num) => Boolean(num))
+  );
+
+  const visibleDrafts = drafts.filter(
+    (draft) =>
+      !(draft.serverFleetId && lockedFleetIds.has(draft.serverFleetId)) &&
+      !(draft.busNumber && lockedFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
+  );
+  const totalItems = visibleDrafts.length + fleets.length;
 
   return (
     <div className="p-5 sm:p-7">
@@ -40,19 +59,18 @@ export default function FleetSetupOverview({
           </p>
           <h3 className="mt-1 text-lg font-bold text-[#211D1A]">
             {totalItems
-              ? `${totalItems} vehicle${totalItems === 1 ? "" : "s"}${drafts.length ? ` (${drafts.length} in progress)` : ""}`
+              ? `${totalItems} vehicle${totalItems === 1 ? "" : "s"}${visibleDrafts.length ? ` (${visibleDrafts.length} in progress)` : ""}`
               : "No vehicles yet"}
           </h3>
         </div>
 
         <div className="flex items-center gap-2">
-          {drafts.length > 0 && (
+          {visibleDrafts.length > 0 && (
             <button
               type="button"
               onClick={() => {
-                const newId = generateDraftId();
-                setActiveDraftId(newId);
-                onAddVehicle(newId);
+                setActiveDraftId(null);
+                onAddVehicle();
               }}
               className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[#DCD4CD] bg-white px-3.5 text-xs font-bold text-[#655E58] hover:border-[#7A1D1B] hover:text-[#7A1D1B] transition shadow-2xs"
             >
@@ -67,14 +85,14 @@ export default function FleetSetupOverview({
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#7A1D1B] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#641715] transition"
           >
             <Plus className="size-4" />
-            {drafts.length > 0 ? "Continue setup" : "Add bus"}
+            {visibleDrafts.length > 0 ? "Continue setup" : "Add bus"}
           </button>
         </div>
       </div>
 
       <div className="mt-5 space-y-3">
         {/* Unfinished Local Drafts */}
-        {drafts.map((draft) => (
+        {visibleDrafts.map((draft) => (
           <article
             key={draft.id}
             className="flex flex-col gap-3 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs"
@@ -103,9 +121,6 @@ export default function FleetSetupOverview({
                   if (window.confirm(`Are you sure you want to discard "${draft.name}"?`)) {
                     await deleteFleetRegistrationDraft(draft.id);
                     setDrafts(listFleetDrafts());
-                    if (typeof window !== "undefined") {
-                      window.dispatchEvent(new Event("storage"));
-                    }
                   }
                 }}
                 title="Discard this unfinished draft"
@@ -177,7 +192,7 @@ export default function FleetSetupOverview({
         })}
 
         {/* Completely Empty State */}
-        {drafts.length === 0 && fleets.length === 0 && (
+        {visibleDrafts.length === 0 && fleets.length === 0 && (
           <button
             type="button"
             onClick={() => onAddVehicle()}

@@ -4,9 +4,11 @@ import type { FleetRegistrationDraft } from "../types";
 export default function VehiclePhotosStep({
   draft,
   update,
+  readOnly = false,
 }: {
   draft: FleetRegistrationDraft;
   update: (next: FleetRegistrationDraft) => void;
+  readOnly?: boolean;
 }) {
   const set = (key: keyof FleetRegistrationDraft["files"]["photos"], files: File[]) =>
     update({
@@ -26,7 +28,8 @@ export default function VehiclePhotosStep({
       description={description}
       files={draft.files.photos[key] ? [draft.files.photos[key]!] : []}
       accept="image/jpeg,image/png,image/webp"
-      onChange={(files) => set(key, files)}
+      onChange={readOnly ? () => {} : (files) => set(key, files)}
+      disabled={readOnly}
     />
   );
 
@@ -35,7 +38,9 @@ export default function VehiclePhotosStep({
       <div>
         <h4 className="font-black text-[#211D1A]">Vehicle Photos</h4>
         <p className="mt-1 text-xs text-[#746E69]">
-          Upload clear photos of your vehicle. These appear on passenger booking receipts and boarding guides.
+          {readOnly
+            ? "Photos submitted with this vehicle for platform verification."
+            : "Upload clear photos of your vehicle. These appear on passenger booking receipts and boarding guides."}
         </p>
       </div>
 

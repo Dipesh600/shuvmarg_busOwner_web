@@ -32,7 +32,7 @@ import BusinessSetupModal from "./BusinessSetupModal";
 import SubmittedBusinessPreviewModal from "./business-setup-modal/SubmittedBusinessPreviewModal";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 import FleetSetupOverview from "./FleetSetupOverview";
-import { setActiveDraftId } from "@/features/fleet-registration/fleet-registration-draft-storage";
+import { cleanupLockedServerFleetDrafts, setActiveDraftId } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
 type SetupTrack = "business" | "fleet";
 
@@ -104,6 +104,10 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
       active = false;
     };
   }, [ownerKey, profile]);
+
+  useEffect(() => {
+    void cleanupLockedServerFleetDrafts(state.fleet.items);
+  }, [state.fleet.items]);
 
   const openSetup = (step: 0 | 1 | 2 | 3) => {
     if (!ownerKey || !profile) return;
@@ -418,7 +422,6 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         onRegistered={() => {
           setFleetRegistrationOpen(false);
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("storage"));
           }
           window.location.reload();
         }}

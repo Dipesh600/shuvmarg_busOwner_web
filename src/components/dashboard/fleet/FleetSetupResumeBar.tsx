@@ -6,6 +6,7 @@ import type { FleetListItem } from "@/features/fleet-registration/api";
 import {
   deleteFleetRegistrationDraft,
   listFleetDrafts,
+  subscribeToFleetDraftChanges,
   type DraftMetadata,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
@@ -26,17 +27,40 @@ export default function FleetSetupResumeBar({
 }) {
   const [drafts, setDrafts] = useState<DraftMetadata[]>(() => listFleetDrafts());
   const next = fleets.find((fleet) => String(fleet.approvalStatus).toUpperCase() === "DRAFT");
+  const lockedFleetIds = new Set(
+    fleets
+      .filter((fleet) => {
+        const status = String(fleet.approvalStatus || "").toUpperCase();
+        return status === "PENDING" || status === "APPROVED";
+      })
+      .map((fleet) => fleet.fleetId)
+  );
+  const lockedFleetNumbers = new Set(
+    fleets
+      .filter((fleet) => {
+        const status = String(fleet.approvalStatus || "").toUpperCase();
+        return status === "PENDING" || status === "APPROVED";
+      })
+      .map((fleet) => fleet.busNumber?.trim().toUpperCase())
+      .filter(Boolean)
+  );
+  const visibleDrafts = drafts.filter(
+    (draft) => {
+      if (draft.serverFleetId && lockedFleetIds.has(draft.serverFleetId)) return false;
+      if (draft.busNumber && lockedFleetNumbers.has(draft.busNumber.trim().toUpperCase())) return false;
+      return true;
+    }
+  );
 
   useEffect(() => {
     const onStorage = () => setDrafts(listFleetDrafts());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
-  const activeDraft = drafts[0] || null;
+  const activeDraft = visibleDrafts[0] || null;
 
-  if (hasLocalDraft && drafts.length > 0) {
-    if (drafts.length === 1 && activeDraft) {
+  if (hasLocalDraft && visibleDrafts.length > 0) {
+    if (visibleDrafts.length === 1 && activeDraft) {
       return (
         <section className="flex flex-col gap-3 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
@@ -63,9 +87,6 @@ export default function FleetSetupResumeBar({
                 if (window.confirm("Are you sure you want to discard this unfinished bus draft?")) {
                   await deleteFleetRegistrationDraft(activeDraft.id);
                   setDrafts(listFleetDrafts());
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new Event("storage"));
-                  }
                 }
               }}
               title="Discard unfinished local setup"
@@ -112,7 +133,7 @@ export default function FleetSetupResumeBar({
                 In Progress
               </span>
               <p className="text-sm font-black text-[#191512]">
-                {drafts.length} Bus Setups In Progress
+                {visibleDrafts.length} Bus Setups In Progress
               </p>
             </div>
             <p className="mt-0.5 text-xs text-[#746E69]">
@@ -138,7 +159,7 @@ export default function FleetSetupResumeBar({
             onClick={onManageDrafts || onAdd}
             className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#7A1D1B] px-4 text-xs font-bold text-white shadow-2xs transition hover:bg-[#641715]"
           >
-            Manage drafts ({drafts.length})
+            Manage drafts ({visibleDrafts.length})
             <ArrowRight className="size-3.5" />
           </button>
         </div>
