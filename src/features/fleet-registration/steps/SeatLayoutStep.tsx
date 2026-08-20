@@ -15,9 +15,11 @@ import type { FleetRegistrationDraft } from "../types";
 export default function SeatLayoutStep({
   draft,
   update,
+  readOnly = false,
 }: {
   draft: FleetRegistrationDraft;
   update: (next: FleetRegistrationDraft) => void;
+  readOnly?: boolean;
 }) {
   const [templates, setTemplates] = useState<SeatLayoutTemplate[]>([]);
   const [editorLayout, setEditorLayout] = useState<SeatLayoutV3 | null | undefined>();
@@ -183,8 +185,8 @@ export default function SeatLayoutStep({
     <div className="space-y-5">
       {error && <div className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700">{error}</div>}
 
-      {/* Sleek Horizontal Resume Bar if a custom layout draft exists */}
-      {draft.layout?.customized && (
+      {/* Sleek Horizontal Resume Bar if a custom layout draft exists — hidden in readOnly */}
+      {!readOnly && draft.layout?.customized && (
         <div className="flex flex-col gap-3 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EE] text-[#7A1D1B] border border-[#F8C9C7]">
@@ -208,14 +210,16 @@ export default function SeatLayoutStep({
         </div>
       )}
 
-      {/* Starter Templates Picker */}
-      <SeatTemplatePicker
-        templates={templates}
-        selectedId={draft.layout?.templateId}
-        busy={busy}
-        onChoose={(item) => void choose(item)}
-        onScratch={startScratch}
-      />
+      {/* Starter Templates Picker — hidden in readOnly */}
+      {!readOnly && (
+        <SeatTemplatePicker
+          templates={templates}
+          selectedId={draft.layout?.templateId}
+          busy={busy}
+          onChoose={(item) => void choose(item)}
+          onScratch={startScratch}
+        />
+      )}
 
       {/* Active Layout Preview (Rendered ONLY when user explicitly selects a template or has a custom draft) */}
       {draft.layout && (
@@ -227,14 +231,16 @@ export default function SeatLayoutStep({
                 {draft.layout.totalPlaces} places{draft.layout.customized ? " · custom for this bus" : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={customize}
-              className="inline-flex h-9 items-center rounded-xl border border-[#7A1D1B] px-3 text-xs font-black text-[#7A1D1B] hover:bg-[#FFF1EE] transition"
-            >
-              <Pencil className="mr-2 size-3.5" />
-              Customize layout
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={customize}
+                className="inline-flex h-9 items-center rounded-xl border border-[#7A1D1B] px-3 text-xs font-black text-[#7A1D1B] hover:bg-[#FFF1EE] transition"
+              >
+                <Pencil className="mr-2 size-3.5" />
+                Customize layout
+              </button>
+            )}
           </div>
           <SeatLayoutCanvas
             layout={draft.layout.layout}

@@ -28,7 +28,27 @@ export default function FleetSetupOverview({
     return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
-  const totalItems = drafts.length + fleets.length;
+  const lockedFleets = fleets.filter((fleet) => {
+    const status = String(fleet.approvalStatus || "").toUpperCase();
+    return status === "PENDING" || status === "APPROVED";
+  });
+
+  const lockedFleetIds = new Set(
+    lockedFleets.map((fleet) => fleet.fleetId)
+  );
+
+  const lockedFleetNumbers = new Set(
+    lockedFleets
+      .map((fleet) => fleet.busNumber?.trim().toUpperCase())
+      .filter((num) => Boolean(num))
+  );
+
+  const visibleDrafts = drafts.filter(
+    (draft) =>
+      !(draft.serverFleetId && lockedFleetIds.has(draft.serverFleetId)) &&
+      !(draft.busNumber && lockedFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
+  );
+  const totalItems = visibleDrafts.length + fleets.length;
 
   return (
     <div className="p-5 sm:p-7">
@@ -39,13 +59,13 @@ export default function FleetSetupOverview({
           </p>
           <h3 className="mt-1 text-lg font-bold text-[#211D1A]">
             {totalItems
-              ? `${totalItems} vehicle${totalItems === 1 ? "" : "s"}${drafts.length ? ` (${drafts.length} in progress)` : ""}`
+              ? `${totalItems} vehicle${totalItems === 1 ? "" : "s"}${visibleDrafts.length ? ` (${visibleDrafts.length} in progress)` : ""}`
               : "No vehicles yet"}
           </h3>
         </div>
 
         <div className="flex items-center gap-2">
-          {drafts.length > 0 && (
+          {visibleDrafts.length > 0 && (
             <button
               type="button"
               onClick={() => {
@@ -65,14 +85,14 @@ export default function FleetSetupOverview({
             className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#7A1D1B] px-4 text-xs font-bold text-white shadow-2xs hover:bg-[#641715] transition"
           >
             <Plus className="size-4" />
-            {drafts.length > 0 ? "Continue setup" : "Add bus"}
+            {visibleDrafts.length > 0 ? "Continue setup" : "Add bus"}
           </button>
         </div>
       </div>
 
       <div className="mt-5 space-y-3">
         {/* Unfinished Local Drafts */}
-        {drafts.map((draft) => (
+        {visibleDrafts.map((draft) => (
           <article
             key={draft.id}
             className="flex flex-col gap-3 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] p-4 sm:flex-row sm:items-center sm:justify-between shadow-2xs"
@@ -172,7 +192,7 @@ export default function FleetSetupOverview({
         })}
 
         {/* Completely Empty State */}
-        {drafts.length === 0 && fleets.length === 0 && (
+        {visibleDrafts.length === 0 && fleets.length === 0 && (
           <button
             type="button"
             onClick={() => onAddVehicle()}

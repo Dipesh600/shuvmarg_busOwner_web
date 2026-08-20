@@ -10,11 +10,13 @@ interface VehicleDetailsStepProps {
       | FleetRegistrationDraft
       | ((prev: FleetRegistrationDraft) => FleetRegistrationDraft)
   ) => void;
+  readOnly?: boolean;
 }
 
 export default function VehicleDetailsStep({
   draft,
   update,
+  readOnly = false,
 }: VehicleDetailsStepProps) {
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [loadingBrands, setLoadingBrands] = useState<boolean>(true);
@@ -129,6 +131,7 @@ export default function VehicleDetailsStep({
               value={draft.vehicle.brandId}
               onChange={(e) => setField("brandId", e.target.value)}
               required
+              disabled={readOnly}
             >
               <option value="">Select an active operator brand...</option>
               {brands.map((item) => (
@@ -154,6 +157,7 @@ export default function VehicleDetailsStep({
           onChange={(e) => setField("busName", e.target.value)}
           placeholder="Himalayan Express"
           required
+          disabled={readOnly}
         />
       </FormField>
 
@@ -164,6 +168,7 @@ export default function VehicleDetailsStep({
           onChange={(e) => setField("busNumber", e.target.value.toUpperCase())}
           placeholder="BA 3 KHA 1234"
           required
+          disabled={readOnly}
         />
       </FormField>
 
@@ -172,6 +177,7 @@ export default function VehicleDetailsStep({
           className={inputClass}
           value={draft.vehicle.busType}
           onChange={(e) => setField("busType", e.target.value)}
+          disabled={readOnly}
         >
           {["DELUXE", "AC", "NON_AC", "SLEEPER", "SEMI_SLEEPER"].map((item) => (
             <option key={item} value={item}>
@@ -186,6 +192,7 @@ export default function VehicleDetailsStep({
           className={inputClass}
           value={draft.vehicle.vehicleType}
           onChange={(e) => setField("vehicleType", e.target.value)}
+          disabled={readOnly}
         >
           {["BUS", "MINIBUS", "HIACE", "JEEP"].map((item) => (
             <option key={item} value={item}>
@@ -205,6 +212,7 @@ export default function VehicleDetailsStep({
           value={draft.vehicle.registrationYear}
           onChange={(e) => setField("registrationYear", e.target.value)}
           placeholder="2024"
+          disabled={readOnly}
         />
       </FormField>
     </div>

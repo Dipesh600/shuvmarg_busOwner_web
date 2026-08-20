@@ -19,6 +19,12 @@ export interface DraftMetadata {
   hasFiles: boolean;
 }
 
+export interface ServerFleetDraftLockSource {
+  fleetId?: string | null;
+  approvalStatus?: string | null;
+  busNumber?: string | null;
+}
+
 interface StoredDraftRecord {
   version: 2;
   id: string;
@@ -161,10 +167,21 @@ export function hasMeaningfulFleetDraft(draft: FleetRegistrationDraft): boolean 
     || draft.route.origin.trim()
     || draft.route.destination.trim()
     || draft.route.viaStops.trim()
+    || Boolean(draft.route.originStop || draft.route.destinationStop || draft.route.selectedVariant)
     || draft.layout
     || Object.values(draft.documents).some((value) => value.trim())
     || hasFiles
   );
+}
+
+export function getDraftForServerFleet(fleetId: string, busNumber?: string): string | null {
+  const drafts = listFleetDrafts();
+  const match = drafts.find(
+    (d) =>
+      d.serverFleetId === fleetId ||
+      (busNumber && d.busNumber?.trim().toUpperCase() === busNumber.trim().toUpperCase())
+  );
+  return match?.id || null;
 }
 
 function saveRegistry(list: DraftMetadata[]): void {
@@ -200,6 +217,7 @@ function migrateLegacyDraft() {
       const normalizedDraft = {
         ...legacy.draft,
         vehicle: normalizedVehicle,
+        route: { ...EMPTY_FLEET_DRAFT.route, ...legacy.draft.route },
       };
 
       const metadata: DraftMetadata = {
@@ -333,12 +351,17 @@ export async function loadFleetRegistrationDraft(
       ...record.draft.vehicle,
       brandId: record.draft.vehicle.brandId || "",
     };
+    const normalizedRoute = {
+      ...EMPTY_FLEET_DRAFT.route,
+      ...record.draft.route,
+    };
 
     return {
       draftId: id,
       draft: {
         ...record.draft,
         vehicle: normalizedVehicle,
+        route: normalizedRoute,
         files,
       },
       step: record.step || "vehicle",
@@ -367,6 +390,38 @@ export async function deleteFleetRegistrationDraft(draftId: string): Promise<voi
     console.warn("Failed to delete fleet draft:", err);
   }
 }
+
+export async function cleanupLockedServerFleetDrafts(
+  fleets: ServerFleetDraftLockSource[]
+): Promise<void> {
+  const approvedFleets = fleets.filter((fleet) => {
+    const status = String(fleet.approvalStatus || "").toUpperCase();
+    return status === "APPROVED" || status === "PENDING";
+  });
+
+  const lockedFleetIds = new Set(
+    approvedFleets.map((fleet) => fleet.fleetId).filter((id): id is string => Boolean(id))
+  );
+
+  const lockedFleetNumbers = new Set(
+    approvedFleets
+      .map((fleet) => fleet.busNumber?.trim().toUpperCase())
+      .filter((num): num is string => Boolean(num))
+  );
+
+  if (lockedFleetIds.size === 0 && lockedFleetNumbers.size === 0) return;
+
+  const lockedDrafts = listFleetDrafts().filter(
+    (draft) =>
+      (draft.serverFleetId && lockedFleetIds.has(draft.serverFleetId)) ||
+      (draft.busNumber && lockedFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
+  );
+
+  for (const draft of lockedDrafts) {
+    await deleteFleetRegistrationDraft(draft.id);
+  }
+}
+
 
 export function hasFleetRegistrationDraft(): boolean {
   return listFleetDrafts().length > 0;

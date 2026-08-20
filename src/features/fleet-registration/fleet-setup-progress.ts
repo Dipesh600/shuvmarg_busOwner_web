@@ -21,7 +21,9 @@ export function getFleetSetupProgress(
 ): FleetSetupProgress {
   const status = String(fleet.approvalStatus || "DRAFT").toUpperCase();
   if (status === "APPROVED") {
-    return { percentage: 100, label: "Approved and ready", actionLabel: "View vehicle", isDraft: false };
+    return fleet.setupComplete
+      ? { percentage: 100, label: "Live and operational", actionLabel: "View vehicle", isDraft: false }
+      : { percentage: 90, label: "Approved — operations setup pending", actionLabel: "View approval", isDraft: false };
   }
   if (status === "PENDING") {
     return { percentage: 100, label: "Submitted for review", actionLabel: "View review status", isDraft: false };
