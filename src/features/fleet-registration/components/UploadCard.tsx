@@ -116,6 +116,7 @@ function ImagePreview({
   multiple,
   onChange,
   onRemove,
+  disabled = false,
 }: {
   file: File;
   label: string;
@@ -123,6 +124,7 @@ function ImagePreview({
   multiple?: boolean;
   onChange: (files: File[]) => void;
   onRemove: () => void;
+  disabled?: boolean;
 }) {
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -183,27 +185,31 @@ function ImagePreview({
               View
             </button>
 
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#211D1A] shadow-xs backdrop-blur-xs transition hover:bg-white">
-              <RefreshCw className="size-3 text-[#7A1D1B]" />
-              Change
-              <input
-                className="sr-only"
-                type="file"
-                accept={accept}
-                multiple={multiple}
-                onChange={(e) => onChange(Array.from(e.target.files || []))}
-              />
-            </label>
+            {!disabled && (
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#211D1A] shadow-xs backdrop-blur-xs transition hover:bg-white">
+                <RefreshCw className="size-3 text-[#7A1D1B]" />
+                Change
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept={accept}
+                  multiple={multiple}
+                  onChange={(e) => onChange(Array.from(e.target.files || []))}
+                />
+              </label>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={onRemove}
-            title="Remove photo"
-            className="flex size-7 items-center justify-center rounded-lg bg-red-600/90 text-white transition hover:bg-red-700 shadow-xs"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          {!disabled && (
+            <button
+              type="button"
+              onClick={onRemove}
+              title="Remove photo"
+              className="flex size-7 items-center justify-center rounded-lg bg-red-600/90 text-white transition hover:bg-red-700 shadow-xs"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -229,6 +235,7 @@ export default function UploadCard({
   accept = "application/pdf,image/jpeg,image/png,image/webp",
   onChange,
   children,
+  disabled = false,
 }: {
   label: string;
   description?: string;
@@ -237,6 +244,7 @@ export default function UploadCard({
   accept?: string;
   onChange: (files: File[]) => void;
   children?: React.ReactNode;
+  disabled?: boolean;
 }) {
   const file = files[0] || null;
   const isImage = file && file.type.startsWith("image/");
@@ -276,6 +284,7 @@ export default function UploadCard({
             multiple={multiple}
             onChange={onChange}
             onRemove={() => onChange([])}
+            disabled={disabled}
           />
         ) : file ? (
           <div className="mt-3 flex items-center justify-between rounded-xl border border-[#E8E1DB] bg-white p-3">
@@ -297,15 +306,24 @@ export default function UploadCard({
               >
                 <Eye className="size-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                title="Remove document"
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#938A82] hover:bg-red-50 hover:text-red-700 transition"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => onChange([])}
+                  title="Remove document"
+                  className="flex size-7 shrink-0 items-center justify-center rounded-lg text-[#938A82] hover:bg-red-50 hover:text-red-700 transition"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
             </div>
+          </div>
+        ) : disabled ? (
+          <div className="mt-3 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#E8E1DB] bg-[#FAF8F5] px-4 py-8 text-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-[#F5F0EB] text-[#938A82]">
+              <Camera className="size-5" />
+            </div>
+            <p className="mt-2 text-xs font-bold text-[#938A82]">No photo uploaded</p>
           </div>
         ) : (
           <label

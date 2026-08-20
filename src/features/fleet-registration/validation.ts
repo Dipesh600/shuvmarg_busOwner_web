@@ -10,7 +10,23 @@ export function validateFleetStep(step: FleetStep, draft: FleetRegistrationDraft
   if (step === "layout" && !draft.layout) return "Choose a published seat layout before continuing.";
   if (step === "photos" && Object.values(draft.files.photos).some((file) => !file)) return "Add front, rear, side and interior photos.";
   if (step === "documents" && (!draft.files.fitnessCert || !draft.files.insurance || !draft.files.bluebook || !draft.files.routePermit)) return "Upload all four required compliance documents.";
-  if (step === "route" && (!!draft.route.origin.trim() !== !!draft.route.destination.trim())) return "Add both route origin and destination, or leave both blank.";
+  if (step === "route") {
+    if (!draft.route.originStop?.name?.trim() || !draft.route.destinationStop?.name?.trim()) {
+      return "Choose where this bus starts and ends.";
+    }
+    if (
+      (draft.route.originStop.id && draft.route.originStop.id === draft.route.destinationStop.id) ||
+      (draft.route.originStop.name.trim().toLowerCase() === draft.route.destinationStop.name.trim().toLowerCase())
+    ) {
+      return "Choose two different route endpoints.";
+    }
+    if (draft.route.resolutionStatus === "AVAILABLE" && !draft.route.selectedVariant) {
+      return "Choose the road path this bus uses.";
+    }
+    if (draft.route.resolutionStatus === "AVAILABLE" && draft.route.servedStops.length < 2) {
+      return "Keep at least the starting and ending stops in this service.";
+    }
+  }
   return null;
 }
 

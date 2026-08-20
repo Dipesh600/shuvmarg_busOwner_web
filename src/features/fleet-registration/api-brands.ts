@@ -1,4 +1,5 @@
 import { authFetch } from "@/lib/auth";
+import { ApiResponseError } from "@/lib/api-error";
 
 export interface OperatorBrand {
   id: string;
@@ -18,7 +19,7 @@ export async function listMyBrands(): Promise<OperatorBrand[]> {
   const response = await authFetch("/busowner/brands");
   const payload = (await response.json().catch(() => null)) as BrandsApiResponse | null;
   if (!response.ok) {
-    throw new Error(payload?.message || `Failed to load operator brands (${response.status})`);
+    throw new ApiResponseError(response, payload, "Failed to load operator brands");
   }
   return payload?.data || [];
 }

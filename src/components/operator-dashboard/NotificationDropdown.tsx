@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { authFetch } from "@/lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
@@ -21,49 +22,50 @@ export interface OperatorNotification {
   priority: "Critical" | "High" | "Normal";
 }
 
-const mockNotifications: OperatorNotification[] = [
-  {
-    id: "1",
-    title: "New Seat Booking",
-    message: "Aayush Sharma booked 2 seats on Kathmandu → Pokhara (Bus BA-3-KHA 4092).",
-    time: "2m ago",
-    read: false,
-    category: "Booking",
-    priority: "Normal",
-  },
-  {
-    id: "2",
-    title: "Settlement Transferred",
-    message: "Daily settlement of NPR 45,200 transferred to your Nabil Bank account.",
-    time: "45m ago",
-    read: false,
-    category: "Payment",
-    priority: "High",
-  },
-  {
-    id: "3",
-    title: "Fleet Document Review",
-    message: "Vehicle BA-2-KHA 8812 draft documents uploaded and queued for KYC review.",
-    time: "2h ago",
-    read: false,
-    category: "Fleet",
-    priority: "Normal",
-  },
-  {
-    id: "4",
-    title: "Driver License Warning",
-    message: "Driver Ram Bahadur's license expires in 5 days. Please update documents.",
-    time: "1d ago",
-    read: true,
-    category: "System",
-    priority: "Critical",
-  },
-];
+
+function mapBackendTypeToCategory(type: string): "Booking" | "Fleet" | "Payment" | "Refund" | "System" {
+  if (!type) return "System";
+  if (type.includes("BOOKING") || type.includes("TICKET")) return "Booking";
+  if (type.includes("PAYMENT") || type.includes("DISPUTE")) return "Payment";
+  if (type.includes("FLEET")) return "Fleet";
+  if (type.includes("REFUND")) return "Refund";
+  return "System";
+}
+
+function mapBackendTypeToPriority(type: string): "Critical" | "High" | "Normal" {
+  if (!type) return "Normal";
+  if (type.includes("DISPUTE") || type.includes("CANCELLED")) return "High";
+  return "Normal";
+}
+
+function timeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d ago`;
+}
+
 
 interface NotificationDropdownProps {
   isOpen: boolean;
   onClose: () => void;
   onUnreadCountChange?: (count: number) => void;
+}
+
+interface BackendNotification {
+  _id: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+  type: string;
 }
 
 export default function NotificationDropdown({
@@ -72,7 +74,48 @@ export default function NotificationDropdown({
   onUnreadCountChange,
 }: NotificationDropdownProps) {
   const [activeTab, setActiveTab] = useState<"All" | "Unread">("All");
-  const [notifications, setNotifications] = useState<OperatorNotification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<OperatorNotification[]>([]);
+  const [, setIsLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await authFetch("/pushnoti/my-local-notifications");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status && Array.isArray(data.notifications)) {
+          const mapped = (data.notifications as BackendNotification[]).map((n) => ({
+            id: n._id,
+            title: n.title,
+            message: n.message,
+            time: timeAgo(n.createdAt),
+            read: n.isRead,
+            category: mapBackendTypeToCategory(n.type),
+            priority: mapBackendTypeToPriority(n.type),
+          }));
+          setNotifications(mapped);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initialId = window.setTimeout(() => void fetchNotifications(), 0);
+    const intervalId = window.setInterval(() => void fetchNotifications(), 60_000);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(intervalId);
+    };
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const refreshId = window.setTimeout(() => void fetchNotifications(), 0);
+    return () => window.clearTimeout(refreshId);
+  }, [isOpen, fetchNotifications]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -105,8 +148,34 @@ export default function NotificationDropdown({
     activeTab === "All" ? true : !n.read
   );
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+
+    // Optimistic UI update
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+
+    // Send background requests to mark all as read
+    try {
+      await Promise.all(
+        unreadIds.map((id) =>
+          authFetch(`/pushnoti/markNotificationAsRead/${id}`, { method: "PATCH" })
+        )
+      );
+    } catch (err) {
+      console.error("Failed to mark some notifications as read", err);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+    );
+    try {
+      await authFetch(`/pushnoti/markNotificationAsRead/${notificationId}`, { method: "PATCH" });
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
   };
 
   const getCategoryIcon = (category: string, priority: string) => {
@@ -241,13 +310,7 @@ export default function NotificationDropdown({
                           ? "border-[#D96861] bg-[#D96861]/[0.03]"
                           : "border-[#7A1D1B] bg-[#FAF8F5]/60"
                       }`}
-                      onClick={() => {
-                        setNotifications((prev) =>
-                          prev.map((n) =>
-                            n.id === notification.id ? { ...n, read: true } : n
-                          )
-                        );
-                      }}
+                      onClick={() => handleMarkAsRead(notification.id)}
                     >
                       {getCategoryIcon(notification.category, notification.priority)}
                       <div className="flex-1 min-w-0">
