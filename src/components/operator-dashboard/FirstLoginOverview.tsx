@@ -393,7 +393,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         )}
       </section>
 
-      <OperationalReadiness verificationStatus={state.verificationStatus} />
+      <OperationalReadiness verificationStatus={state.verificationStatus} fleets={state.fleet.items} />
 
       {modalOpen && profile && ownerKey && (
         <BusinessSetupModal

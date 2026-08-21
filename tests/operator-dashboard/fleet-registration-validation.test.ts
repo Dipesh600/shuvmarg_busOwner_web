@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EMPTY_FLEET_DRAFT } from "../../src/features/fleet-registration/types.ts";
-import { validateFleetDraft, validateFleetStep } from "../../src/features/fleet-registration/validation.ts";
+import { validateFleetCorrectionDraft, validateFleetDraft, validateFleetStep } from "../../src/features/fleet-registration/validation.ts";
 
 function createValidDraft() {
   const draft = structuredClone(EMPTY_FLEET_DRAFT);
@@ -16,6 +16,12 @@ test("fleet registration requires the real physical layout instead of a typed se
   const draft = createValidDraft();
   assert.equal(validateFleetStep("vehicle", draft), null);
   assert.match(validateFleetStep("layout", draft) || "", /published seat layout/i);
+});
+
+test("vehicle validation accepts a numeric registration year returned by the backend", () => {
+  const draft = createValidDraft();
+  (draft.vehicle as { registrationYear: string | number }).registrationYear = 2024;
+  assert.equal(validateFleetStep("vehicle", draft), null);
 });
 
 test("route step requires both origin and destination endpoints", () => {
@@ -81,4 +87,17 @@ test("route step accepts custom unlisted endpoints", () => {
 test("complete review is blocked when compliance evidence or layout is absent", () => {
   const draft = createValidDraft();
   assert.match(validateFleetDraft(draft) || "", /published seat layout/i);
+});
+
+test("correction validation does not demand approved photos or unrelated documents", () => {
+  const draft = createValidDraft();
+  draft.files.insurance = new Blob(["corrected"], { type: "image/png" }) as File;
+  draft.documents.insurancePolicyNumber = "POL-1002";
+  draft.documents.insuranceValidTill = "2099-12-31";
+  assert.equal(validateFleetCorrectionDraft(draft, ["insurance"]), null);
+});
+
+test("a rejected photo set requires four actual replacements", () => {
+  const draft = createValidDraft();
+  assert.match(validateFleetCorrectionDraft(draft, ["fleetImages"]) || "", /replace all four/i);
 });

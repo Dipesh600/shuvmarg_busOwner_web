@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Eye,
   Image as ImageIcon,
   MapPin,
   Navigation,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import type { FleetRegistrationDraft, FleetStep } from "../types";
 import { listMyBrands, type OperatorBrand } from "../api-brands";
+import SecureDocViewerModal from "@/components/dashboard/settings/profile/SecureDocViewerModal";
 
 interface ReviewStepProps {
   draft: FleetRegistrationDraft;
@@ -28,6 +30,12 @@ interface ReviewStepProps {
 export default function ReviewStep({ draft, onEditStep, readOnly = false }: ReviewStepProps) {
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [showAllStops, setShowAllStops] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<{
+    url: string;
+    file?: Blob;
+    label: string;
+    documentType: string;
+  } | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<{
     front?: string;
     rear?: string;
@@ -379,22 +387,30 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
             <DocRow
               title="Route Permit"
               hasFile={Boolean(draft.files.routePermit)}
+              file={draft.files.routePermit}
               validTill={draft.documents.routePermitValidTill}
+              onView={(file) => setSelectedDocument({ url: typeof file === "string" ? file : "", file: file instanceof Blob ? file : undefined, label: "Route Permit", documentType: "routePermit" })}
             />
             <DocRow
               title="Vehicle Bluebook"
               hasFile={Boolean(draft.files.bluebook)}
+              file={draft.files.bluebook}
+              onView={(file) => setSelectedDocument({ url: typeof file === "string" ? file : "", file: file instanceof Blob ? file : undefined, label: "Vehicle Bluebook", documentType: "bluebook" })}
             />
             <DocRow
               title="Passenger Insurance"
               hasFile={Boolean(draft.files.insurance)}
+              file={draft.files.insurance}
               meta={`Policy: ${draft.documents.insurancePolicyNumber || "Recorded"}`}
               validTill={draft.documents.insuranceValidTill}
+              onView={(file) => setSelectedDocument({ url: typeof file === "string" ? file : "", file: file instanceof Blob ? file : undefined, label: "Passenger Insurance", documentType: "insurance" })}
             />
             <DocRow
               title="Fitness Certificate"
               hasFile={Boolean(draft.files.fitnessCert)}
+              file={draft.files.fitnessCert}
               validTill={draft.documents.fitnessValidTill}
+              onView={(file) => setSelectedDocument({ url: typeof file === "string" ? file : "", file: file instanceof Blob ? file : undefined, label: "Fitness Certificate", documentType: "fitnessCert" })}
             />
           </div>
         </section>
@@ -600,6 +616,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
           </p>
         </div>
       </div>
+      <SecureDocViewerModal selectedDoc={selectedDocument} onClose={() => setSelectedDocument(null)} />
     </div>
   );
 }
@@ -667,13 +684,17 @@ function PhotoThumb({
 function DocRow({
   title,
   hasFile,
+  file,
   meta,
   validTill,
+  onView,
 }: {
   title: string;
   hasFile: boolean;
+  file?: File | string | null;
   meta?: string;
   validTill?: string;
+  onView?: (file: File | string) => void;
 }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-[#EDE7E1] bg-[#FAF8F5] px-3 py-2.5 text-xs">
@@ -697,6 +718,18 @@ function DocRow({
           )}
         </div>
       </div>
+
+      {file && onView && (
+        <button
+          type="button"
+          onClick={() => onView(file)}
+          aria-label={`Preview ${title}`}
+          title={`Preview ${title}`}
+          className="flex size-7 items-center justify-center rounded-lg border border-[#DCD4CD] bg-white text-[#7A1D1B] transition hover:bg-[#FFF4F1]"
+        >
+          <Eye className="size-3.5" />
+        </button>
+      )}
 
       <div className="flex items-center gap-1">
         {hasFile ? (

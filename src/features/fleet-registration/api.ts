@@ -3,7 +3,7 @@ import type { FleetRouteDraft } from "./types";
 import type { SeatLayoutV3 } from "@/features/seat-layout-v3/types";
 import { ApiResponseError } from "@/lib/api-error";
 import type { FleetRegistrationDraft } from "./types";
-import { adoptTemplate, createInitialCustomFleetLayout } from "@/features/seat-layout-v3/api";
+import { adoptTemplate, correctRejectedFleetLayout, createInitialCustomFleetLayout } from "@/features/seat-layout-v3/api";
 import { saveFleetRouteSetup } from "./api-route-setup";
 
 export interface FleetListItem {
@@ -31,6 +31,24 @@ export interface RegisterFleetProgress {
   stage: string;
   stepNumber: number;
   totalSteps: number;
+}
+
+export interface FleetAmenity {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  type: "GLOBAL" | "CUSTOM";
+}
+
+export async function listAvailableAmenities(): Promise<FleetAmenity[]> {
+  const payload = await read<{ data?: Array<{ _id?: string; id?: string; name?: string; description?: string; icon?: string; type?: "GLOBAL" | "CUSTOM" }> }>(
+    await authFetch("/busowner/amenities/available")
+  );
+  return (payload.data || []).flatMap((item) => {
+    const id = item._id || item.id;
+    return id && item.name ? [{ id, name: item.name, description: item.description || null, icon: item.icon || null, type: item.type || "GLOBAL" }] : [];
+  });
 }
 
 interface SubmittedFleetPayload {
@@ -64,30 +82,51 @@ export async function listOperatorFleets(): Promise<FleetListItem[]> {
 
 export interface FleetDetailDocument {
   present?: boolean;
+  status?: string;
+  reason?: string | null;
   validTill?: string;
   policyNumber?: string;
   count?: number;
-  images?: Array<{ view?: string | null }>;
+  images?: Array<{ imageId?: string | null; view?: string | null }>;
+}
+
+export interface FleetSubmissionFileUrls {
+  photos: Partial<Record<"front" | "rear" | "side" | "cabin", string>>;
+  documents: Partial<Record<"fitnessCert" | "insurance" | "bluebook" | "routePermit", string>>;
+}
+
+export type FleetReviewRequirementKey =
+  | "fleetImages" | "fitnessCert" | "insurance" | "bluebook" | "routePermit"
+  | "vehicleDetails" | "seatLayout" | "routeSetup";
+
+export interface FleetReviewRequirement {
+  status: string;
+  reason?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: string | null;
 }
 
 export interface FleetDetailPayload {
+  approvalStatus?: string;
+  submittedAt?: string | null;
+  reviewRequirements?: Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>;
+  features?: Array<string | { id?: string; name?: string; icon?: string | null }>;
   brandId?: string;
   busName?: string;
   busNumber?: string;
   busType?: string;
   vehicleType?: string;
-  registrationYear?: string;
+  registrationYear?: string | number;
   totalSeats?: number;
-  features?: string[];
   rejectionReason?: string | null;
   vehicle?: {
     busName?: string;
     busNumber?: string;
     busType?: string;
     vehicleType?: string;
-    registrationYear?: string;
+    registrationYear?: string | number;
     totalSeats?: number;
-    features?: string[];
+    features?: Array<string | { id?: string; name?: string; icon?: string | null }>;
   };
   documents?: Record<string, FleetDetailDocument> & { fleetImages?: FleetDetailDocument };
   route?: Partial<FleetRouteDraft>;
@@ -115,6 +154,36 @@ export async function getFleetDetail(fleetId: string): Promise<FleetDetailPayloa
     return raw.fleet as FleetDetailPayload;
   }
   return raw as FleetDetailPayload;
+}
+
+export async function getFleetDocumentReadUrl(
+  fleetId: string,
+  slot: "fleetImages" | "fitnessCert" | "insurance" | "bluebook" | "routePermit",
+  imageId?: string | null,
+): Promise<string> {
+  const query = imageId ? `?imageId=${encodeURIComponent(imageId)}` : "";
+  return `/busowner/fleets/${encodeURIComponent(fleetId)}/documents/${slot}/view${query}`;
+}
+
+export async function getFleetSubmissionFileUrls(
+  fleetId: string,
+  documents: FleetDetailPayload["documents"],
+): Promise<FleetSubmissionFileUrls> {
+  const result: FleetSubmissionFileUrls = { photos: {}, documents: {} };
+  await Promise.allSettled([
+    ...(documents?.fleetImages?.images || []).map(async (image) => {
+      if (!image.imageId || !image.view) return;
+      const rawView = image.view.toLowerCase();
+      const view = rawView === "back" ? "rear" : rawView === "inside" ? "cabin" : rawView;
+      if (!["front", "rear", "side", "cabin"].includes(view)) return;
+      result.photos[view as keyof FleetSubmissionFileUrls["photos"]] = await getFleetDocumentReadUrl(fleetId, "fleetImages", image.imageId);
+    }),
+    ...(["fitnessCert", "insurance", "bluebook", "routePermit"] as const).map(async (slot) => {
+      if (!documents?.[slot]?.present) return;
+      result.documents[slot] = await getFleetDocumentReadUrl(fleetId, slot);
+    }),
+  ]);
+  return result;
 }
 
 export async function submitFleetDraft(fleetId: string): Promise<void> {
@@ -206,6 +275,7 @@ export async function registerFleet(
     onDraftCreated?: (fleetId: string) => void;
     onProgress?: (progress: RegisterFleetProgress) => void;
     submitForReview: boolean;
+    correctionRequirements?: FleetReviewRequirementKey[];
   }
 ): Promise<string> {
   const totalSteps = options.submitForReview ? 8 : 7;
@@ -219,6 +289,8 @@ export async function registerFleet(
       totalSteps,
     });
   };
+  const canCorrect = (key: FleetReviewRequirementKey) =>
+    !options.correctionRequirements || options.correctionRequirements.includes(key);
 
   // Step 1: Initialize or continue server draft
   notify("Preparing vehicle record…");
@@ -243,7 +315,18 @@ export async function registerFleet(
     fleetId = await createDraft(draft);
     options.onDraftCreated?.(fleetId);
   } else {
-    await updateExistingFleet(fleetId, draft);
+    const current = (await listOperatorFleets()).find((fleet) => fleet.fleetId === fleetId);
+    const currentStatus = String(current?.approvalStatus || "DRAFT").toUpperCase();
+    if (currentStatus === "PENDING" || currentStatus === "APPROVED") {
+      throw new Error(
+        currentStatus === "PENDING"
+          ? "This bus is already in review. Open its submitted record from In review."
+          : "This bus is already approved. Open its record from Approved.",
+      );
+    }
+    if (!options.correctionRequirements || options.correctionRequirements.includes("vehicleDetails")) {
+      await updateExistingFleet(fleetId, draft);
+    }
   }
 
   // Step 2: Upload vehicle exterior & interior photos
@@ -253,7 +336,7 @@ export async function registerFleet(
   if (changedPhotoCount > 0 && changedPhotoCount < 4) {
     throw new Error("To replace fleet photos, choose all four views again: front, rear, side, and cabin.");
   }
-  if (changedPhotoCount === 4) {
+  if (changedPhotoCount === 4 && canCorrect("fleetImages")) {
     await uploadFleetPhotos(
       fleetId,
       draft.files.photos,
@@ -263,13 +346,13 @@ export async function registerFleet(
 
   // Step 3: Upload fitness & insurance documents
   notify("Uploading fitness & insurance certificates…");
-  if (isLocalFile(draft.files.fitnessCert)) {
+  if (isLocalFile(draft.files.fitnessCert) && canCorrect("fitnessCert")) {
     await upload(fleetId, "fitnessCert", draft.files.fitnessCert, {
       validTill: draft.documents.fitnessValidTill,
       ...(options.existingFleetId ? { changeReason: "Correcting rejected fleet application" } : {}),
     });
   }
-  if (isLocalFile(draft.files.insurance)) {
+  if (isLocalFile(draft.files.insurance) && canCorrect("insurance")) {
     await upload(fleetId, "insurance", draft.files.insurance, {
       policyNumber: draft.documents.insurancePolicyNumber,
       validTill: draft.documents.insuranceValidTill,
@@ -279,12 +362,12 @@ export async function registerFleet(
 
   // Step 4: Upload bluebook & route permit
   notify("Uploading bluebook & route permit…");
-  if (isLocalFile(draft.files.bluebook)) {
+  if (isLocalFile(draft.files.bluebook) && canCorrect("bluebook")) {
     await upload(fleetId, "bluebook", draft.files.bluebook, options.existingFleetId
       ? { changeReason: "Correcting rejected fleet application" }
       : {});
   }
-  if (isLocalFile(draft.files.routePermit)) {
+  if (isLocalFile(draft.files.routePermit) && canCorrect("routePermit")) {
     await upload(fleetId, "routePermit", draft.files.routePermit, {
       validTill: draft.documents.routePermitValidTill,
       ...(options.existingFleetId ? { changeReason: "Correcting rejected fleet application" } : {}),
@@ -297,7 +380,9 @@ export async function registerFleet(
     await authFetch(`/busowner/seat-layout-v3/fleets/${fleetId}/assignment`)
   ).catch(() => ({ data: undefined }));
 
-  if (!assignment.data?.assignment) {
+  if (assignment.data?.assignment && options.correctionRequirements?.includes("seatLayout") && draft.layout?.revisionId) {
+    await correctRejectedFleetLayout(fleetId, draft.layout.revisionId);
+  } else if (!assignment.data?.assignment) {
     if (draft.layout!.customized) {
       await createInitialCustomFleetLayout(fleetId, {
         name: draft.layout!.templateName,
@@ -327,7 +412,9 @@ export async function registerFleet(
 
   // Step 6: Persist the canonical journey, selected path and served stops.
   notify("Saving route and meeting places…");
-  await saveFleetRouteSetup(fleetId, draft);
+  if (!options.correctionRequirements || options.correctionRequirements.includes("routeSetup")) {
+    await saveFleetRouteSetup(fleetId, draft);
+  }
 
   // Step 7: Submit for verification review if requested
   if (options.submitForReview) {

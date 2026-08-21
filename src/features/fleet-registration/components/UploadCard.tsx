@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import SecureDocViewerModal from "@/components/dashboard/settings/profile/SecureDocViewerModal";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -239,7 +240,7 @@ export default function UploadCard({
 }: {
   label: string;
   description?: string;
-  files: File[];
+  files: Array<File | string>;
   multiple?: boolean;
   accept?: string;
   onChange: (files: File[]) => void;
@@ -247,13 +248,13 @@ export default function UploadCard({
   disabled?: boolean;
 }) {
   const file = files[0] || null;
-  const isImage = file && file.type.startsWith("image/");
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
+  const isRemoteUrl = typeof file === "string";
+  const isImage = file instanceof File && file.type.startsWith("image/");
 
   const handleViewDocument = () => {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    setShowDocumentPreview(true);
   };
 
   return (
@@ -293,15 +294,15 @@ export default function UploadCard({
                 <FileText className="size-4" />
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-[#191512]">{file.name}</p>
-                <p className="text-[10px] text-[#746E69]">{formatFileSize(file.size)}</p>
+                <p className="truncate text-xs font-bold text-[#191512]">{isRemoteUrl ? "Submitted file" : file.name}</p>
+                <p className="text-[10px] text-[#746E69]">{isRemoteUrl ? "Stored securely" : formatFileSize(file.size)}</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={handleViewDocument}
-                title="View document in new tab"
+                title="Preview document"
                 className="flex size-7 items-center justify-center rounded-lg text-[#7A1D1B] hover:bg-[#FFF1EE] transition"
               >
                 <Eye className="size-3.5" />
@@ -352,6 +353,15 @@ export default function UploadCard({
       </div>
 
       {children && <div className="mt-3 space-y-2">{children}</div>}
+      <SecureDocViewerModal
+        selectedDoc={showDocumentPreview && file ? {
+          url: typeof file === "string" ? file : "",
+          file: file instanceof Blob ? file : undefined,
+          label,
+          documentType: label,
+        } : null}
+        onClose={() => setShowDocumentPreview(false)}
+      />
     </div>
   );
 }
