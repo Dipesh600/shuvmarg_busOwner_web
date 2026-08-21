@@ -5,6 +5,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   FolderOpen,
   Loader2,
   Trash2,
@@ -12,8 +13,8 @@ import {
 } from "lucide-react";
 import FleetRegistrationStepper, { STEPS } from "./FleetRegistrationStepper";
 import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft, type FleetStep } from "./types";
-import { listOperatorFleets, registerFleet, type RegisterFleetProgress } from "./api";
-import { validateFleetDraft, validateFleetStep } from "./validation";
+import { registerFleet, type FleetReviewRequirement, type FleetReviewRequirementKey, type RegisterFleetProgress } from "./api";
+import { validateFleetCorrectionDraft, validateFleetCorrectionStep, validateFleetDraft, validateFleetStep } from "./validation";
 import VehicleDetailsStep from "./steps/VehicleDetailsStep";
 import SeatLayoutStep from "./steps/SeatLayoutStep";
 import VehiclePhotosStep from "./steps/VehiclePhotosStep";
@@ -22,7 +23,6 @@ import RouteAssignmentStep from "./steps/RouteAssignmentStep";
 import ReviewStep from "./steps/ReviewStep";
 import FleetDraftManagerModal from "./components/FleetDraftManagerModal";
 import {
-  cleanupLockedServerFleetDrafts,
   deleteFleetRegistrationDraft,
   generateDraftId,
   getActiveDraftId,
@@ -37,8 +37,10 @@ interface Props {
   canSubmitForReview: boolean;
   readOnly?: boolean;
   correctionReason?: string | null;
+  correctionRequirements?: Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>;
   onClose: () => void;
   onRegistered: (fleetId: string) => void;
+  onPreviewSubmitted?: (fleetId: string) => void;
 }
 
 export default function FleetRegistrationFlow({
@@ -46,8 +48,10 @@ export default function FleetRegistrationFlow({
   canSubmitForReview,
   readOnly = false,
   correctionReason = null,
+  correctionRequirements,
   onClose,
   onRegistered,
+  onPreviewSubmitted,
 }: Props) {
   const [draftId, setDraftIdState] = useState<string>(() => getActiveDraftId() || generateDraftId());
   const [step, setStep] = useState<FleetStep>("vehicle");
@@ -60,8 +64,24 @@ export default function FleetRegistrationFlow({
   const hydratedDraftIdRef = useRef<string | null>(null);
   const [showDraftManager, setShowDraftManager] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [submittedFleetId, setSubmittedFleetId] = useState<string | null>(null);
 
   const [isHydrated, setIsHydrated] = useState(false);
+  const rejectedRequirements = Object.entries(correctionRequirements || {})
+    .filter(([, requirement]) => String(requirement?.status || "").toUpperCase() === "REJECTED")
+    .map(([key]) => key as FleetReviewRequirementKey);
+  const approvedRequirements = Object.entries(correctionRequirements || {})
+    .filter(([, requirement]) => String(requirement?.status || "").toUpperCase() === "APPROVED")
+    .map(([key]) => key as FleetReviewRequirementKey);
+  const correctionMode = rejectedRequirements.length > 0;
+  const editableSteps = new Set<FleetStep>([
+    "review",
+    ...(rejectedRequirements.includes("vehicleDetails") ? ["vehicle" as FleetStep] : []),
+    ...(rejectedRequirements.includes("seatLayout") ? ["layout" as FleetStep] : []),
+    ...(rejectedRequirements.includes("fleetImages") ? ["photos" as FleetStep] : []),
+    ...(rejectedRequirements.some((key) => ["fitnessCert", "insurance", "bluebook", "routePermit"].includes(key)) ? ["documents" as FleetStep] : []),
+    ...(rejectedRequirements.includes("routeSetup") ? ["route" as FleetStep] : []),
+  ]);
 
   // Load active draft on modal open
   useEffect(() => {
@@ -72,6 +92,7 @@ export default function FleetRegistrationFlow({
     let active = true;
 
     async function init() {
+      setSubmittedFleetId(null);
       const activeId = getActiveDraftId();
       const saved = await loadFleetRegistrationDraft(activeId);
       if (!active) return;
@@ -104,11 +125,19 @@ export default function FleetRegistrationFlow({
 
   // Continuous auto-save to localStorage + IndexedDB
   useEffect(() => {
-    if (!open || !isHydrated || hydratedDraftIdRef.current !== draftId) return;
+    if (!open || !isHydrated || submittedFleetId || hydratedDraftIdRef.current !== draftId) return;
     void saveFleetRegistrationDraft(draftId, draft, step, completed, serverFleetId);
-  }, [open, isHydrated, draftId, draft, step, completed, serverFleetId]);
+  }, [open, isHydrated, submittedFleetId, draftId, draft, step, completed, serverFleetId]);
 
   if (!open) return null;
+
+  async function closeAndSave() {
+    if (!readOnly && isHydrated && hydratedDraftIdRef.current === draftId && !submittedFleetId) {
+      await saveFleetRegistrationDraft(draftId, draft, step, completed, serverFleetId);
+      setActiveDraftId(draftId);
+    }
+    onClose();
+  }
 
   if (!isHydrated || hydratedDraftIdRef.current !== draftId) {
     return (
@@ -116,6 +145,33 @@ export default function FleetRegistrationFlow({
         <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-xl">
           <Loader2 className="size-5 animate-spin text-[#7A1D1B]" />
           <span className="text-sm font-bold text-[#211D1A]">Restoring your bus draft…</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (submittedFleetId) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" aria-labelledby="fleet-submitted-title" className="w-full max-w-md rounded-[26px] border border-[#E8E1DB] bg-white p-7 shadow-2xl sm:p-8">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <CheckCircle2 className="size-6" />
+          </div>
+          <p className="mt-5 text-[10px] font-black uppercase tracking-[0.16em] text-[#7A1D1B]">In review</p>
+          <h2 id="fleet-submitted-title" className="mt-1 text-2xl font-black text-[#191512]">Bus submitted</h2>
+          <p className="mt-2 text-sm leading-6 text-[#746E69]">
+            {draft.vehicle.busName || draft.vehicle.busNumber || "This bus"} is now with Shuvmarg for review. Its submitted record is locked unless changes are requested.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={() => void closeAndSave()} className="h-11 flex-1 rounded-xl border border-[#DCD4CD] text-xs font-black text-[#655E58] transition hover:bg-[#FAF8F5]">
+              Back to fleet
+            </button>
+            {onPreviewSubmitted && (
+              <button type="button" onClick={() => onPreviewSubmitted(submittedFleetId)} className="h-11 flex-1 rounded-xl bg-[#7A1D1B] text-xs font-black text-white transition hover:bg-[#641715]">
+                View submission
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -132,7 +188,7 @@ export default function FleetRegistrationFlow({
     ) : step === "photos" ? (
       <VehiclePhotosStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : step === "documents" ? (
-      <DocumentsStep draft={draft} update={setDraft} readOnly={readOnly} />
+      <DocumentsStep draft={draft} update={setDraft} readOnly={readOnly} editableSlots={correctionMode ? rejectedRequirements : undefined} />
     ) : step === "route" ? (
       <RouteAssignmentStep draft={draft} update={setDraft} readOnly={readOnly} />
     ) : (
@@ -140,16 +196,20 @@ export default function FleetRegistrationFlow({
     );
 
   function selectStep(value: FleetStep) {
+    if (correctionMode && !editableSteps.has(value)) return;
     setError(null);
     setStep(value);
   }
 
   function next() {
-    const issue = validateFleetStep(step, draft);
+    const issue = correctionMode
+      ? validateFleetCorrectionStep(step, draft, rejectedRequirements)
+      : validateFleetStep(step, draft);
     if (issue) return setError(issue);
     setError(null);
     setCompleted((items) => (items.includes(step) ? items : [...items, step]));
-    if (index < STEPS.length - 1) setStep(STEPS[index + 1].id);
+    if (correctionMode) setStep("review");
+    else if (index < STEPS.length - 1) setStep(STEPS[index + 1].id);
   }
 
   async function handleSwitchDraft(targetId: string) {
@@ -181,7 +241,21 @@ export default function FleetRegistrationFlow({
   }
 
   async function submit() {
-    const issue = validateFleetDraft(draft);
+    if (correctionMode) {
+      const isReplacement = (value: File | null) => typeof Blob !== "undefined" && value instanceof Blob;
+      if (rejectedRequirements.includes("fleetImages") && Object.values(draft.files.photos).some((file) => !isReplacement(file))) {
+        return setError("Replace all four requested vehicle photos before resubmitting.");
+      }
+      const rejectedDocument = (["fitnessCert", "insurance", "bluebook", "routePermit"] as const)
+        .find((key) => rejectedRequirements.includes(key) && !isReplacement(draft.files[key]));
+      if (rejectedDocument) {
+        const label = rejectedDocument === "fitnessCert" ? "fitness certificate" : rejectedDocument === "routePermit" ? "route permit" : rejectedDocument;
+        return setError(`Upload the corrected ${label} before resubmitting.`);
+      }
+    }
+    const issue = correctionMode
+      ? validateFleetCorrectionDraft(draft, rejectedRequirements)
+      : validateFleetDraft(draft);
     if (issue) return setError(issue);
     setBusy(true);
     setError(null);
@@ -196,12 +270,17 @@ export default function FleetRegistrationFlow({
         },
         onProgress: setProgress,
         submitForReview: canSubmitForReview,
+        correctionRequirements: correctionMode ? rejectedRequirements : undefined,
       });
 
-      // Preserve local draft to allow previewing from the dashboard
-      setActiveDraftId(null);
       if (canSubmitForReview) {
-        await cleanupLockedServerFleetDrafts(await listOperatorFleets().catch(() => []));
+        // The accepted server record is the preview source. Remove this exact
+        // editable copy without depending on another request succeeding.
+        await deleteFleetRegistrationDraft(draftId);
+        setActiveDraftId(null);
+        onRegistered(id);
+        setSubmittedFleetId(id);
+        return;
       }
 
       const newId = generateDraftId();
@@ -282,7 +361,7 @@ export default function FleetRegistrationFlow({
 
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => void closeAndSave()}
                 disabled={busy}
                 className="flex size-9 items-center justify-center rounded-xl border border-[#E8E1DB] text-[#655E58] hover:bg-[#FAF8F5] transition"
                 aria-label="Close"
@@ -319,6 +398,34 @@ export default function FleetRegistrationFlow({
                     <p className="mt-1.5 whitespace-pre-line text-xs font-semibold text-red-900">{correctionReason}</p>
                   </div>
                 )}
+                {correctionMode && step === "review" && (
+                  <div className="mb-5 space-y-3">
+                    {approvedRequirements.length > 0 && (
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">Approved by Shuvmarg</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {approvedRequirements.map((key) => (
+                            <span key={key} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-800">
+                              <CheckCircle2 className="size-3" />
+                              {key.replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase())}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-[10px] font-semibold text-emerald-800">These accepted details are retained and cannot be changed in this correction round.</p>
+                      </div>
+                    )}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {rejectedRequirements.map((key) => (
+                        <button key={key} type="button" onClick={() => selectStep(
+                          key === "vehicleDetails" ? "vehicle" : key === "seatLayout" ? "layout" : key === "fleetImages" ? "photos" : key === "routeSetup" ? "route" : "documents"
+                        )} className="rounded-xl border border-red-200 bg-red-50 p-3 text-left">
+                          <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-red-700">Needs changes</span>
+                          <span className="mt-1 block text-xs font-bold text-red-950">{correctionRequirements?.[key]?.reason}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Submission Progress Bar */}
                 {busy && progress && (
                   <div className="mb-5 rounded-2xl border border-[#F0CACA] bg-[#FFF8F7] p-4 shadow-2xs animate-in fade-in duration-150">
@@ -352,6 +459,13 @@ export default function FleetRegistrationFlow({
                 {content}
               </main>
 
+              {error && (
+                <div role="alert" className="shrink-0 border-t border-red-200 bg-red-50 px-5 py-2.5 text-xs font-bold text-red-800 sm:px-7">
+                  <AlertCircle className="mr-2 inline size-3.5" />
+                  {error}
+                </div>
+              )}
+
               {/* Footer Actions */}
               <footer className="flex h-[72px] shrink-0 items-center justify-between border-t border-[#E8E1DB] bg-white px-5 sm:px-7">
                 {readOnly ? (
@@ -363,12 +477,12 @@ export default function FleetRegistrationFlow({
                   <>
                     <button
                       type="button"
-                      onClick={() => index > 0 && setStep(STEPS[index - 1].id)}
-                      disabled={index === 0 || busy}
+                      onClick={() => correctionMode ? setStep("review") : index > 0 && setStep(STEPS[index - 1].id)}
+                      disabled={(correctionMode ? step === "review" : index === 0) || busy}
                       className="flex h-10 items-center rounded-xl border border-[#DCD4CD] px-4 text-xs font-black text-[#655E58] hover:bg-[#FAF8F5] transition disabled:opacity-30"
                     >
                       <ArrowLeft className="mr-2 size-4" />
-                      Back
+                      {correctionMode ? "Back to review" : "Back"}
                     </button>
 
                     {step === "review" ? (

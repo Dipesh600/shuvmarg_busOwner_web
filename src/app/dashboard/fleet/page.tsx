@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, BusFront, Loader2, RefreshCw } from "lucide-react";
 import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBar";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
-import { getFleetDetail, listOperatorFleets, submitFleetDraft, type FleetListItem } from "@/features/fleet-registration/api";
+import { getFleetDetail, getFleetSubmissionFileUrls, submitFleetDraft, type FleetListItem, type FleetReviewRequirement, type FleetReviewRequirementKey } from "@/features/fleet-registration/api";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import type { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
 import { subscribeToDataRefresh } from "@/lib/data-refresh";
@@ -15,6 +15,7 @@ import {
   subscribeToFleetDraftChanges,
   getDraftForServerFleet,
   generateDraftId,
+  loadFleetRegistrationDraft,
   saveFleetRegistrationDraft,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
 import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft } from "@/features/fleet-registration/types";
@@ -38,19 +39,28 @@ export default function FleetPage() {
   const [previewFleetId, setPreviewFleetId] = useState<string | null>(null);
   const [dashboardState, setDashboardState] = useState<OperatorDashboardState | null>(null);
   const [correctionReason, setCorrectionReason] = useState<string | null>(null);
+  const [correctionRequirements, setCorrectionRequirements] = useState<Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>>({});
+  const [activeView, setActiveView] = useState<"ALL" | "DRAFT" | "PENDING" | "REJECTED" | "APPROVED">("ALL");
+
+  const applyDashboard = useCallback((dashboard: OperatorDashboardState) => {
+    const fleets: FleetListItem[] = dashboard.fleet.items.map((fleet) => ({
+      ...fleet,
+      busType: fleet.busType || "Bus",
+      totalSeats: fleet.totalSeats || 0,
+      status: fleet.status || "",
+    }));
+    setItems(fleets);
+    setDashboardState(dashboard);
+    setBusinessApproved(dashboard.verificationStatus === "approved");
+    void cleanupLockedServerFleetDrafts(fleets);
+  }, []);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     if (!silent) setError(null);
     try {
-      const [fleets, dashboard] = await Promise.all([
-        listOperatorFleets(),
-        fetchOperatorDashboardState(),
-      ]);
-      setItems(fleets);
-      setDashboardState(dashboard);
-      setBusinessApproved(dashboard.verificationStatus === "approved");
-      void cleanupLockedServerFleetDrafts(fleets);
+      const dashboard = await fetchOperatorDashboardState({ force: true });
+      applyDashboard(dashboard);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to load fleet."
@@ -58,17 +68,14 @@ export default function FleetPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyDashboard]);
 
   useEffect(() => {
     let active = true;
-    Promise.all([listOperatorFleets(), fetchOperatorDashboardState()])
-      .then(([fleets, dashboard]) => {
+    fetchOperatorDashboardState()
+      .then((dashboard) => {
         if (!active) return;
-        setItems(fleets);
-        setDashboardState(dashboard);
-        setBusinessApproved(dashboard.verificationStatus === "approved");
-        void cleanupLockedServerFleetDrafts(fleets);
+        applyDashboard(dashboard);
       })
       .catch((cause) => {
         if (active)
@@ -82,7 +89,7 @@ export default function FleetPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [applyDashboard]);
 
   useEffect(() => subscribeToDataRefresh(() => { void load(true); }), [load]);
 
@@ -95,6 +102,7 @@ export default function FleetPage() {
   function handleStartFresh() {
     setActiveDraftId(null);
     setCorrectionReason(null);
+    setCorrectionRequirements({});
     setReadOnlyMode(false);
     setOpen(true);
   }
@@ -114,6 +122,7 @@ export default function FleetPage() {
     try {
       await submitFleetDraft(fleetId);
       await load();
+      setPreviewFleetId(fleetId);
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -129,7 +138,26 @@ export default function FleetPage() {
     setError(null);
     try {
       const data = await getFleetDetail(fleetId);
+      setCorrectionRequirements(data.reviewRequirements || {});
       const docs = data.documents || {};
+      const fileUrls = await getFleetSubmissionFileUrls(fleetId, docs);
+      const existingCorrectionDraft = getDraftForServerFleet(fleetId, data.busNumber || data.vehicle?.busNumber);
+      if (existingCorrectionDraft) {
+        const saved = await loadFleetRegistrationDraft(existingCorrectionDraft);
+        if (saved) {
+          const refreshedDraft = {
+            ...saved.draft,
+            files: {
+              ...saved.draft.files,
+              photos: { ...saved.draft.files.photos, ...fileUrls.photos },
+              ...fileUrls.documents,
+            },
+          } as FleetRegistrationDraft;
+          await saveFleetRegistrationDraft(existingCorrectionDraft, refreshedDraft, saved.step, saved.completed, fleetId);
+        }
+        handleOpenFleet(existingCorrectionDraft, false, data.rejectionReason || "Shuvmarg requested corrections before resubmission.");
+        return;
+      }
       const serverFile = { __serverFile: true } as unknown as File;
       const route = data.route || {};
       const correctionDraft: FleetRegistrationDraft = {
@@ -139,8 +167,8 @@ export default function FleetPage() {
           busNumber: data.busNumber || data.vehicle?.busNumber || "",
           busType: data.busType || data.vehicle?.busType || "DELUXE",
           vehicleType: data.vehicleType || data.vehicle?.vehicleType || "BUS",
-          registrationYear: data.registrationYear || data.vehicle?.registrationYear || "",
-          amenityIds: data.features || data.vehicle?.features || [],
+          registrationYear: String(data.registrationYear || data.vehicle?.registrationYear || ""),
+          amenityIds: (data.features || data.vehicle?.features || []).map((item: string | { id?: string }) => typeof item === "string" ? item : item.id).filter((id): id is string => Boolean(id)),
         },
         route: {
           ...EMPTY_FLEET_DRAFT.route,
@@ -161,15 +189,15 @@ export default function FleetPage() {
         } : null,
         files: {
           photos: {
-            front: docs.fleetImages?.present ? serverFile : null,
-            rear: docs.fleetImages?.present ? serverFile : null,
-            side: docs.fleetImages?.present ? serverFile : null,
-            cabin: docs.fleetImages?.present ? serverFile : null,
+            front: (fileUrls.photos.front || (docs.fleetImages?.present ? serverFile : null)) as File | null,
+            rear: (fileUrls.photos.rear || (docs.fleetImages?.present ? serverFile : null)) as File | null,
+            side: (fileUrls.photos.side || (docs.fleetImages?.present ? serverFile : null)) as File | null,
+            cabin: (fileUrls.photos.cabin || (docs.fleetImages?.present ? serverFile : null)) as File | null,
           },
-          fitnessCert: docs.fitnessCert?.present ? serverFile : null,
-          insurance: docs.insurance?.present ? serverFile : null,
-          bluebook: docs.bluebook?.present ? serverFile : null,
-          routePermit: docs.routePermit?.present ? serverFile : null,
+          fitnessCert: (fileUrls.documents.fitnessCert || (docs.fitnessCert?.present ? serverFile : null)) as File | null,
+          insurance: (fileUrls.documents.insurance || (docs.insurance?.present ? serverFile : null)) as File | null,
+          bluebook: (fileUrls.documents.bluebook || (docs.bluebook?.present ? serverFile : null)) as File | null,
+          routePermit: (fileUrls.documents.routePermit || (docs.routePermit?.present ? serverFile : null)) as File | null,
         },
         documents: {
           fitnessValidTill: docs.fitnessCert?.validTill || "",
@@ -198,12 +226,19 @@ export default function FleetPage() {
 
   const visible = useMemo(() => {
     const value = query.trim().toLowerCase();
-    return items.filter((item) =>
-      `${item.busName} ${item.busNumber} ${item.busType}`
+    return items.filter((item) => {
+      const status = String(item.approvalStatus || "DRAFT").toUpperCase();
+      return (activeView === "ALL" || status === activeView) && `${item.busName} ${item.busNumber} ${item.busType}`
         .toLowerCase()
-        .includes(value)
-    );
-  }, [items, query]);
+        .includes(value);
+    });
+  }, [items, query, activeView]);
+
+  const viewCounts = useMemo(() => items.reduce<Record<string, number>>((counts, item) => {
+    const status = String(item.approvalStatus || "DRAFT").toUpperCase();
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {}), [items]);
 
   return (
     <div className="min-h-full bg-[#FAF8F5] p-5 lg:p-8">
@@ -228,6 +263,26 @@ export default function FleetPage() {
           onQueryChange={setQuery}
           count={items.length}
         />
+
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Fleet status">
+          {([
+            ["ALL", "All", items.length],
+            ["DRAFT", "Drafts", viewCounts.DRAFT || 0],
+            ["PENDING", "In review", viewCounts.PENDING || 0],
+            ["REJECTED", "Needs changes", viewCounts.REJECTED || 0],
+            ["APPROVED", "Approved", viewCounts.APPROVED || 0],
+          ] as const).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setActiveView(value)}
+              aria-pressed={activeView === value}
+              className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-black transition ${activeView === value ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#E0D8D1] bg-white text-[#655E58] hover:border-[#BDAFA6]"}`}
+            >
+              {label} <span className="ml-1 opacity-70">{count}</span>
+            </button>
+          ))}
+        </div>
 
         {loading ? (
           <div className="flex h-56 items-center justify-center rounded-3xl border border-[#E8E1DB] bg-white text-sm text-[#746E69]">
@@ -272,13 +327,17 @@ export default function FleetPage() {
         ) : (
           <div className="rounded-3xl border border-dashed border-[#DCD4CD] bg-white p-10 text-center">
             <BusFront className="mx-auto size-8 text-[#7A1D1B]" />
-            <h2 className="mt-4 text-lg font-black">Add your first bus</h2>
-            <button
-              onClick={() => handleOpenFleet(null, false)}
-              className="mt-5 rounded-xl bg-[#191512] px-5 py-3 text-xs font-black text-white"
-            >
-              Add bus
-            </button>
+            <h2 className="mt-4 text-lg font-black">
+              {items.length ? "No buses in this view" : "Add your first bus"}
+            </h2>
+            {!items.length && (
+              <button
+                onClick={() => handleOpenFleet(null, false)}
+                className="mt-5 rounded-xl bg-[#191512] px-5 py-3 text-xs font-black text-white"
+              >
+                Add bus
+              </button>
+            )}
           </div>
         )}
 
@@ -287,10 +346,15 @@ export default function FleetPage() {
           canSubmitForReview={businessApproved}
           readOnly={readOnlyMode}
           correctionReason={correctionReason}
+          correctionRequirements={correctionRequirements}
           onClose={() => setOpen(false)}
           onRegistered={() => {
             setHasLocalDraft(false);
             void load();
+          }}
+          onPreviewSubmitted={(fleetId) => {
+            setOpen(false);
+            setPreviewFleetId(fleetId);
           }}
         />
 

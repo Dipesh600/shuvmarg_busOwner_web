@@ -136,7 +136,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 3. Operational Readiness Sequence Row */}
-      <OperationalReadiness verificationStatus={verificationStatus} />
+      <OperationalReadiness verificationStatus={verificationStatus} fleets={data.fleet.items} />
 
       {/* 4. Bottom Workspace Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

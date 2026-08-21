@@ -76,9 +76,9 @@ export async function saveDraftFiles(draftId: string, files: FleetFiles): Promis
 
     for (const { key, file } of slots) {
       const recordId = `${draftId}:${key}`;
-      if (file) {
+      if (file && typeof file !== "string" && typeof file.slice === "function") {
         store.put(fileToRecord(draftId, key, file));
-      } else {
+      } else if (typeof file !== "string") {
         store.delete(recordId);
       }
     }

@@ -45,7 +45,7 @@ export function FleetCard({
         if (status === "PENDING" || status === "APPROVED") {
           onPreviewFleet(fleet.fleetId);
         } else if (status === "REJECTED") {
-          onCorrectRejectedFleet(fleet.fleetId);
+          onPreviewFleet(fleet.fleetId);
         } else if (localDraftId) {
           onOpenFleet(localDraftId, false);
         }
@@ -84,16 +84,21 @@ export function FleetCard({
           <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[10px] font-bold text-red-800">
             {fleet.rejectionReason || "Shuvmarg requested corrections before this bus can be approved."}
           </p>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onCorrectRejectedFleet(fleet.fleetId);
-            }}
-            className="flex h-10 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white"
-          >
-            Review and correct
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={(event) => { event.stopPropagation(); onPreviewFleet(fleet.fleetId); }} className="flex h-10 items-center justify-center rounded-xl border border-[#DCD4CD] text-xs font-black text-[#655E58]">
+              Preview
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onCorrectRejectedFleet(fleet.fleetId);
+              }}
+              className="flex h-10 items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white"
+            >
+              Correct
+            </button>
+          </div>
         </div>
       ) : status === "APPROVED" ? (
         <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-center text-[10px] font-bold text-emerald-800">
