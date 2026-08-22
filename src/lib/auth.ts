@@ -59,6 +59,23 @@ export function getAuthHeaders(): Record<string, string> {
 // ── Token refresh ────────────────────────────────────────────────────────────
 
 let _refreshPromise: Promise<boolean> | null = null;
+const TERMINAL_AUTH_CODES = new Set([
+  "INSUFFICIENT_ROLE",
+  "ROLE_REVOKED",
+  "SESSION_ROLE_MISMATCH",
+  "SESSION_INVALIDATED",
+]);
+
+async function isTerminalAuthResponse(response: Response): Promise<boolean> {
+  if (response.status === 401) return true;
+  if (response.status !== 403) return false;
+  try {
+    const body = await response.clone().json() as { errorCode?: string };
+    return !!body.errorCode && TERMINAL_AUTH_CODES.has(body.errorCode);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Silently exchange the stored refresh token for a new access + refresh token pair.
@@ -88,6 +105,7 @@ export async function refreshAccessToken(): Promise<boolean> {
       saveTokens(data.accessToken);
       return true;
     } catch {
+      clearTokens();
       return false;
     }
   })().finally(() => {
@@ -127,11 +145,18 @@ export async function authFetch(
 
   const res = await makeRequest();
 
+  if (res.status === 403 && await isTerminalAuthResponse(res)) {
+    clearTokens();
+    return res;
+  }
+
   // If access token expired, try to refresh once
   if (res.status === 401) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
-      return makeRequest(); // Retry with the new access token
+      const retry = await makeRequest();
+      if (await isTerminalAuthResponse(retry)) clearTokens();
+      return retry;
     }
     // Refresh failed — session truly expired, caller handles redirect
   }
