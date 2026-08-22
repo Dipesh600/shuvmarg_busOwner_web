@@ -134,11 +134,11 @@ export default function FleetPage() {
     }
   }
 
-  async function correctRejectedFleet(fleetId: string) {
+  async function openServerFleet(fleetId: string, correction: boolean) {
     setError(null);
     try {
       const data = await getFleetDetail(fleetId);
-      setCorrectionRequirements(data.reviewRequirements || {});
+      setCorrectionRequirements(correction ? data.reviewRequirements || {} : {});
       const docs = data.documents || {};
       const fileUrls = await getFleetSubmissionFileUrls(fleetId, docs);
       const existingCorrectionDraft = getDraftForServerFleet(fleetId, data.busNumber || data.vehicle?.busNumber);
@@ -155,7 +155,11 @@ export default function FleetPage() {
           } as FleetRegistrationDraft;
           await saveFleetRegistrationDraft(existingCorrectionDraft, refreshedDraft, saved.step, saved.completed, fleetId);
         }
-        handleOpenFleet(existingCorrectionDraft, false, data.rejectionReason || "Shuvmarg requested corrections before resubmission.");
+        handleOpenFleet(
+          existingCorrectionDraft,
+          false,
+          correction ? data.rejectionReason || "Shuvmarg requested corrections before resubmission." : null,
+        );
         return;
       }
       const serverFile = { __serverFile: true } as unknown as File;
@@ -217,11 +221,15 @@ export default function FleetPage() {
       handleOpenFleet(
         draftId,
         false,
-        data.rejectionReason || "Shuvmarg requested corrections before resubmission.",
+        correction ? data.rejectionReason || "Shuvmarg requested corrections before resubmission." : null,
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to open the requested corrections.");
+      setError(cause instanceof Error ? cause.message : correction ? "Unable to open the requested corrections." : "Unable to open this fleet setup.");
     }
+  }
+
+  function correctRejectedFleet(fleetId: string) {
+    return openServerFleet(fleetId, true);
   }
 
   const visible = useMemo(() => {
@@ -318,6 +326,7 @@ export default function FleetPage() {
                   submittingId={submittingId}
                   onOpenFleet={handleOpenFleet}
                   onPreviewFleet={setPreviewFleetId}
+                  onOpenServerDraft={(fleetId) => void openServerFleet(fleetId, false)}
                   onSubmitPreparedFleet={submitPreparedFleet}
                   onCorrectRejectedFleet={correctRejectedFleet}
                 />
