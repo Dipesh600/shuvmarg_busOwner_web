@@ -2,14 +2,16 @@
 
 import React from "react";
 import { CheckCircle2, Clock, Lock, ShieldAlert } from "lucide-react";
-import { VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
+import { OperatorFleetListItem, VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
 
 interface OperationalReadinessProps {
   verificationStatus: VerificationStatus;
+  fleets?: OperatorFleetListItem[];
 }
 
 export default function OperationalReadiness({
   verificationStatus,
+  fleets = [],
 }: OperationalReadinessProps) {
   let businessState: "complete" | "in_progress" | "not_started" = "not_started";
   if (verificationStatus === "approved") {
@@ -17,6 +19,17 @@ export default function OperationalReadiness({
   } else if (verificationStatus === "pending" || verificationStatus === "rejected") {
     businessState = "in_progress";
   }
+
+  const fleetStatuses = fleets.map((fleet) => String(fleet.approvalStatus || "DRAFT").toUpperCase());
+  const fleetState = fleetStatuses.includes("APPROVED")
+    ? "complete"
+    : fleetStatuses.includes("PENDING")
+      ? "in_review"
+      : fleetStatuses.includes("REJECTED")
+        ? "action_required"
+        : fleetStatuses.length > 0
+          ? "in_progress"
+          : verificationStatus === "approved" ? "not_started" : "locked";
 
   const stages = [
     {
@@ -31,14 +44,14 @@ export default function OperationalReadiness({
       number: "2",
       label: "Fleet Registration",
       description: "Vehicle bluebooks, capacity & seat maps",
-      status: verificationStatus === "approved" ? "not_started" : "locked",
+      status: fleetState,
     },
     {
       id: "route",
       number: "3",
       label: "Route & Schedule",
       description: "Stops, departure times & base fares",
-      status: "locked",
+      status: fleetState === "complete" ? "not_started" : "locked",
     },
     {
       id: "golive",
@@ -61,6 +74,18 @@ export default function OperationalReadiness({
         return (
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#F59E0B]">
             <Clock className="w-3.5 h-3.5" /> In progress
+          </span>
+        );
+      case "in_review":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+            <Clock className="w-3.5 h-3.5" /> In review
+          </span>
+        );
+      case "action_required":
+        return (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700">
+            <ShieldAlert className="w-3.5 h-3.5" /> Action required
           </span>
         );
       case "not_started":
@@ -106,8 +131,10 @@ export default function OperationalReadiness({
             className={`p-4.5 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
               stage.status === "complete"
                 ? "bg-emerald-50/40 border-emerald-200"
-                : stage.status === "in_progress"
+                : stage.status === "in_progress" || stage.status === "in_review"
                 ? "bg-amber-50/40 border-amber-200"
+                : stage.status === "action_required"
+                ? "bg-red-50/40 border-red-200"
                 : stage.status === "not_started"
                 ? "bg-white border-[#EEE8E2]"
                 : "bg-[#FAF8F5]/80 border-[#EEE8E2]/80 opacity-75"
@@ -119,8 +146,10 @@ export default function OperationalReadiness({
                   className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold ${
                     stage.status === "complete"
                       ? "bg-[#2E7D32] text-white"
-                      : stage.status === "in_progress"
+                      : stage.status === "in_progress" || stage.status === "in_review"
                       ? "bg-[#F59E0B] text-white"
+                      : stage.status === "action_required"
+                      ? "bg-red-600 text-white"
                       : "bg-[#EEE8E2] text-[#746E69]"
                   }`}
                 >

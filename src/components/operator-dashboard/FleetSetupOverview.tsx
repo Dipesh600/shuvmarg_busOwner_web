@@ -28,25 +28,17 @@ export default function FleetSetupOverview({
     return subscribeToFleetDraftChanges(onStorage);
   }, []);
 
-  const lockedFleets = fleets.filter((fleet) => {
-    const status = String(fleet.approvalStatus || "").toUpperCase();
-    return status === "PENDING" || status === "APPROVED";
-  });
-
-  const lockedFleetIds = new Set(
-    lockedFleets.map((fleet) => fleet.fleetId)
-  );
-
-  const lockedFleetNumbers = new Set(
-    lockedFleets
+  const serverFleetIds = new Set(fleets.map((fleet) => fleet.fleetId));
+  const serverFleetNumbers = new Set(
+    fleets
       .map((fleet) => fleet.busNumber?.trim().toUpperCase())
       .filter((num) => Boolean(num))
   );
 
   const visibleDrafts = drafts.filter(
     (draft) =>
-      !(draft.serverFleetId && lockedFleetIds.has(draft.serverFleetId)) &&
-      !(draft.busNumber && lockedFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
+      !(draft.serverFleetId && serverFleetIds.has(draft.serverFleetId)) &&
+      !(draft.busNumber && serverFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
   );
   const totalItems = visibleDrafts.length + fleets.length;
 
@@ -148,16 +140,13 @@ export default function FleetSetupOverview({
         {/* Server-persisted Fleets */}
         {fleets.map((fleet) => {
           const status = String(fleet.approvalStatus || "DRAFT").toUpperCase();
-          const label =
-            status === "APPROVED"
-              ? "Ready"
-              : status === "PENDING"
-                ? "In review"
-                : status === "REJECTED"
-                  ? "Needs changes"
-                  : businessApproved
-                    ? "Ready for review"
-                    : "Prepared on server";
+          const presentation = status === "APPROVED"
+            ? { label: "Approved", badge: "bg-emerald-50 text-emerald-700" }
+            : status === "PENDING"
+              ? { label: "In review", badge: "bg-amber-50 text-amber-700" }
+              : status === "REJECTED"
+                ? { label: "Changes requested", badge: "bg-red-50 text-red-700" }
+                : { label: businessApproved ? "Ready for review" : "Prepared on server", badge: "bg-[#FAF8F5] text-[#655E58]" };
           return (
             <article
               key={fleet.fleetId}
@@ -176,8 +165,8 @@ export default function FleetSetupOverview({
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="w-fit rounded-full bg-[#FAF8F5] px-3 py-1 text-[10px] font-bold text-[#655E58]">
-                  {label}
+                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-bold ${presentation.badge}`}>
+                  {presentation.label}
                 </span>
                 <Link
                   href={`/dashboard/fleet?vehicle=${fleet.fleetId}#fleet-${fleet.fleetId}`}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import FormField, { inputClass } from "../components/FormField";
 import type { FleetRegistrationDraft } from "../types";
 import { listMyBrands, type OperatorBrand } from "../api-brands";
+import { listAvailableAmenities, type FleetAmenity } from "../api";
 
 interface VehicleDetailsStepProps {
   draft: FleetRegistrationDraft;
@@ -21,6 +22,8 @@ export default function VehicleDetailsStep({
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [loadingBrands, setLoadingBrands] = useState<boolean>(true);
   const [brandError, setBrandError] = useState<string | null>(null);
+  const [amenities, setAmenities] = useState<FleetAmenity[]>([]);
+  const [amenityError, setAmenityError] = useState<string | null>(null);
 
   const applyDefaultBrandSelection = useCallback(
     (fetchedBrands: OperatorBrand[]) => {
@@ -85,6 +88,14 @@ export default function VehicleDetailsStep({
       mounted = false;
     };
   }, [applyDefaultBrandSelection]);
+
+  useEffect(() => {
+    let mounted = true;
+    listAvailableAmenities()
+      .then((items) => { if (mounted) setAmenities(items); })
+      .catch((error) => { if (mounted) setAmenityError(error instanceof Error ? error.message : "Unable to load amenities"); });
+    return () => { mounted = false; };
+  }, []);
 
   const setField = (
     key: keyof FleetRegistrationDraft["vehicle"],
@@ -215,6 +226,43 @@ export default function VehicleDetailsStep({
           disabled={readOnly}
         />
       </FormField>
+
+      <div className="sm:col-span-2">
+        <FormField label="Passenger amenities" hint="Select only facilities available on this bus.">
+          {amenityError ? (
+            <div className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">{amenityError}</div>
+          ) : amenities.length === 0 ? (
+            <div className="mt-2 rounded-xl border border-dashed border-[#DCD4CD] bg-[#FAF8F5] p-3 text-xs text-[#746E69]">No active amenities are available.</div>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-[#DCD4CD] bg-[#FAF8F5] p-3">
+              {amenities.map((amenity) => {
+                const selected = draft.vehicle.amenityIds.includes(amenity.id);
+                return (
+                  <button
+                    key={amenity.id}
+                    type="button"
+                    disabled={readOnly}
+                    aria-pressed={selected}
+                    title={amenity.description || amenity.name}
+                    onClick={() => update((prev) => ({
+                      ...prev,
+                      vehicle: {
+                        ...prev.vehicle,
+                        amenityIds: selected
+                          ? prev.vehicle.amenityIds.filter((id) => id !== amenity.id)
+                          : [...prev.vehicle.amenityIds, amenity.id],
+                      },
+                    }))}
+                    className={`rounded-full border px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#DCD4CD] bg-white text-[#655E58] hover:border-[#BDAFA6]"}`}
+                  >
+                    {amenity.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </FormField>
+      </div>
     </div>
   );
 }

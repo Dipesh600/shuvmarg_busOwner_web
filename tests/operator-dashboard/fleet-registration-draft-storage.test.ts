@@ -7,6 +7,7 @@ import {
   saveFleetRegistrationDraft,
   deleteFleetRegistrationDraft,
   loadFleetRegistrationDraft,
+  cleanupLockedServerFleetDrafts,
 } from "../../src/features/fleet-registration/fleet-registration-draft-storage.ts";
 
 test("fleet registration draft structure keeps files separate from resumable data", () => {
@@ -55,4 +56,42 @@ test("multi-draft registry supports saving, listing, and switching multiple bus 
 
   // Cleanup
   await deleteFleetRegistrationDraft(id2);
+});
+
+test("submitted fleet cleanup removes only the locked editable copy", async () => {
+  const submittedId = generateDraftId();
+  const unfinishedId = generateDraftId();
+  const submitted = structuredClone(EMPTY_FLEET_DRAFT);
+  submitted.vehicle.busName = "Submitted bus";
+  submitted.vehicle.busNumber = "BA 1 KHA 1000";
+  const unfinished = structuredClone(EMPTY_FLEET_DRAFT);
+  unfinished.vehicle.busName = "Unfinished bus";
+  unfinished.vehicle.busNumber = "BA 1 KHA 2000";
+
+  await saveFleetRegistrationDraft(submittedId, submitted, "review", [], "fleet-pending");
+  await saveFleetRegistrationDraft(unfinishedId, unfinished, "vehicle", [], "fleet-draft");
+  await cleanupLockedServerFleetDrafts([
+    { fleetId: "fleet-pending", busNumber: "BA 1 KHA 1000", approvalStatus: "PENDING" },
+    { fleetId: "fleet-draft", busNumber: "BA 1 KHA 2000", approvalStatus: "DRAFT" },
+  ]);
+
+  const remaining = listFleetDrafts();
+  assert.equal(remaining.some((draft) => draft.id === submittedId), false);
+  assert.equal(remaining.some((draft) => draft.id === unfinishedId), true);
+  await deleteFleetRegistrationDraft(unfinishedId);
+});
+
+test("correction drafts preserve secure server file references when reopened", async () => {
+  const id = generateDraftId();
+  const draft = structuredClone(EMPTY_FLEET_DRAFT);
+  draft.vehicle.busName = "Correction bus";
+  draft.files.photos.front = "https://secure.example/front" as unknown as File;
+  draft.files.insurance = "https://secure.example/insurance" as unknown as File;
+
+  await saveFleetRegistrationDraft(id, draft, "review", ["vehicle"], "fleet-correction");
+  const restored = await loadFleetRegistrationDraft(id);
+
+  assert.equal(restored?.draft.files.photos.front as unknown as string, "https://secure.example/front");
+  assert.equal(restored?.draft.files.insurance as unknown as string, "https://secure.example/insurance");
+  await deleteFleetRegistrationDraft(id);
 });
