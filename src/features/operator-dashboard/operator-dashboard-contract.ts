@@ -83,6 +83,9 @@ export interface OperatorFleetListItem {
   fleetCode: string | null;
   busName: string;
   busNumber: string;
+  busType?: string;
+  totalSeats?: number;
+  status?: string;
   approvalStatus: "DRAFT" | "PENDING" | "REJECTED" | "APPROVED" | string;
   rejectionReason: string | null;
   setupComplete: boolean;

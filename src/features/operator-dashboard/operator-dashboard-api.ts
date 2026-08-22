@@ -22,7 +22,11 @@ import { normalizeKycStatusPayload } from "./operator-dashboard-kyc-normalizer";
  * Fetches profile and KYC status to construct the unified OperatorDashboardState.
  * Explicitly treats /busowner/kyc-status 404 as "not_submitted".
  */
-export async function fetchOperatorDashboardState(): Promise<OperatorDashboardState> {
+let dashboardRequest: Promise<OperatorDashboardState> | null = null;
+let dashboardSnapshot: { value: OperatorDashboardState; loadedAt: number } | null = null;
+const DASHBOARD_CACHE_MS = 5_000;
+
+async function loadOperatorDashboardState(): Promise<OperatorDashboardState> {
   const [profileRes, kycRes] = await Promise.all([
     authFetch("/busowner/profile"),
     authFetch("/busowner/kyc-status"),
@@ -96,4 +100,24 @@ export async function fetchOperatorDashboardState(): Promise<OperatorDashboardSt
     evidence,
     capabilities,
   };
+}
+
+export function fetchOperatorDashboardState(
+  options: { force?: boolean } = {},
+): Promise<OperatorDashboardState> {
+  if (!options.force && dashboardSnapshot && Date.now() - dashboardSnapshot.loadedAt < DASHBOARD_CACHE_MS) {
+    return Promise.resolve(dashboardSnapshot.value);
+  }
+  if (!options.force && dashboardRequest) return dashboardRequest;
+
+  const request = loadOperatorDashboardState()
+    .then((value) => {
+      dashboardSnapshot = { value, loadedAt: Date.now() };
+      return value;
+    })
+    .finally(() => {
+      if (dashboardRequest === request) dashboardRequest = null;
+    });
+  dashboardRequest = request;
+  return request;
 }

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element -- authenticated object URLs cannot be optimized by Next Image */
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { FileText, X, ExternalLink, Loader2 } from "lucide-react";
 import { authFetch } from "@/lib/auth";
 
@@ -11,19 +12,21 @@ interface SecureDocumentBlob {
   mediaType: string;
 }
 
-const ALLOWED_PREVIEW_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
+const ALLOWED_PREVIEW_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 export const blobCache = new Map<string, SecureDocumentBlob>();
 export const pendingFetches = new Map<string, Promise<SecureDocumentBlob>>();
 
 interface SecureDocMediaProps {
   url: string;
+  file?: Blob;
   alt: string;
   className?: string;
 }
 
 export function SecureDocMedia({
   url,
+  file,
   alt,
   className,
 }: SecureDocMediaProps) {
@@ -35,6 +38,18 @@ export function SecureDocMedia({
 
   useEffect(() => {
     let revoked = false;
+
+    if (file) {
+      if (!ALLOWED_PREVIEW_TYPES.has(file.type)) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      setDocumentBlob({ objectUrl, mediaType: file.type });
+      setLoading(false);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
 
     const cachedUrl = blobCache.get(url);
     let fetchPromise = cachedUrl ? Promise.resolve(cachedUrl) : pendingFetches.get(url);
@@ -79,7 +94,7 @@ export function SecureDocMedia({
     return () => {
       revoked = true;
     };
-  }, [url]);
+  }, [file, url]);
 
   if (loading) {
     return (
@@ -114,6 +129,7 @@ export function SecureDocMedia({
 interface SecureDocViewerModalProps {
   selectedDoc: {
     url: string;
+    file?: Blob;
     label: string;
     documentType: string;
   } | null;
@@ -136,6 +152,13 @@ export default function SecureDocViewerModal({
 
   const handleOpenInNewTab = async () => {
     try {
+      if (selectedDoc.file) {
+        const objectUrl = URL.createObjectURL(selectedDoc.file);
+        const tab = window.open(objectUrl, "_blank", "noopener,noreferrer");
+        if (!tab) alert("Please allow pop-ups to open the document in a new tab.");
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+        return;
+      }
       let document = blobCache.get(selectedDoc.url);
       if (!document) {
         const res = await authFetch(selectedDoc.url);
@@ -155,9 +178,9 @@ export default function SecureDocViewerModal({
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[180] flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
@@ -195,11 +218,13 @@ export default function SecureDocViewerModal({
           <SecureDocMedia
             key={selectedDoc.url}
             url={selectedDoc.url}
+            file={selectedDoc.file}
             alt={selectedDoc.label}
             className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-sm"
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

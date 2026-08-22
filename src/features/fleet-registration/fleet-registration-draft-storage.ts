@@ -33,6 +33,10 @@ interface StoredDraftRecord {
   completed: FleetStep[];
   serverFleetId?: string;
   hasFiles: boolean;
+  serverFileUrls?: {
+    photos?: Partial<Record<"front" | "rear" | "side" | "cabin", string>>;
+    documents?: Partial<Record<"fitnessCert" | "insurance" | "bluebook" | "routePermit", string>>;
+  };
   updatedAt: string;
 }
 
@@ -162,7 +166,7 @@ export function hasMeaningfulFleetDraft(draft: FleetRegistrationDraft): boolean 
     draft.vehicle.brandId.trim()
     || draft.vehicle.busName.trim()
     || draft.vehicle.busNumber.trim()
-    || draft.vehicle.registrationYear.trim()
+    || String(draft.vehicle.registrationYear ?? "").trim()
     || draft.vehicle.amenityIds.length
     || draft.route.origin.trim()
     || draft.route.destination.trim()
@@ -287,6 +291,12 @@ export async function saveFleetRegistrationDraft(
     completed,
     serverFleetId,
     hasFiles,
+    serverFileUrls: {
+      photos: Object.fromEntries(Object.entries(draft.files.photos).filter(([, value]) => typeof value === "string")) as Partial<Record<"front" | "rear" | "side" | "cabin", string>>,
+      documents: Object.fromEntries((["fitnessCert", "insurance", "bluebook", "routePermit"] as const)
+        .filter((key) => typeof draft.files[key] === "string")
+        .map((key) => [key, draft.files[key] as unknown as string])),
+    },
     updatedAt,
   };
 
@@ -345,6 +355,16 @@ export async function loadFleetRegistrationDraft(
 
     // Load persisted files from IndexedDB
     const files = await loadDraftFiles(id);
+    for (const key of ["front", "rear", "side", "cabin"] as const) {
+      if (!files.photos[key] && record.serverFileUrls?.photos?.[key]) {
+        files.photos[key] = record.serverFileUrls.photos[key] as unknown as File;
+      }
+    }
+    for (const key of ["fitnessCert", "insurance", "bluebook", "routePermit"] as const) {
+      if (!files[key] && record.serverFileUrls?.documents?.[key]) {
+        files[key] = record.serverFileUrls.documents[key] as unknown as File;
+      }
+    }
 
     const normalizedVehicle = {
       ...EMPTY_FLEET_DRAFT.vehicle,
