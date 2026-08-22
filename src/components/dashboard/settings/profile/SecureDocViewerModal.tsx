@@ -41,14 +41,25 @@ export function SecureDocMedia({
 
     if (file) {
       if (!ALLOWED_PREVIEW_TYPES.has(file.type)) {
-        setError(true);
-        setLoading(false);
-        return;
+        queueMicrotask(() => {
+          if (revoked) return;
+          setError(true);
+          setLoading(false);
+        });
+        return () => {
+          revoked = true;
+        };
       }
       const objectUrl = URL.createObjectURL(file);
-      setDocumentBlob({ objectUrl, mediaType: file.type });
-      setLoading(false);
-      return () => URL.revokeObjectURL(objectUrl);
+      queueMicrotask(() => {
+        if (revoked) return;
+        setDocumentBlob({ objectUrl, mediaType: file.type });
+        setLoading(false);
+      });
+      return () => {
+        revoked = true;
+        URL.revokeObjectURL(objectUrl);
+      };
     }
 
     const cachedUrl = blobCache.get(url);
