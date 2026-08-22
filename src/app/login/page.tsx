@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { MoveLeft } from "lucide-react";
-import { saveTokens } from "@/lib/auth";
+import { clearTokens, saveTokens } from "@/lib/auth";
 
 const NM = '"Neue Machina", system-ui, -apple-system, sans-serif';
 import { API_URL as API } from "@/lib/config";
@@ -50,6 +50,7 @@ function LoginContent() {
 
       // Admin set a temporary password — redirect to force-change flow
       if (data.forcePasswordChange) {
+        clearTokens();
         // Store the short-lived tempToken for the change-password page
         sessionStorage.setItem("busowner_temp_token", data.tempToken || "");
         router.push("/change-password");
@@ -57,6 +58,7 @@ function LoginContent() {
       }
 
       // Normal successful login — save tokens and go to dashboard
+      sessionStorage.removeItem("busowner_temp_token");
       saveTokens(data.accessToken);
       router.push("/dashboard");
     } catch {
