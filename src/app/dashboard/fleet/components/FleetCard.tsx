@@ -9,6 +9,7 @@ interface FleetCardProps {
   submittingId: string | null;
   onOpenFleet: (draftId: string, readOnly: boolean) => void;
   onPreviewFleet: (fleetId: string) => void;
+  onOpenServerDraft: (fleetId: string) => void;
   onSubmitPreparedFleet: (fleetId: string) => void;
   onCorrectRejectedFleet: (fleetId: string) => void;
 }
@@ -20,6 +21,7 @@ export function FleetCard({
   submittingId,
   onOpenFleet,
   onPreviewFleet,
+  onOpenServerDraft,
   onSubmitPreparedFleet,
   onCorrectRejectedFleet,
 }: FleetCardProps) {
@@ -48,6 +50,8 @@ export function FleetCard({
           onPreviewFleet(fleet.fleetId);
         } else if (localDraftId) {
           onOpenFleet(localDraftId, false);
+        } else if (isDraft) {
+          onOpenServerDraft(fleet.fleetId);
         }
       }}
       className={`scroll-mt-6 rounded-3xl border border-[#E8E1DB] bg-white p-5 shadow-sm target:border-[#7A1D1B] target:ring-2 target:ring-[#7A1D1B]/10 cursor-pointer hover:border-[#7A1D1B] transition hover:shadow-md`}
@@ -107,23 +111,48 @@ export function FleetCard({
             : "Approved. Shuvmarg is completing driver, schedule, and activation setup."}
         </p>
       ) : isDraft && businessApproved && documentsReady ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (localDraftId) onOpenFleet(localDraftId, false);
+              else onOpenServerDraft(fleet.fleetId);
+            }}
+            className="flex h-10 items-center justify-center rounded-xl border border-[#DCD4CD] text-xs font-black text-[#655E58]"
+          >
+            Continue setup
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSubmitPreparedFleet(fleet.fleetId);
+            }}
+            disabled={submittingId === fleet.fleetId}
+            className="flex h-10 items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white disabled:opacity-50"
+          >
+            {submittingId === fleet.fleetId ? (
+              <>
+                <Loader2 className="mr-2 size-3.5 animate-spin" />
+                Submitting…
+              </>
+            ) : (
+              "Submit for review"
+            )}
+          </button>
+        </div>
+      ) : isDraft && businessApproved ? (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSubmitPreparedFleet(fleet.fleetId);
+          onClick={(event) => {
+            event.stopPropagation();
+            if (localDraftId) onOpenFleet(localDraftId, false);
+            else onOpenServerDraft(fleet.fleetId);
           }}
-          disabled={submittingId === fleet.fleetId}
-          className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white disabled:opacity-50"
+          className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white"
         >
-          {submittingId === fleet.fleetId ? (
-            <>
-              <Loader2 className="mr-2 size-3.5 animate-spin" />
-              Submitting…
-            </>
-          ) : (
-            "Submit for review"
-          )}
+          Continue setup
         </button>
       ) : isDraft && !businessApproved ? (
         <p className="mt-4 rounded-xl bg-[#FAF8F5] px-3 py-2.5 text-center text-[10px] font-bold text-[#746E69]">
