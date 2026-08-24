@@ -16,6 +16,7 @@ export interface FleetListItem {
   approvalStatus: string;
   status: string;
   setupComplete?: boolean;
+  createdBy?: "ADMIN" | "BUS_OWNER" | string;
   rejectionReason?: string | null;
   documentSummary?: {
     totalSlots?: number;
@@ -109,6 +110,7 @@ export interface FleetReviewRequirement {
 export interface FleetDetailPayload {
   approvalStatus?: string;
   submittedAt?: string | null;
+  createdBy?: "ADMIN" | "BUS_OWNER" | string;
   reviewRequirements?: Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>;
   features?: Array<string | { id?: string; name?: string; icon?: string | null }>;
   brandId?: string;

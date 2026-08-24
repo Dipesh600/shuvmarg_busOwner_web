@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, BusFront, Loader2, RefreshCw } from "lucide-react";
 import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBar";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
-import { getFleetDetail, getFleetSubmissionFileUrls, submitFleetDraft, type FleetListItem, type FleetReviewRequirement, type FleetReviewRequirementKey } from "@/features/fleet-registration/api";
+import { getFleetDetail, getFleetSubmissionFileUrls, type FleetListItem, type FleetReviewRequirement, type FleetReviewRequirementKey } from "@/features/fleet-registration/api";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import type { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
 import { subscribeToDataRefresh } from "@/lib/data-refresh";
@@ -18,7 +18,8 @@ import {
   loadFleetRegistrationDraft,
   saveFleetRegistrationDraft,
 } from "@/features/fleet-registration/fleet-registration-draft-storage";
-import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft } from "@/features/fleet-registration/types";
+import { EMPTY_FLEET_DRAFT, type FleetRegistrationDraft, type FleetStep } from "@/features/fleet-registration/types";
+import { validateFleetStep } from "@/features/fleet-registration/validation";
 
 // Extracted Components
 import { FleetPageHeader } from "./components/FleetPageHeader";
@@ -34,7 +35,6 @@ export default function FleetPage() {
   const [businessApproved, setBusinessApproved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
   const [previewFleetId, setPreviewFleetId] = useState<string | null>(null);
   const [dashboardState, setDashboardState] = useState<OperatorDashboardState | null>(null);
@@ -116,24 +116,6 @@ export default function FleetPage() {
 
 
 
-  async function submitPreparedFleet(fleetId: string) {
-    setSubmittingId(fleetId);
-    setError(null);
-    try {
-      await submitFleetDraft(fleetId);
-      await load();
-      setPreviewFleetId(fleetId);
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to submit the prepared vehicle."
-      );
-    } finally {
-      setSubmittingId(null);
-    }
-  }
-
   async function openServerFleet(fleetId: string, correction: boolean) {
     setError(null);
     try {
@@ -162,7 +144,6 @@ export default function FleetPage() {
         );
         return;
       }
-      const serverFile = { __serverFile: true } as unknown as File;
       const route = data.route || {};
       const correctionDraft: FleetRegistrationDraft = {
         vehicle: {
@@ -178,6 +159,11 @@ export default function FleetPage() {
           ...EMPTY_FLEET_DRAFT.route,
           origin: route.origin || "",
           destination: route.destination || "",
+          originStop: route.originStop || null,
+          destinationStop: route.destinationStop || null,
+          corridorId: route.corridorId || null,
+          corridorCode: route.corridorCode || null,
+          direction: route.direction || null,
           selectedVariant: route.selectedVariant || null,
           servedStops: route.servedStops || [],
           addedPlaces: route.addedPlaces || [],
@@ -193,15 +179,15 @@ export default function FleetPage() {
         } : null,
         files: {
           photos: {
-            front: (fileUrls.photos.front || (docs.fleetImages?.present ? serverFile : null)) as File | null,
-            rear: (fileUrls.photos.rear || (docs.fleetImages?.present ? serverFile : null)) as File | null,
-            side: (fileUrls.photos.side || (docs.fleetImages?.present ? serverFile : null)) as File | null,
-            cabin: (fileUrls.photos.cabin || (docs.fleetImages?.present ? serverFile : null)) as File | null,
+            front: (fileUrls.photos.front || null) as File | null,
+            rear: (fileUrls.photos.rear || null) as File | null,
+            side: (fileUrls.photos.side || null) as File | null,
+            cabin: (fileUrls.photos.cabin || null) as File | null,
           },
-          fitnessCert: (fileUrls.documents.fitnessCert || (docs.fitnessCert?.present ? serverFile : null)) as File | null,
-          insurance: (fileUrls.documents.insurance || (docs.insurance?.present ? serverFile : null)) as File | null,
-          bluebook: (fileUrls.documents.bluebook || (docs.bluebook?.present ? serverFile : null)) as File | null,
-          routePermit: (fileUrls.documents.routePermit || (docs.routePermit?.present ? serverFile : null)) as File | null,
+          fitnessCert: (fileUrls.documents.fitnessCert || null) as File | null,
+          insurance: (fileUrls.documents.insurance || null) as File | null,
+          bluebook: (fileUrls.documents.bluebook || null) as File | null,
+          routePermit: (fileUrls.documents.routePermit || null) as File | null,
         },
         documents: {
           fitnessValidTill: docs.fitnessCert?.validTill || "",
@@ -210,12 +196,15 @@ export default function FleetPage() {
           routePermitValidTill: docs.routePermit?.validTill || "",
         },
       };
+      const setupSteps = ["vehicle", "layout", "photos", "documents", "route"] as FleetStep[];
+      const completedSteps = setupSteps.filter((candidate) => !validateFleetStep(candidate, correctionDraft));
+      const firstIncomplete = setupSteps.find((candidate) => validateFleetStep(candidate, correctionDraft));
       const draftId = generateDraftId();
       await saveFleetRegistrationDraft(
         draftId,
         correctionDraft,
-        "review",
-        ["vehicle", "layout", "photos", "documents", "route"],
+        firstIncomplete || "review",
+        completedSteps,
         fleetId,
       );
       handleOpenFleet(
@@ -323,11 +312,9 @@ export default function FleetPage() {
                   fleet={fleet}
                   businessApproved={businessApproved}
                   localDraftId={localDraftId}
-                  submittingId={submittingId}
                   onOpenFleet={handleOpenFleet}
                   onPreviewFleet={setPreviewFleetId}
                   onOpenServerDraft={(fleetId) => void openServerFleet(fleetId, false)}
-                  onSubmitPreparedFleet={submitPreparedFleet}
                   onCorrectRejectedFleet={correctRejectedFleet}
                 />
               );

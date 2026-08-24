@@ -382,7 +382,6 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         ) : (
           <FleetSetupOverview
             fleets={state.fleet.items}
-            businessApproved={isBusinessApproved}
             onAddVehicle={(draftId?: string) => {
               if (draftId) {
                 setActiveDraftId(draftId);
