@@ -1,16 +1,14 @@
 import React from "react";
-import { BusFront, Loader2 } from "lucide-react";
+import { BusFront } from "lucide-react";
 import type { FleetListItem } from "@/features/fleet-registration/api";
 
 interface FleetCardProps {
   fleet: FleetListItem;
   businessApproved: boolean;
   localDraftId: string | null;
-  submittingId: string | null;
   onOpenFleet: (draftId: string, readOnly: boolean) => void;
   onPreviewFleet: (fleetId: string) => void;
   onOpenServerDraft: (fleetId: string) => void;
-  onSubmitPreparedFleet: (fleetId: string) => void;
   onCorrectRejectedFleet: (fleetId: string) => void;
 }
 
@@ -18,11 +16,9 @@ export function FleetCard({
   fleet,
   businessApproved,
   localDraftId,
-  submittingId,
   onOpenFleet,
   onPreviewFleet,
   onOpenServerDraft,
-  onSubmitPreparedFleet,
   onCorrectRejectedFleet,
 }: FleetCardProps) {
   const status = String(fleet.approvalStatus || "DRAFT").toUpperCase();
@@ -35,10 +31,7 @@ export function FleetCard({
       ? "Needs changes"
       : "Draft";
   const isDraft = status === "DRAFT";
-  const documentsReady = Boolean(
-    fleet.documentSummary?.totalSlots &&
-      fleet.documentSummary.present === fleet.documentSummary.totalSlots
-  );
+  const preparedByShuvmarg = isDraft && fleet.createdBy === "ADMIN";
 
   return (
     <article
@@ -72,6 +65,11 @@ export function FleetCard({
           {statusLabel}
         </span>
       </div>
+      {preparedByShuvmarg && (
+        <p className="mt-3 rounded-xl bg-[#FFF7F4] px-3 py-2 text-[10px] font-bold text-[#7A1D1B]">
+          Prepared by Shuvmarg. Review the details and finish the journey setup before submitting.
+        </p>
+      )}
       <div className="mt-4 flex justify-between border-t border-[#EEE8E2] pt-3 text-[10px] text-[#746E69]">
         <span>{fleet.busType}</span>
         <span className="font-bold">{fleet.totalSeats} places</span>
@@ -110,38 +108,6 @@ export function FleetCard({
             ? "Live and operational. Open to review the submitted record."
             : "Approved. Shuvmarg is completing driver, schedule, and activation setup."}
         </p>
-      ) : isDraft && businessApproved && documentsReady ? (
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              if (localDraftId) onOpenFleet(localDraftId, false);
-              else onOpenServerDraft(fleet.fleetId);
-            }}
-            className="flex h-10 items-center justify-center rounded-xl border border-[#DCD4CD] text-xs font-black text-[#655E58]"
-          >
-            Continue setup
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSubmitPreparedFleet(fleet.fleetId);
-            }}
-            disabled={submittingId === fleet.fleetId}
-            className="flex h-10 items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white disabled:opacity-50"
-          >
-            {submittingId === fleet.fleetId ? (
-              <>
-                <Loader2 className="mr-2 size-3.5 animate-spin" />
-                Submitting…
-              </>
-            ) : (
-              "Submit for review"
-            )}
-          </button>
-        </div>
       ) : isDraft && businessApproved ? (
         <button
           type="button"
@@ -152,7 +118,7 @@ export function FleetCard({
           }}
           className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-black text-white"
         >
-          Continue setup
+          {preparedByShuvmarg ? "Review and finish setup" : "Continue setup"}
         </button>
       ) : isDraft && !businessApproved ? (
         <p className="mt-4 rounded-xl bg-[#FAF8F5] px-3 py-2.5 text-center text-[10px] font-bold text-[#746E69]">
