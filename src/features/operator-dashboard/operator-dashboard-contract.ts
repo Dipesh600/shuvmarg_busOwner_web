@@ -89,6 +89,7 @@ export interface OperatorFleetListItem {
   approvalStatus: "DRAFT" | "PENDING" | "REJECTED" | "APPROVED" | string;
   rejectionReason: string | null;
   setupComplete: boolean;
+  createdBy?: "ADMIN" | "BUS_OWNER" | string;
   documentSummary?: {
     totalSlots?: number;
     present?: number;

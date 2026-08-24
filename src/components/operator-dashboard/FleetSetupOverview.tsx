@@ -14,11 +14,9 @@ import {
 
 export default function FleetSetupOverview({
   fleets,
-  businessApproved,
   onAddVehicle,
 }: {
   fleets: OperatorFleetListItem[];
-  businessApproved: boolean;
   onAddVehicle: (draftId?: string) => void;
 }) {
   const [drafts, setDrafts] = useState<DraftMetadata[]>(() => listFleetDrafts());
@@ -146,7 +144,7 @@ export default function FleetSetupOverview({
               ? { label: "In review", badge: "bg-amber-50 text-amber-700" }
               : status === "REJECTED"
                 ? { label: "Changes requested", badge: "bg-red-50 text-red-700" }
-                : { label: businessApproved ? "Ready for review" : "Prepared on server", badge: "bg-[#FAF8F5] text-[#655E58]" };
+                : { label: "Setup in progress", badge: "bg-[#FAF8F5] text-[#655E58]" };
           return (
             <article
               key={fleet.fleetId}
@@ -161,6 +159,11 @@ export default function FleetSetupOverview({
                   <p className="mt-0.5 font-mono text-[10px] font-bold text-[#817A74]">
                     {fleet.busNumber}
                   </p>
+                  {status === "DRAFT" && fleet.createdBy === "ADMIN" && (
+                    <p className="mt-1 text-[10px] font-bold text-[#7A1D1B]">
+                      Prepared by Shuvmarg · review and finish setup
+                    </p>
+                  )}
                 </div>
               </div>
 
