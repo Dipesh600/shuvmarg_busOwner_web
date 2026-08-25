@@ -255,6 +255,20 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
               label="Registration Year"
               value={draft.vehicle.registrationYear || "2024"}
             />
+            <div className="border-t border-[#F0EAE4] pt-3">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold text-[#7D756E]">
+                <Sparkles className="size-3.5" /> Passenger amenities
+              </div>
+              {draft.vehicle.amenityDetails.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {draft.vehicle.amenityDetails.map((amenity) => (
+                    <span key={amenity.id} title={amenity.description || amenity.name} className="rounded-full border border-[#E8E1DB] bg-[#FAF7F3] px-3 py-1.5 text-[11px] font-bold text-[#554E48]">
+                      {amenity.name}
+                    </span>
+                  ))}
+                </div>
+              ) : <p className="text-xs text-[#8A827B]">No passenger amenities selected.</p>}
+            </div>
           </div>
         </section>
 
