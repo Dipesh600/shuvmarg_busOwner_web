@@ -145,6 +145,7 @@ export default function FleetPage() {
         return;
       }
       const route = data.route || {};
+      const features = data.features || data.vehicle?.features || [];
       const correctionDraft: FleetRegistrationDraft = {
         vehicle: {
           brandId: data.brandId || "",
@@ -153,7 +154,8 @@ export default function FleetPage() {
           busType: data.busType || data.vehicle?.busType || "DELUXE",
           vehicleType: data.vehicleType || data.vehicle?.vehicleType || "BUS",
           registrationYear: String(data.registrationYear || data.vehicle?.registrationYear || ""),
-          amenityIds: (data.features || data.vehicle?.features || []).map((item: string | { id?: string }) => typeof item === "string" ? item : item.id).filter((id): id is string => Boolean(id)),
+          amenityIds: features.map((item) => typeof item === "string" ? item : item.id).filter((id): id is string => Boolean(id)),
+          amenityDetails: features.flatMap((item) => typeof item !== "string" && item.id && item.name ? [{ ...item, type: item.type || "GLOBAL" }] : []),
         },
         route: {
           ...EMPTY_FLEET_DRAFT.route,

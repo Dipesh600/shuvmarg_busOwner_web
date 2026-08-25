@@ -5,7 +5,8 @@ import type {
 } from "./route-types";
 
 export type FleetStep = "vehicle" | "layout" | "photos" | "documents" | "route" | "review";
-export interface FleetVehicleDraft { brandId: string; busName: string; busNumber: string; busType: string; vehicleType: string; registrationYear: string; amenityIds: string[]; }
+export interface FleetAmenitySelection { id: string; name: string; description?: string | null; icon?: string | null; type: "GLOBAL" | "CUSTOM"; status?: boolean; }
+export interface FleetVehicleDraft { brandId: string; busName: string; busNumber: string; busType: string; vehicleType: string; registrationYear: string; amenityIds: string[]; amenityDetails: FleetAmenitySelection[]; }
 export interface FleetRouteDraft {
   origin: string;
   destination: string;
@@ -25,4 +26,4 @@ export interface FleetLayoutChoice { templateId: string | null; templateName: st
 export interface FleetFiles { photos: { front: File | null; rear: File | null; side: File | null; cabin: File | null }; fitnessCert: File | null; insurance: File | null; bluebook: File | null; routePermit: File | null; }
 export interface FleetDocumentMetadata { fitnessValidTill: string; insurancePolicyNumber: string; insuranceValidTill: string; routePermitValidTill: string; }
 export interface FleetRegistrationDraft { vehicle: FleetVehicleDraft; route: FleetRouteDraft; layout: FleetLayoutChoice | null; files: FleetFiles; documents: FleetDocumentMetadata; }
-export const EMPTY_FLEET_DRAFT: FleetRegistrationDraft = { vehicle: { brandId: "", busName: "", busNumber: "", busType: "DELUXE", vehicleType: "BUS", registrationYear: "", amenityIds: [] }, route: { origin: "", destination: "", viaStops: "", originStop: null, destinationStop: null, corridorId: null, corridorCode: null, direction: null, selectedVariant: null, servedStops: [], addedPlaces: [], returnEnabled: true, resolutionStatus: "UNRESOLVED" }, layout: null, files: { photos: { front: null, rear: null, side: null, cabin: null }, fitnessCert: null, insurance: null, bluebook: null, routePermit: null }, documents: { fitnessValidTill: "", insurancePolicyNumber: "", insuranceValidTill: "", routePermitValidTill: "" } };
+export const EMPTY_FLEET_DRAFT: FleetRegistrationDraft = { vehicle: { brandId: "", busName: "", busNumber: "", busType: "DELUXE", vehicleType: "BUS", registrationYear: "", amenityIds: [], amenityDetails: [] }, route: { origin: "", destination: "", viaStops: "", originStop: null, destinationStop: null, corridorId: null, corridorCode: null, direction: null, selectedVariant: null, servedStops: [], addedPlaces: [], returnEnabled: true, resolutionStatus: "UNRESOLVED" }, layout: null, files: { photos: { front: null, rear: null, side: null, cabin: null }, fitnessCert: null, insurance: null, bluebook: null, routePermit: null }, documents: { fitnessValidTill: "", insurancePolicyNumber: "", insuranceValidTill: "", routePermitValidTill: "" } };

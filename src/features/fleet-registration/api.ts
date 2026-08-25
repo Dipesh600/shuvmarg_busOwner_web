@@ -2,7 +2,7 @@ import { authFetch } from "@/lib/auth";
 import type { FleetRouteDraft } from "./types";
 import type { SeatLayoutV3 } from "@/features/seat-layout-v3/types";
 import { ApiResponseError } from "@/lib/api-error";
-import type { FleetRegistrationDraft } from "./types";
+import type { FleetAmenitySelection, FleetRegistrationDraft } from "./types";
 import { adoptTemplate, correctRejectedFleetLayout, createInitialCustomFleetLayout } from "@/features/seat-layout-v3/api";
 import { saveFleetRouteSetup } from "./api-route-setup";
 
@@ -34,21 +34,15 @@ export interface RegisterFleetProgress {
   totalSteps: number;
 }
 
-export interface FleetAmenity {
-  id: string;
-  name: string;
-  description?: string | null;
-  icon?: string | null;
-  type: "GLOBAL" | "CUSTOM";
-}
+export type FleetAmenity = FleetAmenitySelection;
 
 export async function listAvailableAmenities(): Promise<FleetAmenity[]> {
-  const payload = await read<{ data?: Array<{ _id?: string; id?: string; name?: string; description?: string; icon?: string; type?: "GLOBAL" | "CUSTOM" }> }>(
+  const payload = await read<{ data?: Array<{ _id?: string; id?: string; name?: string; description?: string; icon?: string; type?: "GLOBAL" | "CUSTOM"; status?: boolean }> }>(
     await authFetch("/busowner/amenities/available")
   );
   return (payload.data || []).flatMap((item) => {
     const id = item._id || item.id;
-    return id && item.name ? [{ id, name: item.name, description: item.description || null, icon: item.icon || null, type: item.type || "GLOBAL" }] : [];
+    return id && item.name ? [{ id, name: item.name, description: item.description || null, icon: item.icon || null, type: item.type || "GLOBAL", status: item.status }] : [];
   });
 }
 
@@ -112,7 +106,7 @@ export interface FleetDetailPayload {
   submittedAt?: string | null;
   createdBy?: "ADMIN" | "BUS_OWNER" | string;
   reviewRequirements?: Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>;
-  features?: Array<string | { id?: string; name?: string; icon?: string | null }>;
+  features?: Array<string | FleetAmenitySelection>;
   brandId?: string;
   busName?: string;
   busNumber?: string;
@@ -128,7 +122,7 @@ export interface FleetDetailPayload {
     vehicleType?: string;
     registrationYear?: string | number;
     totalSeats?: number;
-    features?: Array<string | { id?: string; name?: string; icon?: string | null }>;
+    features?: Array<string | FleetAmenitySelection>;
   };
   documents?: Record<string, FleetDetailDocument> & { fleetImages?: FleetDetailDocument };
   route?: Partial<FleetRouteDraft>;
@@ -199,10 +193,11 @@ export async function submitFleetDraft(fleetId: string): Promise<void> {
 }
 
 async function createDraft(draft: FleetRegistrationDraft): Promise<string> {
+  const vehicle = { ...draft.vehicle, amenityDetails: undefined };
   const response = await authFetch("/busowner/fleets", {
     method: "POST",
     body: JSON.stringify({
-      ...draft.vehicle,
+      ...vehicle,
       vehicleType: draft.vehicle.vehicleType.toLowerCase(),
       totalSeats: draft.layout!.totalPlaces,
       corridorId: draft.route.corridorId || undefined,
@@ -245,10 +240,11 @@ function isLocalFile(value: unknown): value is File {
 }
 
 async function updateExistingFleet(fleetId: string, draft: FleetRegistrationDraft) {
+  const vehicle = { ...draft.vehicle, amenityDetails: undefined };
   await read(await authFetch(`/busowner/fleets/${fleetId}`, {
     method: "PATCH",
     body: JSON.stringify({
-      ...draft.vehicle,
+      ...vehicle,
       vehicleType: draft.vehicle.vehicleType.toLowerCase(),
       totalSeats: draft.layout?.totalPlaces || 0,
       corridorId: draft.route.corridorId || undefined,
