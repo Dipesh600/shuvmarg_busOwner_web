@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, Clock3, X, Loader2, XCircle } from "lucide-react";
 import { getFleetDetail, getFleetSubmissionFileUrls } from "@/features/fleet-registration/api";
 import ReviewStep from "@/features/fleet-registration/steps/ReviewStep";
-import type { FleetRegistrationDraft } from "@/features/fleet-registration/types";
+import type { FleetAmenitySelection, FleetRegistrationDraft } from "@/features/fleet-registration/types";
 import type { FleetRouteAddedPlace, FleetServedStop } from "@/features/fleet-registration/route-types";
 import type { SeatLayoutV3 } from "@/features/seat-layout-v3/types";
 import type { FleetReviewRequirement, FleetReviewRequirementKey } from "@/features/fleet-registration/api";
@@ -47,7 +47,7 @@ interface SubmittedFleetRecord {
   vehicleType?: string;
   registrationYear?: string;
   totalSeats?: number;
-  features?: string[];
+  features?: Array<string | FleetAmenitySelection>;
   vehicle?: {
     busName?: string;
     busNumber?: string;
@@ -55,7 +55,7 @@ interface SubmittedFleetRecord {
     vehicleType?: string;
     registrationYear?: string;
     totalSeats?: number;
-    features?: string[];
+    features?: Array<string | FleetAmenitySelection>;
   };
   documents?: Record<string, SubmittedDocumentDescriptor> & {
     fleetImages?: SubmittedDocumentDescriptor & {
@@ -167,6 +167,7 @@ export default function SubmittedFleetPreviewModal({ fleetId, ownerId, onClose }
         }));
 
         // ── Map to FleetRegistrationDraft ────────────────────────────
+        const features = data.features || data.vehicle?.features || [];
         const mappedDraft: FleetRegistrationDraft = {
           vehicle: {
             brandId: data.brandId || "",
@@ -175,7 +176,8 @@ export default function SubmittedFleetPreviewModal({ fleetId, ownerId, onClose }
             busType: data.busType || data.vehicle?.busType || "DELUXE",
             vehicleType: data.vehicleType || data.vehicle?.vehicleType || "BUS",
             registrationYear: String(data.registrationYear || data.vehicle?.registrationYear || ""),
-            amenityIds: (data.features || data.vehicle?.features || []).map((item: string | { id?: string }) => typeof item === "string" ? item : item.id).filter((id): id is string => Boolean(id)),
+            amenityIds: features.map((item) => typeof item === "string" ? item : item.id).filter((id): id is string => Boolean(id)),
+            amenityDetails: features.flatMap((item) => typeof item !== "string" && item.id && item.name ? [{ ...item, type: item.type || "GLOBAL" }] : []),
           },
           route: {
             origin: routeSetup?.origin || "",
