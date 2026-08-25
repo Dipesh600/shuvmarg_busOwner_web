@@ -92,10 +92,26 @@ export default function VehicleDetailsStep({
   useEffect(() => {
     let mounted = true;
     listAvailableAmenities()
-      .then((items) => { if (mounted) setAmenities(items); })
+      .then((items) => {
+        if (!mounted) return;
+        setAmenities(items);
+        update((prev) => {
+          const known = new Map([
+            ...prev.vehicle.amenityDetails.map((item) => [item.id, item] as const),
+            ...items.map((item) => [item.id, item] as const),
+          ]);
+          const amenityDetails = prev.vehicle.amenityIds.flatMap((id) => {
+            const item = known.get(id);
+            return item ? [item] : [];
+          });
+          return JSON.stringify(amenityDetails) === JSON.stringify(prev.vehicle.amenityDetails)
+            ? prev
+            : { ...prev, vehicle: { ...prev.vehicle, amenityDetails } };
+        });
+      })
       .catch((error) => { if (mounted) setAmenityError(error instanceof Error ? error.message : "Unable to load amenities"); });
     return () => { mounted = false; };
-  }, []);
+  }, [update]);
 
   const setField = (
     key: keyof FleetRegistrationDraft["vehicle"],
@@ -108,6 +124,11 @@ export default function VehicleDetailsStep({
   };
 
   const activeBrands = brands.filter((b) => b.status === "ACTIVE");
+  const amenityGroups = [
+    { type: "GLOBAL" as const, label: "Platform amenities", hint: "Standard facilities available across Shuvmarg." },
+    { type: "CUSTOM" as const, label: "Your amenities", hint: "Facilities created specifically for your operation." },
+  ].map((group) => ({ ...group, items: amenities.filter((item) => item.type === group.type) }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div className="grid gap-5 sm:grid-cols-2">
@@ -234,8 +255,14 @@ export default function VehicleDetailsStep({
           ) : amenities.length === 0 ? (
             <div className="mt-2 rounded-xl border border-dashed border-[#DCD4CD] bg-[#FAF8F5] p-3 text-xs text-[#746E69]">No active amenities are available.</div>
           ) : (
-            <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-[#DCD4CD] bg-[#FAF8F5] p-3">
-              {amenities.map((amenity) => {
+            <div className="mt-2 space-y-4 rounded-xl border border-[#DCD4CD] bg-[#FAF8F5] p-4">
+              {amenityGroups.map((group) => <div key={group.type}>
+                <div className="mb-2">
+                  <p className="text-xs font-black text-[#332D29]">{group.label}</p>
+                  <p className="text-[11px] text-[#817A74]">{group.hint}</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map((amenity) => {
                 const selected = draft.vehicle.amenityIds.includes(amenity.id);
                 return (
                   <button
@@ -251,14 +278,20 @@ export default function VehicleDetailsStep({
                         amenityIds: selected
                           ? prev.vehicle.amenityIds.filter((id) => id !== amenity.id)
                           : [...prev.vehicle.amenityIds, amenity.id],
+                        amenityDetails: selected
+                          ? prev.vehicle.amenityDetails.filter((item) => item.id !== amenity.id)
+                          : [...prev.vehicle.amenityDetails.filter((item) => item.id !== amenity.id), amenity],
                       },
                     }))}
-                    className={`rounded-full border px-3 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#DCD4CD] bg-white text-[#655E58] hover:border-[#BDAFA6]"}`}
+                    className={`rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${selected ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#DCD4CD] bg-white text-[#655E58] hover:border-[#BDAFA6]"}`}
                   >
-                    {amenity.name}
+                    <span className="block text-xs font-black">{amenity.name}</span>
+                    {amenity.description && <span className={`mt-1 block text-[10px] font-medium ${selected ? "text-white/75" : "text-[#817A74]"}`}>{amenity.description}</span>}
                   </button>
                 );
               })}
+                </div>
+              </div>)}
             </div>
           )}
         </FormField>
