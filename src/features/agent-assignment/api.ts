@@ -6,6 +6,15 @@ import { assignmentPayload } from "./agent-assignment-contract";
 interface Envelope<T> { success: boolean; data: T; message?: string; }
 interface Page<T> extends Envelope<T[]> { pagination: { page: number; limit: number; total: number; totalPages: number }; }
 
+export type SmsStatus = "QUEUED" | "FAILED" | "NOT_REQUIRED";
+export interface CreatedAgent {
+  agentCode: string;
+  name: string;
+  smsSent: boolean;
+  smsStatus?: SmsStatus;
+  requiresAgentActivation: boolean;
+}
+
 async function read<T>(response: Response, fallback: string): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new ApiResponseError(response, payload, fallback);
@@ -51,7 +60,7 @@ export async function inviteAgent(draft: AssignmentDraft): Promise<AgentAssignme
 export async function createAgent(input: {
   name: string; phone: string; outletType: string; district: string; municipality: string; placeName: string; brandId?: string;
 }) {
-  const payload = await read<Envelope<{ agentCode: string; name: string; smsSent: boolean; requiresAgentActivation: boolean }>>(
+  const payload = await read<Envelope<CreatedAgent>>(
     await authFetch("/busowner/agents", { method: "POST", body: JSON.stringify(input) }),
     "Failed to create agent",
   );

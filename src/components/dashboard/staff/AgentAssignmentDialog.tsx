@@ -7,7 +7,7 @@ import {
   createAgent, inviteAgent, listAssignmentOptions, lookupAgent,
 } from "@/features/agent-assignment/api";
 import {
-  EMPTY_ASSIGNMENT_DRAFT, assignmentDraftsForBrands, validateAssignmentDraft,
+  AGENT_PERMISSION_AVAILABILITY, EMPTY_ASSIGNMENT_DRAFT, assignmentDraftsForBrands, validateAssignmentDraft,
   type AgentPreview, type AssignmentDraft, type AssignmentOptions,
 } from "@/features/agent-assignment/agent-assignment-contract";
 import AgentCreateFields, { type CreateAgentFields } from "./AgentCreateFields";
@@ -27,6 +27,7 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [createdMessage, setCreatedMessage] = useState("");
+  const [createdMessageTone, setCreatedMessageTone] = useState<"success" | "warning">("success");
   const [identityCreated, setIdentityCreated] = useState(false);
   const [createFields, setCreateFields] = useState<CreateAgentFields>({
     name: "", phone: "", outletType: "TICKET_COUNTER", district: "", municipality: "", placeName: "",
@@ -84,11 +85,14 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
         brandId: selectedBrandIds.length === 1 ? selectedBrandIds[0] : undefined,
       });
       setIdentityCreated(true);
-      setCreatedMessage(created.smsSent
-        ? "Agent created and activation details sent by SMS. Set the assignment terms below."
-        : created.requiresAgentActivation
-          ? "Agent created, but SMS delivery was not confirmed. The account still requires activation."
-          : "Agent access was added to the existing account. Set the assignment terms below.");
+      const smsStatus = created.smsStatus
+        || (created.smsSent ? "QUEUED" : created.requiresAgentActivation ? "FAILED" : "NOT_REQUIRED");
+      setCreatedMessageTone(smsStatus === "NOT_REQUIRED" ? "success" : "warning");
+      setCreatedMessage(smsStatus === "QUEUED"
+        ? "Agent created. The SMS provider accepted the activation message into its queue; phone delivery is not yet confirmed."
+        : smsStatus === "FAILED"
+          ? "Agent created, but the activation SMS could not be queued. The account still requires activation."
+          : "Existing account found. No SMS was sent; the agent should use their current Shuvmarg login.");
       await findAgent(created.agentCode, true);
     } catch (failure) { setError((failure as Error).message); setBusy(false); }
   };
@@ -141,22 +145,23 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
 
           {!preview && mode === "create" && <><AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} /><button type="button" onClick={() => void createNewAgent()} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] text-sm font-bold text-white disabled:opacity-50"><UserPlus className="h-4 w-4" />Create identity</button></>}
 
-          {createdMessage && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{createdMessage}</p>}
+          {createdMessage && <p className={`rounded-xl border p-3 text-sm ${createdMessageTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{createdMessage}</p>}
           {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><p className="mt-1 font-mono text-sm text-emerald-800">{preview.agentCode}</p><p className="mt-2 text-xs text-neutral-600">{preview.outletType?.replaceAll("_", " ") || "Outlet not set"} · {preview.municipality || preview.district || "Location unavailable"} · {preview.kycStatus.replaceAll("_", " ")}</p></section>}
           {preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
           {preview && selectedBrandIds.length > 0 && <>
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5"><h3 className="font-bold text-neutral-900">Inventory access</h3><div className="mt-3 grid gap-2 sm:grid-cols-3">{([['ALL_BUSES','All buses'],['ROUTES','Specific routes'],['SCHEDULES','Specific schedules']] as const).map(([value,label]) => { const disabled = selectedBrandIds.length !== 1 && value !== "ALL_BUSES"; return <button key={value} type="button" disabled={disabled} onClick={() => setDraft((current) => ({ ...current, accessScope: value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`rounded-xl border px-3 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${draft.accessScope === value ? "border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B]" : "border-neutral-200 text-neutral-600"}`}>{label}</button>; })}</div>{selectedBrandIds.length > 1 && <p className="mt-3 text-xs text-neutral-500">Specific route or schedule access is configured one brand at a time. Multiple brands receive all-bus access with the shared terms below.</p>}
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5"><h3 className="font-bold text-neutral-900">Inventory access</h3><p className="mt-1 text-xs leading-5 text-neutral-500">Access is always limited to the selected brand. The agent can sell only after accepting, passing KYC, and while the trip is active and open for booking.</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{([['ALL_BUSES','All buses','All current and upcoming sellable trips'],['ROUTES','Specific routes','Trips on selected route variants only'],['SCHEDULES','Specific schedules','Dated trips from selected recurring schedules']] as const).map(([value,label,help]) => { const disabled = selectedBrandIds.length !== 1 && value !== "ALL_BUSES"; return <button key={value} type="button" disabled={disabled} onClick={() => setDraft((current) => ({ ...current, accessScope: value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`rounded-xl border px-3 py-3 text-left disabled:cursor-not-allowed disabled:opacity-40 ${draft.accessScope === value ? "border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B]" : "border-neutral-200 text-neutral-600"}`}><span className="block text-sm font-bold">{label}</span><span className="mt-1 block text-xs font-normal leading-4">{help}</span></button>; })}</div>{selectedBrandIds.length > 1 && <p className="mt-3 text-xs text-neutral-500">Each selected brand receives its own all-buses invitation. Configure route or schedule limits one brand at a time.</p>}
               {draft.accessScope !== "ALL_BUSES" && <div className="mt-4 max-h-48 space-y-2 overflow-y-auto rounded-xl bg-neutral-50 p-3">{scopeOptions.length === 0 ? <p className="text-sm text-amber-700">No active choices exist for this brand.</p> : scopeOptions.map((option) => { const selected = (draft.accessScope === "ROUTES" ? draft.allowedRouteIds : draft.allowedScheduleIds).includes(option.id); const label = "departureTime" in option ? `${option.routeName || "Route"} · ${option.bus.number || option.bus.name || "Bus"} · ${option.departureTime}` : `${option.name}${option.code ? ` · ${option.code}` : ""}`; return <label key={option.id} className="flex cursor-pointer items-center gap-3 rounded-lg bg-white p-3 text-sm"><input type="checkbox" checked={selected} onChange={() => toggleScopeId(option.id)} /><span>{label}</span></label>; })}</div>}
             </section>
 
-            <section className="grid gap-4 rounded-2xl border border-neutral-200 bg-white p-5 sm:grid-cols-2"><h3 className="sm:col-span-2 font-bold text-neutral-900">Permissions and commission</h3>
-              {[['canSellCash','Cash sales'],['canSellOnline','Online sales'],['canCancel','Can cancel']].map(([key,label]) => <label key={key} className="flex items-center gap-3 text-sm font-semibold text-neutral-700"><input type="checkbox" checked={draft[key as 'canSellCash']} onChange={(event) => patchDraft(key as 'canSellCash', event.target.checked)} />{label}</label>)}
-              <label className="text-sm font-bold text-neutral-700">Max seats per booking<input type="number" min="1" value={draft.maxSeatsPerBooking} onChange={(event) => patchDraft("maxSeatsPerBooking", event.target.value)} placeholder="No limit" className={`${inputClass} mt-2`} /></label>
-              <label className="text-sm font-bold text-neutral-700">Max discount %<input type="number" min="0" max="100" value={draft.maxDiscountPct} onChange={(event) => patchDraft("maxDiscountPct", event.target.value)} className={`${inputClass} mt-2`} /></label>
-              {draft.canCancel && <label className="text-sm font-bold text-neutral-700">Cancel cutoff (minutes before departure)<input type="number" min="0" value={draft.cancelWindowMins} onChange={(event) => patchDraft("cancelWindowMins", event.target.value)} className={`${inputClass} mt-2`} /></label>}
+            <section className="grid gap-4 rounded-2xl border border-neutral-200 bg-white p-5 sm:grid-cols-2"><div className="sm:col-span-2"><h3 className="font-bold text-neutral-900">Permissions and commission</h3><p className="mt-1 text-xs leading-5 text-neutral-500">Only cash seat sales and the seat limit are enforced by the current agent sale flow.</p></div>
+              <label className="flex items-start gap-3 text-sm font-semibold text-neutral-700"><input type="checkbox" className="mt-1" checked={draft.canSellCash} onChange={(event) => patchDraft("canSellCash", event.target.checked)} /><span>Cash sales<span className="block text-xs font-normal text-neutral-500">Allows off-platform cash bookings after the assignment and KYC checks pass.</span></span></label>
+              <label className="flex items-start gap-3 text-sm font-semibold text-neutral-400"><input type="checkbox" className="mt-1" checked={false} disabled /><span>Online sales<span className="block text-xs font-normal">Not available in the current backend.</span></span></label>
+              <label className="flex items-start gap-3 text-sm font-semibold text-neutral-400"><input type="checkbox" className="mt-1" checked={false} disabled /><span>Agent cancellation<span className="block text-xs font-normal">Not available in the current backend.</span></span></label>
+              <label className="text-sm font-bold text-neutral-700">Max seats per booking<input type="number" min="1" value={draft.maxSeatsPerBooking} onChange={(event) => patchDraft("maxSeatsPerBooking", event.target.value)} placeholder="No limit" className={`${inputClass} mt-2`} /><span className="mt-1 block text-xs font-normal text-neutral-500">Leave empty for no assignment-level limit.</span></label>
+              {!AGENT_PERMISSION_AVAILABILITY.discount && <p className="rounded-xl bg-neutral-50 p-3 text-xs leading-5 text-neutral-500 sm:col-span-2"><span className="font-bold text-neutral-700">Discount limit:</span> not shown because the current cash-sale endpoint does not accept or enforce an agent discount.</p>}
               <AgentSearchableSelect label="Commission type" value={draft.commissionMode} onChange={(value) => patchDraft("commissionMode", value as AssignmentDraft['commissionMode'])} placeholder="Select commission type" options={[{ value: "PERCENT", label: "Percent of fare" }, { value: "FLAT_PER_SEAT", label: "Flat per seat" }, { value: "FLAT_PER_BOOKING", label: "Flat per booking" }]} />
-              <label className="text-sm font-bold text-neutral-700">Commission value<input type="number" min="0" value={draft.commissionValue} onChange={(event) => patchDraft("commissionValue", event.target.value)} className={`${inputClass} mt-2`} /><span className="mt-1 block text-xs font-normal text-neutral-500">Paid by your business, not by Shuvmarg.</span></label>
+              <label className="text-sm font-bold text-neutral-700">Commission value<input type="number" min="0" value={draft.commissionValue} onChange={(event) => patchDraft("commissionValue", event.target.value)} className={`${inputClass} mt-2`} /><span className="mt-1 block text-xs font-normal leading-5 text-neutral-500">Recorded as your agreement with the agent. Shuvmarg does not calculate, pay, or settle this cash commission yet.</span></label>
             </section>
           </>}
 

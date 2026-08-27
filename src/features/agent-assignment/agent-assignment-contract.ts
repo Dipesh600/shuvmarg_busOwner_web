@@ -80,6 +80,15 @@ export const EMPTY_ASSIGNMENT_DRAFT: AssignmentDraft = {
   commissionMode: "PERCENT", commissionValue: "0",
 };
 
+// These switches describe real agent actions available in the backend today.
+// Keep unavailable terms fail-closed even if stale client state contains them.
+export const AGENT_PERMISSION_AVAILABILITY = {
+  cashSales: true,
+  onlineSales: false,
+  cancellation: false,
+  discount: false,
+} as const;
+
 const numberOr = (value: string, fallback: number) => value.trim() === "" ? fallback : Number(value);
 
 export function assignmentPayload(draft: AssignmentDraft) {
@@ -90,12 +99,13 @@ export function assignmentPayload(draft: AssignmentDraft) {
     allowedRouteIds: draft.accessScope === "ROUTES" ? draft.allowedRouteIds : [],
     allowedScheduleIds: draft.accessScope === "SCHEDULES" ? draft.allowedScheduleIds : [],
     permissions: {
-      canSellCash: draft.canSellCash,
-      canSellOnline: draft.canSellOnline,
-      canCancel: draft.canCancel,
-      cancelWindowMins: draft.canCancel ? numberOr(draft.cancelWindowMins, 0) : 0,
+      canSellCash: AGENT_PERMISSION_AVAILABILITY.cashSales && draft.canSellCash,
+      canSellOnline: AGENT_PERMISSION_AVAILABILITY.onlineSales && draft.canSellOnline,
+      canCancel: AGENT_PERMISSION_AVAILABILITY.cancellation && draft.canCancel,
+      cancelWindowMins: AGENT_PERMISSION_AVAILABILITY.cancellation && draft.canCancel
+        ? numberOr(draft.cancelWindowMins, 0) : 0,
       maxSeatsPerBooking: draft.maxSeatsPerBooking.trim() ? Number(draft.maxSeatsPerBooking) : null,
-      maxDiscountPct: numberOr(draft.maxDiscountPct, 0),
+      maxDiscountPct: AGENT_PERMISSION_AVAILABILITY.discount ? numberOr(draft.maxDiscountPct, 0) : 0,
     },
     commission: { mode: draft.commissionMode, value: numberOr(draft.commissionValue, 0) },
   };
@@ -113,7 +123,6 @@ export function validateAssignmentDraft(draft: AssignmentDraft): string | null {
     && (!Number.isInteger(payload.permissions.maxSeatsPerBooking) || payload.permissions.maxSeatsPerBooking < 1)) {
     return "Maximum seats must be a whole number greater than zero.";
   }
-  if (payload.permissions.maxDiscountPct > 100) return "Maximum discount cannot exceed 100%.";
   if (draft.commissionMode === "PERCENT" && payload.commission.value > 100) return "Percentage commission cannot exceed 100%.";
   return null;
 }

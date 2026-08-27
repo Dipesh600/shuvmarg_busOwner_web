@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  AGENT_PERMISSION_AVAILABILITY,
   EMPTY_ASSIGNMENT_DRAFT,
   assignmentDraftsForBrands,
   assignmentPayload,
@@ -34,14 +35,14 @@ test("route and schedule scopes fail closed without an explicit selection", () =
   assert.match(validateAssignmentDraft(schedule) || "", /at least one schedule/i);
 });
 
-test("cash terms preserve null as uncapped and validate numeric bounds", () => {
+test("cash terms preserve null as uncapped and validate live numeric bounds", () => {
   const draft = valid();
   assert.equal(assignmentPayload(draft).permissions.maxSeatsPerBooking, null);
   draft.maxSeatsPerBooking = "0";
   assert.match(validateAssignmentDraft(draft) || "", /greater than zero/i);
   draft.maxSeatsPerBooking = "2";
-  draft.maxDiscountPct = "101";
-  assert.match(validateAssignmentDraft(draft) || "", /100%/i);
+  draft.commissionValue = "101";
+  assert.match(validateAssignmentDraft(draft) || "", /commission cannot exceed 100%/i);
 });
 
 test("cancellation window is zeroed when cancellation permission is off", () => {
@@ -49,6 +50,25 @@ test("cancellation window is zeroed when cancellation permission is off", () => 
   draft.canCancel = false;
   draft.cancelWindowMins = "120";
   assert.equal(assignmentPayload(draft).permissions.cancelWindowMins, 0);
+});
+
+test("permissions without a live backend action stay fail-closed", () => {
+  assert.deepEqual(AGENT_PERMISSION_AVAILABILITY, {
+    cashSales: true, onlineSales: false, cancellation: false, discount: false,
+  });
+  const draft = valid();
+  draft.canSellOnline = true;
+  draft.canCancel = true;
+  draft.cancelWindowMins = "120";
+  draft.maxDiscountPct = "25";
+  assert.deepEqual(assignmentPayload(draft).permissions, {
+    canSellCash: true,
+    canSellOnline: false,
+    canCancel: false,
+    cancelWindowMins: 0,
+    maxSeatsPerBooking: null,
+    maxDiscountPct: 0,
+  });
 });
 
 test("multiple brands create one fail-closed all-bus invitation per unique brand", () => {
