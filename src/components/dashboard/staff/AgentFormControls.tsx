@@ -13,6 +13,7 @@ interface SelectProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   optional?: boolean;
+  showRequirement?: boolean;
 }
 
 const fieldClass = "mt-1.5 h-11 w-full rounded-xl border border-[#DED7D1] bg-white px-3.5 text-sm font-semibold text-[#211D1A] outline-none transition focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10 disabled:cursor-not-allowed disabled:bg-[#F5F1EE]";
@@ -23,7 +24,7 @@ export function AgentTextField({ label, value, onChange, placeholder, inputMode 
   return <label className="block text-xs font-bold text-[#413B36]">{label}<span className="ml-1 text-[#D96861]">*</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} inputMode={inputMode} className={fieldClass} /></label>;
 }
 
-export function AgentSearchableSelect({ label, value, options, placeholder, onChange, disabled = false, optional = false }: SelectProps) {
+export function AgentSearchableSelect({ label, value, options, placeholder, onChange, disabled = false, optional = false, showRequirement = true }: SelectProps) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -38,7 +39,7 @@ export function AgentSearchableSelect({ label, value, options, placeholder, onCh
   const choose = (option: AgentSelectOption) => { onChange(option.value); close(); };
 
   return <div ref={rootRef} className="relative text-xs font-bold text-[#413B36]" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget as Node | null)) close(); }}>
-    <label htmlFor={`${listId}-input`}>{label}{optional ? <span className="ml-1 font-medium text-[#9A938D]">Optional</span> : <span className="ml-1 text-[#D96861]">*</span>}</label>
+    <label htmlFor={`${listId}-input`}>{label}{showRequirement && (optional ? <span className="ml-1 font-medium text-[#9A938D]">Optional</span> : <span className="ml-1 text-[#D96861]">*</span>)}</label>
     <div className="relative"><Search className="pointer-events-none absolute left-3.5 top-1/2 mt-0.5 h-3.5 w-3.5 -translate-y-1/2 text-[#9B938D]" /><input id={`${listId}-input`} role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId} disabled={disabled} value={open ? query : selected?.label || ""} placeholder={placeholder} onFocus={() => { setQuery(""); setOpen(true); setActiveIndex(0); }} onChange={(event) => { setQuery(event.target.value); setOpen(true); setActiveIndex(0); }} onKeyDown={(event) => {
       if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); setActiveIndex((index) => Math.min(index + 1, Math.max(filtered.length - 1, 0))); }
       else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex((index) => Math.max(index - 1, 0)); }

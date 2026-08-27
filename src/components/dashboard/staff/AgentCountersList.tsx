@@ -6,6 +6,7 @@ import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/
 import { listAgentAssignments, transitionAssignment } from "@/features/agent-assignment/api";
 import type { AgentAssignment, AssignmentStatus } from "@/features/agent-assignment/agent-assignment-contract";
 import AgentAssignmentDialog from "./AgentAssignmentDialog";
+import { AgentSearchableSelect } from "./AgentFormControls";
 import AgentSummaryKpis, { type AgentSummary } from "./AgentSummaryKpis";
 
 const EMPTY_SUMMARY: AgentSummary = { active: 0, invited: 0, suspended: 0 };
@@ -112,10 +113,10 @@ export default function AgentCountersList() {
     <AgentSummaryKpis summary={summary} loading={summaryLoading} />
 
     <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div className="grid gap-3 md:grid-cols-[1fr_180px_180px]">
-        <label className="relative"><span className="sr-only">Search agents</span><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search by name or Agent ID" className="h-11 w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 text-sm outline-none focus:border-[#7A1D1B]" /></label>
-        <select aria-label="Filter by brand" value={brandId} onChange={(event) => { setBrandId(event.target.value); setPage(1); }} className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm"><option value="">All brands</option>{brands.map((brand) => <option key={brand.id} value={brand.id}>{brand.brandName}</option>)}</select>
-        <select aria-label="Filter by status" value={status} onChange={(event) => { setStatus(event.target.value as AssignmentStatus | ""); setPage(1); }} className="h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm"><option value="">All agents</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+      <div className="grid items-end gap-3 md:grid-cols-[1fr_220px_220px]">
+        <label className="block text-xs font-bold text-[#413B36]">Search<div className="relative"><Search className="absolute left-3.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Name or Agent ID" className="mt-1.5 h-11 w-full rounded-xl border border-[#DED7D1] bg-white pl-10 pr-4 text-sm font-semibold outline-none transition focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10" /></div></label>
+        <AgentSearchableSelect label="Brand" value={brandId} showRequirement={false} placeholder="All brands" options={[{ value: "", label: "All brands" }, ...brands.map((brand) => ({ value: brand.id, label: brand.brandName, group: `${brand.status.toLocaleLowerCase()} brand` }))]} onChange={(value) => { setBrandId(value); setPage(1); }} />
+        <AgentSearchableSelect label="Status" value={status} showRequirement={false} placeholder="All statuses" options={[{ value: "", label: "All statuses" }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))]} onChange={(value) => { setStatus(value as AssignmentStatus | ""); setPage(1); }} />
       </div>
     </div>
 
