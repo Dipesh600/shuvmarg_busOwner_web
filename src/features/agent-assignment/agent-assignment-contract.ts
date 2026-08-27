@@ -118,7 +118,7 @@ export function validateAssignmentDraft(draft: AssignmentDraft): string | null {
   if (draft.accessScope === "SCHEDULES" && draft.allowedScheduleIds.length === 0) return "Choose at least one schedule.";
   const payload = assignmentPayload(draft);
   const values = [payload.permissions.cancelWindowMins, payload.permissions.maxDiscountPct, payload.commission.value];
-  if (values.some((value) => !Number.isFinite(value) || value < 0)) return "Permission and commission values must be valid positive numbers.";
+  if (values.some((value) => !Number.isFinite(value) || value < 0)) return "Enter valid amounts. Values cannot be negative.";
   if (payload.permissions.maxSeatsPerBooking !== null
     && (!Number.isInteger(payload.permissions.maxSeatsPerBooking) || payload.permissions.maxSeatsPerBooking < 1)) {
     return "Maximum seats must be a whole number greater than zero.";

@@ -51,7 +51,7 @@ export function AgentSearchableSelect({ label, value, options, placeholder, onCh
 
 export function AgentBrandMultiSelect({ options, values, onChange }: { options: AgentSelectOption[]; values: string[]; onChange: (values: string[]) => void; }) {
   const remaining = options.filter((option) => !values.includes(option.value));
-  return <div className="sm:col-span-2"><AgentSearchableSelect label="Operator brands" value="" options={remaining} placeholder={values.length ? "Add another brand" : "Select brands, or leave empty"} optional onChange={(value) => { if (value) onChange([...values, value]); }} />
+  return <div className="sm:col-span-2"><AgentSearchableSelect label="Brands this agent works for" value="" options={remaining} placeholder={values.length ? "Add another brand" : "Choose a brand"} optional onChange={(value) => { if (value) onChange([...values, value]); }} />
     {values.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{values.map((value) => { const option = options.find((item) => item.value === value); return <span key={value} className="flex items-center gap-2 rounded-full border border-[#E4C9C3] bg-[#FFF4F1] px-3 py-1.5 text-xs font-bold text-[#7A1D1B]">{option?.label || value}<button type="button" aria-label={`Remove ${option?.label || "brand"}`} onClick={() => onChange(values.filter((item) => item !== value))}><X className="h-3.5 w-3.5" /></button></span>; })}</div>}
   </div>;
 }
