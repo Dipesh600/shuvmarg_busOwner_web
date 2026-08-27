@@ -7,7 +7,7 @@ interface Envelope<T> { success: boolean; data: T; message?: string; }
 interface Page<T> extends Envelope<T[]> { pagination: { page: number; limit: number; total: number; totalPages: number }; }
 
 export type SmsStatus = "QUEUED" | "FAILED" | "NOT_REQUIRED";
-export type AssignmentView = "CURRENT" | "HISTORY";
+export type AssignmentView = "CURRENT" | "HISTORY" | "INVITATIONS" | "STOPPED";
 export interface CreatedAgent {
   agentCode: string;
   name: string;
