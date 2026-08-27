@@ -21,8 +21,8 @@ async function read<T>(response: Response, fallback: string): Promise<T> {
   return payload as T;
 }
 
-export async function listAgentAssignments(filters: { brandId?: string; status?: AssignmentStatus; page?: number } = {}) {
-  const query = new URLSearchParams({ limit: "50", page: String(filters.page || 1) });
+export async function listAgentAssignments(filters: { brandId?: string; status?: AssignmentStatus; page?: number; limit?: number } = {}) {
+  const query = new URLSearchParams({ limit: String(filters.limit || 50), page: String(filters.page || 1) });
   if (filters.brandId) query.set("brandId", filters.brandId);
   if (filters.status) query.set("status", filters.status);
   return read<Page<AgentAssignment>>(
