@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus, Search, ShieldAlert, Store } from "lucide-react";
 import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/api-brands";
-import { listAgentAssignments, transitionAssignment } from "@/features/agent-assignment/api";
+import { listAgentAssignments, transitionAssignment, type AssignmentView } from "@/features/agent-assignment/api";
 import type { AgentAssignment, AssignmentStatus } from "@/features/agent-assignment/agent-assignment-contract";
 import AgentAssignmentDialog from "./AgentAssignmentDialog";
 import { AgentSearchableSelect } from "./AgentFormControls";
@@ -19,6 +19,14 @@ const STATUS_STYLES: Record<AssignmentStatus, string> = {
   SUSPENDED: "bg-orange-100 text-orange-800", REVOKED: "bg-neutral-200 text-neutral-700",
   DECLINED: "bg-red-100 text-red-700", EXPIRED: "bg-neutral-100 text-neutral-600",
 };
+type AgentListSelection = AssignmentStatus | AssignmentView;
+const LIST_FILTERS: { value: AgentListSelection; label: string }[] = [
+  { value: "CURRENT", label: "Current agents" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "INVITED", label: "Waiting for reply" },
+  { value: "SUSPENDED", label: "Paused" },
+  { value: "HISTORY", label: "History" },
+];
 const ACCESS_LABELS = { ALL_BUSES: "All trips", ROUTES: "Selected routes", SCHEDULES: "Selected departures" } as const;
 
 const commissionLabel = (row: AgentAssignment) => {
@@ -33,7 +41,7 @@ export default function AgentCountersList() {
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [summary, setSummary] = useState<AgentSummary>(EMPTY_SUMMARY);
   const [brandId, setBrandId] = useState("");
-  const [status, setStatus] = useState<AssignmentStatus | "">("");
+  const [status, setStatus] = useState<AgentListSelection>("CURRENT");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -46,7 +54,12 @@ export default function AgentCountersList() {
   const loadAssignments = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const result = await listAgentAssignments({ brandId: brandId || undefined, status: status || undefined, page });
+      const groupedView = status === "CURRENT" || status === "HISTORY";
+      const result = await listAgentAssignments({
+        brandId: brandId || undefined,
+        ...(groupedView ? { view: status } : { status }),
+        page,
+      });
       setAssignments(result.data);
       const pageCount = Math.max(1, result.pagination.totalPages);
       setTotalPages(pageCount);
@@ -89,7 +102,7 @@ export default function AgentCountersList() {
     return assignments.filter((row) => [row.agent.name, row.agent.agentCode, row.agent.businessName, row.brand.name]
       .some((value) => value?.toLowerCase().includes(query)));
   }, [assignments, searchQuery]);
-  const isFiltered = Boolean(searchQuery.trim() || brandId || status);
+  const isFiltered = Boolean(searchQuery.trim() || brandId || status !== "CURRENT");
 
   const refresh = async () => Promise.all([loadAssignments(), loadSummary()]);
   const act = async (assignment: AgentAssignment, action: "suspend" | "reinstate" | "revoke") => {
@@ -116,7 +129,7 @@ export default function AgentCountersList() {
       <div className="grid items-end gap-3 md:grid-cols-[1fr_220px_220px]">
         <label className="block text-xs font-bold text-[#413B36]">Search<div className="relative"><Search className="absolute left-3.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Name or Agent ID" className="mt-1.5 h-11 w-full rounded-xl border border-[#DED7D1] bg-white pl-10 pr-4 text-sm font-semibold outline-none transition focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10" /></div></label>
         <AgentSearchableSelect label="Brand" value={brandId} showRequirement={false} placeholder="All brands" options={[{ value: "", label: "All brands" }, ...brands.map((brand) => ({ value: brand.id, label: brand.brandName, group: `${brand.status.toLocaleLowerCase()} brand` }))]} onChange={(value) => { setBrandId(value); setPage(1); }} />
-        <AgentSearchableSelect label="Status" value={status} showRequirement={false} placeholder="All statuses" options={[{ value: "", label: "All statuses" }, ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))]} onChange={(value) => { setStatus(value as AssignmentStatus | ""); setPage(1); }} />
+        <AgentSearchableSelect label="Status" value={status} showRequirement={false} placeholder="Current agents" options={LIST_FILTERS} onChange={(value) => { setStatus(value as AgentListSelection); setPage(1); }} />
       </div>
     </div>
 

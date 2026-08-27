@@ -7,6 +7,7 @@ interface Envelope<T> { success: boolean; data: T; message?: string; }
 interface Page<T> extends Envelope<T[]> { pagination: { page: number; limit: number; total: number; totalPages: number }; }
 
 export type SmsStatus = "QUEUED" | "FAILED" | "NOT_REQUIRED";
+export type AssignmentView = "CURRENT" | "HISTORY";
 export interface CreatedAgent {
   agentCode: string;
   name: string;
@@ -21,10 +22,11 @@ async function read<T>(response: Response, fallback: string): Promise<T> {
   return payload as T;
 }
 
-export async function listAgentAssignments(filters: { brandId?: string; status?: AssignmentStatus; page?: number; limit?: number } = {}) {
+export async function listAgentAssignments(filters: { brandId?: string; status?: AssignmentStatus; view?: AssignmentView; page?: number; limit?: number } = {}) {
   const query = new URLSearchParams({ limit: String(filters.limit || 50), page: String(filters.page || 1) });
   if (filters.brandId) query.set("brandId", filters.brandId);
   if (filters.status) query.set("status", filters.status);
+  if (filters.view) query.set("view", filters.view);
   return read<Page<AgentAssignment>>(
     await authFetch(`/busowner/agents/assignments?${query.toString()}`),
     "Failed to load agents",

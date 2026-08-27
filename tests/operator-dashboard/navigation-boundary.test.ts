@@ -46,12 +46,15 @@ test("staff workspace uses the real agent-assignment API and no fabricated count
   assert.match(agents, /filters\("ACTIVE"\)/);
   assert.match(agents, /filters\("INVITED"\)/);
   assert.match(agents, /filters\("SUSPENDED"\)/);
+  assert.match(agents, /Current agents/);
+  assert.match(agents, /History/);
   assert.match(agents, /AgentSearchableSelect/);
   assert.doesNotMatch(agents, /<select/);
   assert.match(workspace, /Ticket agents/);
   assert.match(workspace, /Crew/);
   assert.equal(existsSync(join(staffRoot, "StaffSummaryKpis.tsx")), false);
   assert.match(api, /\/busowner\/agents\/assignments/);
+  assert.match(api, /query\.set\("view"/);
   assert.doesNotMatch(agents, /sample|fabricated|preview only/i);
 });
 
