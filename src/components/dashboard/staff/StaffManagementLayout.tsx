@@ -22,6 +22,7 @@ export default function StaffManagementLayout() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [agentCount, setAgentCount] = useState(0);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -33,17 +34,17 @@ export default function StaffManagementLayout() {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">Staff &amp; agents</h1>
             <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-              The workspace is ready for crew and partner-agent management. Account creation and operational access remain unavailable until the staff service is connected.
+              Invite ticket agents, control what they may sell, and pause or end access without affecting their identity.
             </p>
           </div>
         </div>
 
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <p className="text-sm font-bold">Frontend preview only</p>
-            <p className="mt-0.5 text-xs leading-5 text-amber-800">
-              This page does not create staff accounts, grant permissions, or show fabricated operational records.
+            <p className="text-sm font-bold">Agent access is consent-based</p>
+            <p className="mt-0.5 text-xs leading-5 text-emerald-800">
+              An invitation grants nothing until the agent accepts it. Suspended and revoked assignments cannot start new sales.
             </p>
           </div>
         </div>
@@ -94,7 +95,7 @@ export default function StaffManagementLayout() {
         )}
       </section>
 
-      <StaffSummaryKpis summary={EMPTY_SUMMARY} partnerAgentsCount={0} />
+      <StaffSummaryKpis summary={{ ...EMPTY_SUMMARY, agentsCount: agentCount }} partnerAgentsCount={agentCount} />
 
       {activeTab === "crew" ? (
         <CrewMembersList
@@ -108,7 +109,7 @@ export default function StaffManagementLayout() {
           actionsDisabled
         />
       ) : (
-        <AgentCountersList searchQuery={searchQuery} />
+        <AgentCountersList searchQuery={searchQuery} onCountChange={setAgentCount} />
       )}
     </div>
   );

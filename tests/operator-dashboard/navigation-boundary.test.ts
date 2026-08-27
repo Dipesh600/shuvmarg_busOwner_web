@@ -29,13 +29,21 @@ test("business profile actions do not link to retired route or schedule pages", 
   assert.match(operatorCard, /href="\/dashboard\/trips"/);
 });
 
-test("frontend-only staff workspace contains no staff API or fabricated counters", () => {
+test("staff workspace uses the real agent-assignment API and no fabricated counters", () => {
   const staffRoot = join(projectRoot, "src/components/dashboard/staff");
   const agents = readFileSync(join(staffRoot, "AgentCountersList.tsx"), "utf8");
+  const api = readFileSync(
+    join(projectRoot, "src/features/agent-assignment/api.ts"),
+    "utf8"
+  );
 
   assert.equal(existsSync(join(staffRoot, "staff-api.ts")), false);
   assert.doesNotMatch(agents, /DEFAULT_PARTNER_COUNTERS/);
-  assert.match(agents, /No sample or fabricated counters are shown/);
+  assert.match(agents, /listAgentAssignments/);
+  assert.match(agents, /transitionAssignment/);
+  assert.match(agents, /salesCount/);
+  assert.match(api, /\/busowner\/agents\/assignments/);
+  assert.doesNotMatch(agents, /sample|fabricated|preview only/i);
 });
 
 test("business verification submits exactly the three backend-supported documents", () => {
