@@ -46,8 +46,9 @@ test("staff workspace uses the real agent-assignment API and no fabricated count
   assert.match(agents, /filters\("ACTIVE"\)/);
   assert.match(agents, /filters\("INVITED"\)/);
   assert.match(agents, /filters\("SUSPENDED"\)/);
-  assert.match(agents, /Current agents/);
-  assert.match(agents, /History/);
+  assert.match(agents, /All agents and open invites/);
+  assert.match(agents, /Ended, declined or expired/);
+  assert.match(agents, /Agent accepted your invite/);
   assert.match(agents, /AgentSearchableSelect/);
   assert.doesNotMatch(agents, /<select/);
   assert.match(workspace, /Ticket agents/);

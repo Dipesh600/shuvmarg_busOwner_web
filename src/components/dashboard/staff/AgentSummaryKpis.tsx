@@ -7,9 +7,9 @@ export interface AgentSummary {
 }
 
 const cards = [
-  { key: "active", label: "Active access", help: "Invitation accepted", icon: UserCheck, tone: "bg-emerald-50 text-emerald-700" },
-  { key: "invited", label: "Invites waiting", help: "Not accepted yet", icon: Clock3, tone: "bg-amber-50 text-amber-700" },
-  { key: "suspended", label: "Paused access", help: "Selling is stopped", icon: PauseCircle, tone: "bg-neutral-100 text-neutral-600" },
+  { key: "active", label: "Invite accepted", help: "Access is not paused", icon: UserCheck, tone: "bg-emerald-50 text-emerald-700" },
+  { key: "invited", label: "Waiting for acceptance", help: "Agent has 7 days to accept", icon: Clock3, tone: "bg-amber-50 text-amber-700" },
+  { key: "suspended", label: "Access paused by you", help: "Agent cannot sell for you", icon: PauseCircle, tone: "bg-neutral-100 text-neutral-600" },
 ] as const;
 
 export default function AgentSummaryKpis({ summary, loading = false }: { summary: AgentSummary; loading?: boolean }) {

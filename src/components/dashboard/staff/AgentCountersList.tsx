@@ -11,8 +11,8 @@ import AgentSummaryKpis, { type AgentSummary } from "./AgentSummaryKpis";
 
 const EMPTY_SUMMARY: AgentSummary = { active: 0, invited: 0, suspended: 0 };
 const STATUS_LABELS: Record<AssignmentStatus, string> = {
-  ACTIVE: "Active", INVITED: "Waiting for reply", SUSPENDED: "Paused",
-  REVOKED: "Ended", DECLINED: "Declined", EXPIRED: "Invite expired",
+  ACTIVE: "Invite accepted", INVITED: "Waiting for agent to accept", SUSPENDED: "Access paused by you",
+  REVOKED: "Access ended by you", DECLINED: "Agent declined invite", EXPIRED: "Invite expired",
 };
 const STATUS_STYLES: Record<AssignmentStatus, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-800", INVITED: "bg-amber-100 text-amber-800",
@@ -21,11 +21,11 @@ const STATUS_STYLES: Record<AssignmentStatus, string> = {
 };
 type AgentListSelection = AssignmentStatus | AssignmentView;
 const LIST_FILTERS: { value: AgentListSelection; label: string }[] = [
-  { value: "CURRENT", label: "Current agents" },
-  { value: "ACTIVE", label: "Active" },
-  { value: "INVITED", label: "Waiting for reply" },
-  { value: "SUSPENDED", label: "Paused" },
-  { value: "HISTORY", label: "History" },
+  { value: "CURRENT", label: "All agents and open invites" },
+  { value: "ACTIVE", label: "Agent accepted your invite" },
+  { value: "INVITED", label: "Waiting for agent to accept" },
+  { value: "SUSPENDED", label: "Access paused by you" },
+  { value: "HISTORY", label: "Ended, declined or expired" },
 ];
 const ACCESS_LABELS = { ALL_BUSES: "All trips", ROUTES: "Selected routes", SCHEDULES: "Selected departures" } as const;
 
@@ -129,7 +129,7 @@ export default function AgentCountersList() {
       <div className="grid items-end gap-3 md:grid-cols-[1fr_220px_220px]">
         <label className="block text-xs font-bold text-[#413B36]">Search<div className="relative"><Search className="absolute left-3.5 top-1/2 mt-0.5 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Name or Agent ID" className="mt-1.5 h-11 w-full rounded-xl border border-[#DED7D1] bg-white pl-10 pr-4 text-sm font-semibold outline-none transition focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10" /></div></label>
         <AgentSearchableSelect label="Brand" value={brandId} showRequirement={false} placeholder="All brands" options={[{ value: "", label: "All brands" }, ...brands.map((brand) => ({ value: brand.id, label: brand.brandName, group: `${brand.status.toLocaleLowerCase()} brand` }))]} onChange={(value) => { setBrandId(value); setPage(1); }} />
-        <AgentSearchableSelect label="Status" value={status} showRequirement={false} placeholder="Current agents" options={LIST_FILTERS} onChange={(value) => { setStatus(value as AgentListSelection); setPage(1); }} />
+        <AgentSearchableSelect label="Show" value={status} showRequirement={false} placeholder="All agents and open invites" options={LIST_FILTERS} onChange={(value) => { setStatus(value as AgentListSelection); setPage(1); }} />
       </div>
     </div>
 
