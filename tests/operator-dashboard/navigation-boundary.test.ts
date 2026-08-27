@@ -32,6 +32,7 @@ test("business profile actions do not link to retired route or schedule pages", 
 test("staff workspace uses the real agent-assignment API and no fabricated counters", () => {
   const staffRoot = join(projectRoot, "src/components/dashboard/staff");
   const agents = readFileSync(join(staffRoot, "AgentCountersList.tsx"), "utf8");
+  const dialog = readFileSync(join(staffRoot, "AgentAssignmentDialog.tsx"), "utf8");
   const workspace = readFileSync(join(staffRoot, "StaffManagementLayout.tsx"), "utf8");
   const api = readFileSync(
     join(projectRoot, "src/features/agent-assignment/api.ts"),
@@ -58,6 +59,8 @@ test("staff workspace uses the real agent-assignment API and no fabricated count
   assert.equal(existsSync(join(staffRoot, "AgentSummaryKpis.tsx")), false);
   assert.match(api, /\/busowner\/agents\/assignments/);
   assert.match(api, /query\.set\("view"/);
+  assert.match(dialog, /Create agent & send/);
+  assert.match(dialog, /Promise\.allSettled\(drafts\.map\(inviteAgent\)\)/);
   assert.doesNotMatch(agents, /sample|fabricated|preview only/i);
 });
 

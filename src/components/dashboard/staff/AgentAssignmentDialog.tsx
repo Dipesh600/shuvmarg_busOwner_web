@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LoaderCircle, Search, UserPlus, X } from "lucide-react";
+import { LoaderCircle, Search, X } from "lucide-react";
 import type { OperatorBrand } from "@/features/fleet-registration/api-brands";
 import {
   createAgent, inviteAgent, listAssignmentOptions, lookupAgent,
@@ -86,29 +86,6 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
     finally { setBusy(false); }
   };
 
-  const createNewAgent = async () => {
-    if (Object.values(createFields).some((value) => !value.trim())) {
-      return setError("Name, phone, outlet type, district, municipality and place are required.");
-    }
-    setBusy(true); setError("");
-    try {
-      const created = await createAgent({
-        ...createFields,
-        brandId: selectedBrandIds.length === 1 ? selectedBrandIds[0] : undefined,
-      });
-      setIdentityCreated(true);
-      const smsStatus = created.smsStatus
-        || (created.smsSent ? "QUEUED" : created.requiresAgentActivation ? "FAILED" : "NOT_REQUIRED");
-      setCreatedMessageTone(smsStatus === "FAILED" ? "warning" : "success");
-      setCreatedMessage(smsStatus === "QUEUED"
-        ? "Agent created. Login details were sent by SMS and may take a few minutes to arrive."
-        : smsStatus === "FAILED"
-          ? "Agent created, but we could not send the login SMS. Please contact Shuvmarg support before the agent signs in."
-          : "This person already has a Shuvmarg account, so no new SMS was needed. They can use their current login.");
-      await findAgent(created.agentCode, true);
-    } catch (failure) { setError((failure as Error).message); setBusy(false); }
-  };
-
   const toggleScopeId = (id: string) => {
     const key = draft.accessScope === "ROUTES" ? "allowedRouteIds" : "allowedScheduleIds";
     const values = draft[key];
@@ -120,20 +97,45 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
       if (identityCreated) return onClose();
       return setError("Choose at least one operator brand to send an invitation.");
     }
-    const invitationDrafts = assignmentDraftsForBrands(draft, selectedBrandIds);
+    const creatingIdentity = mode === "create" && !preview;
+    if (creatingIdentity && Object.values(createFields).some((value) => !value.trim())) {
+      return setError("Name, phone, outlet type, district, municipality and place are required.");
+    }
+    const draftToValidate = creatingIdentity ? { ...draft, agentCode: "pending-agent-code" } : draft;
+    const invitationDrafts = assignmentDraftsForBrands(draftToValidate, selectedBrandIds);
     const validation = validateAssignmentDraft(invitationDrafts[0]);
     if (validation) return setError(validation);
     setBusy(true); setError("");
     try {
-      const results = await Promise.allSettled(invitationDrafts.map(inviteAgent));
-      const failedIds = invitationDrafts.filter((_, index) => results[index].status === "rejected").map((item) => item.brandId);
-      onInvited();
+      let agentCode = draft.agentCode;
+      if (creatingIdentity) {
+        const created = await createAgent({
+          ...createFields,
+          brandId: selectedBrandIds.length === 1 ? selectedBrandIds[0] : undefined,
+        });
+        agentCode = created.agentCode;
+        setIdentityCreated(true);
+        patchDraft("agentCode", agentCode);
+        const smsStatus = created.smsStatus
+          || (created.smsSent ? "QUEUED" : created.requiresAgentActivation ? "FAILED" : "NOT_REQUIRED");
+        setCreatedMessageTone(smsStatus === "FAILED" ? "warning" : "success");
+        setCreatedMessage(smsStatus === "QUEUED"
+          ? "Agent account created and login details queued by SMS."
+          : smsStatus === "FAILED"
+            ? "Agent account created, but the login SMS failed. Contact Shuvmarg support."
+            : "The existing Shuvmarg login will be used; no new SMS was needed.");
+      }
+      const drafts = assignmentDraftsForBrands({ ...draft, agentCode }, selectedBrandIds);
+      const results = await Promise.allSettled(drafts.map(inviteAgent));
+      const failedIds = drafts.filter((_, index) => results[index].status === "rejected").map((item) => item.brandId);
+      if (failedIds.length < drafts.length) onInvited();
       if (failedIds.length === 0) return onClose();
       changeBrands(failedIds);
+      if (creatingIdentity) await findAgent(agentCode, true);
       const firstFailure = results.find((result) => result.status === "rejected");
       const detail = firstFailure?.status === "rejected" && firstFailure.reason instanceof Error
         ? firstFailure.reason.message : "Try the remaining brands again.";
-      setError(`${invitationDrafts.length - failedIds.length} invitation(s) sent; ${failedIds.length} failed. ${detail}`);
+      setError(`${drafts.length - failedIds.length} invitation(s) sent; ${failedIds.length} failed. ${detail}`);
     } catch (failure) { setError((failure as Error).message); }
     finally { setBusy(false); }
   };
@@ -155,13 +157,13 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
 
           {!preview && mode === "code" && <section className="rounded-2xl border border-neutral-200 bg-white p-5"><label className="text-sm font-bold text-neutral-700">Agent ID</label><div className="mt-2 flex gap-2"><input value={draft.agentCode} onChange={(event) => patchDraft("agentCode", event.target.value)} placeholder="SM-AG-…" className={inputClass} /><button type="button" onClick={() => void findAgent()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white disabled:opacity-50"><Search className="h-4 w-4" />Find</button></div></section>}
 
-          {!preview && mode === "create" && <><AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} /><button type="button" onClick={() => void createNewAgent()} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] text-sm font-bold text-white disabled:opacity-50"><UserPlus className="h-4 w-4" />Create agent</button></>}
+          {!preview && mode === "create" && <AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} />}
 
           {createdMessage && <p className={`rounded-xl border p-3 text-sm ${createdMessageTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{createdMessage}</p>}
           {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><p className="mt-1 font-mono text-sm text-emerald-800">{preview.agentCode}</p><p className="mt-2 text-xs text-neutral-600">{outletLabel(preview.outletType)} · {preview.municipality || preview.district || "Location unavailable"} · {verificationLabel(preview.kycStatus)}</p></section>}
           {preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
-          {preview && selectedBrandIds.length > 0 && <>
+          {(preview || mode === "create") && selectedBrandIds.length > 0 && <>
             <section className="rounded-2xl border border-neutral-200 bg-white p-5"><h3 className="font-bold text-neutral-900">Where can this agent sell?</h3><p className="mt-1 text-sm text-neutral-500">Choose how much of your trip list they can use.</p><div className="mt-3 grid gap-2 sm:grid-cols-3">{([['ALL_BUSES','All trips','Every available trip'],['ROUTES','Selected routes','Only routes you choose'],['SCHEDULES','Selected departures','Only departures you choose']] as const).map(([value,label,help]) => { const disabled = selectedBrandIds.length !== 1 && value !== "ALL_BUSES"; return <button key={value} type="button" disabled={disabled} onClick={() => setDraft((current) => ({ ...current, accessScope: value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`rounded-xl border px-3 py-3 text-left disabled:cursor-not-allowed disabled:opacity-40 ${draft.accessScope === value ? "border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B]" : "border-neutral-200 text-neutral-600"}`}><span className="block text-sm font-bold">{label}</span><span className="mt-1 block text-xs font-normal leading-4">{help}</span></button>; })}</div>{selectedBrandIds.length > 1 && <p className="mt-3 text-xs text-neutral-500">With several brands selected, this agent gets all trips from each brand. To limit routes or departures, invite them to one brand at a time.</p>}
               {draft.accessScope !== "ALL_BUSES" && <div className="mt-4 max-h-48 space-y-2 overflow-y-auto rounded-xl bg-neutral-50 p-3">{scopeOptions.length === 0 ? <p className="text-sm text-amber-700">No routes or departures are available for this brand yet.</p> : scopeOptions.map((option) => { const selected = (draft.accessScope === "ROUTES" ? draft.allowedRouteIds : draft.allowedScheduleIds).includes(option.id); const label = "departureTime" in option ? `${option.routeName || "Route"} · ${option.bus.number || option.bus.name || "Bus"} · ${option.departureTime}` : `${option.name}${option.code ? ` · ${option.code}` : ""}`; return <label key={option.id} className="flex cursor-pointer items-center gap-3 rounded-lg bg-white p-3 text-sm"><input type="checkbox" checked={selected} onChange={() => toggleScopeId(option.id)} /><span>{label}</span></label>; })}</div>}
             </section>
@@ -177,7 +179,7 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
           </>}
 
           {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {preview && <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-xl border border-neutral-200 px-5 py-3 text-sm font-bold">Cancel</button><button type="button" onClick={() => void submit()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{selectedBrandIds.length === 0 && identityCreated ? "Done" : `Send ${selectedBrandIds.length > 1 ? `${selectedBrandIds.length} invitations` : "invitation"}`}</button></div>}
+          {(preview || mode === "create") && <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-xl border border-neutral-200 px-5 py-3 text-sm font-bold">Cancel</button><button type="button" onClick={() => void submit()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{selectedBrandIds.length === 0 && identityCreated ? "Done" : mode === "create" && !preview ? `Create agent & send ${selectedBrandIds.length > 1 ? `${selectedBrandIds.length} invitations` : "invitation"}` : `Send ${selectedBrandIds.length > 1 ? `${selectedBrandIds.length} invitations` : "invitation"}`}</button></div>}
         </div>
       </div>
     </div>
