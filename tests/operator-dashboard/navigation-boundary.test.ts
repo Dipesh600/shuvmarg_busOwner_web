@@ -50,6 +50,8 @@ test("staff workspace uses the real agent-assignment API and no fabricated count
   assert.match(agents, /Active agents/);
   assert.match(agents, /Invitations/);
   assert.match(agents, /Paused & removed/);
+  assert.match(agents, /Add or connect agent/);
+  assert.match(agents, /Connect existing agent/);
   assert.match(agents, /role="tablist"/);
   assert.match(agents, /AgentSearchableSelect/);
   assert.doesNotMatch(agents, /<select/);
