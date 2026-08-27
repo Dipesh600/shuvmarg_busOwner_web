@@ -117,3 +117,15 @@ export function validateAssignmentDraft(draft: AssignmentDraft): string | null {
   if (draft.commissionMode === "PERCENT" && payload.commission.value > 100) return "Percentage commission cannot exceed 100%.";
   return null;
 }
+
+export function assignmentDraftsForBrands(draft: AssignmentDraft, brandIds: string[]): AssignmentDraft[] {
+  const ids = [...new Set(brandIds.filter(Boolean))];
+  const isMultiBrand = ids.length > 1;
+  return ids.map((brandId) => ({
+    ...draft,
+    brandId,
+    accessScope: isMultiBrand ? "ALL_BUSES" : draft.accessScope,
+    allowedRouteIds: isMultiBrand ? [] : draft.allowedRouteIds,
+    allowedScheduleIds: isMultiBrand ? [] : draft.allowedScheduleIds,
+  }));
+}

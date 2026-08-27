@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   EMPTY_ASSIGNMENT_DRAFT,
+  assignmentDraftsForBrands,
   assignmentPayload,
   validateAssignmentDraft,
 } from "../../src/features/agent-assignment/agent-assignment-contract.ts";
@@ -48,4 +49,21 @@ test("cancellation window is zeroed when cancellation permission is off", () => 
   draft.canCancel = false;
   draft.cancelWindowMins = "120";
   assert.equal(assignmentPayload(draft).permissions.cancelWindowMins, 0);
+});
+
+test("multiple brands create one fail-closed all-bus invitation per unique brand", () => {
+  const draft = valid();
+  draft.accessScope = "ROUTES";
+  draft.allowedRouteIds = ["variant-from-one-brand"];
+  const invitations = assignmentDraftsForBrands(draft, ["brand-a", "brand-b", "brand-a"]);
+  assert.deepEqual(invitations.map((item) => item.brandId), ["brand-a", "brand-b"]);
+  for (const invitation of invitations) {
+    assert.equal(invitation.accessScope, "ALL_BUSES");
+    assert.deepEqual(invitation.allowedRouteIds, []);
+    assert.deepEqual(invitation.allowedScheduleIds, []);
+  }
+});
+
+test("no selected brand creates no assignment invitation", () => {
+  assert.deepEqual(assignmentDraftsForBrands(valid(), []), []);
 });

@@ -7,28 +7,29 @@ import {
   createAgent, inviteAgent, listAssignmentOptions, lookupAgent,
 } from "@/features/agent-assignment/api";
 import {
-  EMPTY_ASSIGNMENT_DRAFT, validateAssignmentDraft,
+  EMPTY_ASSIGNMENT_DRAFT, assignmentDraftsForBrands, validateAssignmentDraft,
   type AgentPreview, type AssignmentDraft, type AssignmentOptions,
 } from "@/features/agent-assignment/agent-assignment-contract";
+import AgentCreateFields, { type CreateAgentFields } from "./AgentCreateFields";
+import { AgentBrandMultiSelect, AgentSearchableSelect } from "./AgentFormControls";
 
 interface Props { brands: OperatorBrand[]; onClose: () => void; onInvited: () => void; }
 type SourceMode = "code" | "create";
 
-const OUTLETS = ["TICKET_COUNTER", "TRAVEL_AGENCY", "MOBILE_SHOP", "HOTEL", "SOLO"];
 const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-[#7A1D1B]";
 
 export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Props) {
   const [mode, setMode] = useState<SourceMode>("code");
-  const [draft, setDraft] = useState<AssignmentDraft>({
-    ...EMPTY_ASSIGNMENT_DRAFT, brandId: brands.find((brand) => brand.status === "ACTIVE")?.id || "",
-  });
+  const [draft, setDraft] = useState<AssignmentDraft>({ ...EMPTY_ASSIGNMENT_DRAFT });
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
   const [preview, setPreview] = useState<AgentPreview | null>(null);
   const [options, setOptions] = useState<AssignmentOptions | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [createdMessage, setCreatedMessage] = useState("");
-  const [createFields, setCreateFields] = useState({
-    name: "", phone: "", outletType: "SOLO", district: "", municipality: "", placeName: "",
+  const [identityCreated, setIdentityCreated] = useState(false);
+  const [createFields, setCreateFields] = useState<CreateAgentFields>({
+    name: "", phone: "", outletType: "TICKET_COUNTER", district: "", municipality: "", placeName: "",
   });
 
   useEffect(() => {
@@ -49,6 +50,17 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
+  const changeBrands = (ids: string[]) => {
+    setSelectedBrandIds(ids);
+    setDraft((current) => ({
+      ...current,
+      brandId: ids.length === 1 ? ids[0] : "",
+      accessScope: ids.length === 1 ? current.accessScope : "ALL_BUSES",
+      allowedRouteIds: [],
+      allowedScheduleIds: [],
+    }));
+  };
+
   const findAgent = async (code = draft.agentCode, preserveCreatedMessage = false) => {
     if (!code.trim()) return setError("Enter the agent ID.");
     setBusy(true); setError("");
@@ -67,10 +79,16 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
     }
     setBusy(true); setError("");
     try {
-      const created = await createAgent({ ...createFields, brandId: draft.brandId || undefined });
+      const created = await createAgent({
+        ...createFields,
+        brandId: selectedBrandIds.length === 1 ? selectedBrandIds[0] : undefined,
+      });
+      setIdentityCreated(true);
       setCreatedMessage(created.smsSent
         ? "Agent created and activation details sent by SMS. Set the assignment terms below."
-        : "Agent created. SMS was not confirmed, so share the Agent ID directly.");
+        : created.requiresAgentActivation
+          ? "Agent created, but SMS delivery was not confirmed. The account still requires activation."
+          : "Agent access was added to the existing account. Set the assignment terms below.");
       await findAgent(created.agentCode, true);
     } catch (failure) { setError((failure as Error).message); setBusy(false); }
   };
@@ -82,11 +100,25 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
   };
 
   const submit = async () => {
-    const validation = validateAssignmentDraft(draft);
+    if (selectedBrandIds.length === 0) {
+      if (identityCreated) return onClose();
+      return setError("Choose at least one operator brand to send an invitation.");
+    }
+    const invitationDrafts = assignmentDraftsForBrands(draft, selectedBrandIds);
+    const validation = validateAssignmentDraft(invitationDrafts[0]);
     if (validation) return setError(validation);
     setBusy(true); setError("");
-    try { await inviteAgent(draft); onInvited(); onClose(); }
-    catch (failure) { setError((failure as Error).message); }
+    try {
+      const results = await Promise.allSettled(invitationDrafts.map(inviteAgent));
+      const failedIds = invitationDrafts.filter((_, index) => results[index].status === "rejected").map((item) => item.brandId);
+      onInvited();
+      if (failedIds.length === 0) return onClose();
+      changeBrands(failedIds);
+      const firstFailure = results.find((result) => result.status === "rejected");
+      const detail = firstFailure?.status === "rejected" && firstFailure.reason instanceof Error
+        ? firstFailure.reason.message : "Try the remaining brands again.";
+      setError(`${invitationDrafts.length - failedIds.length} invitation(s) sent; ${failedIds.length} failed. ${detail}`);
+    } catch (failure) { setError((failure as Error).message); }
     finally { setBusy(false); }
   };
 
@@ -103,21 +135,18 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
             {(["code", "create"] as SourceMode[]).map((value) => <button key={value} type="button" onClick={() => { setMode(value); setPreview(null); setError(""); }} className={`rounded-xl px-4 py-2.5 text-sm font-bold ${mode === value ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500"}`}>{value === "code" ? "Use Agent ID" : "Create new agent"}</button>)}
           </div>
 
-          <label className="block text-sm font-bold text-neutral-700">Operator brand<select value={draft.brandId} onChange={(event) => setDraft((current) => ({ ...current, brandId: event.target.value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`${inputClass} mt-2`}><option value="">Choose a brand</option>{brands.filter((brand) => brand.status === "ACTIVE").map((brand) => <option key={brand.id} value={brand.id}>{brand.brandName}</option>)}</select></label>
+          {mode === "code" && !preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
           {!preview && mode === "code" && <section className="rounded-2xl border border-neutral-200 bg-white p-5"><label className="text-sm font-bold text-neutral-700">Agent ID</label><div className="mt-2 flex gap-2"><input value={draft.agentCode} onChange={(event) => patchDraft("agentCode", event.target.value)} placeholder="SM-AG-…" className={inputClass} /><button type="button" onClick={() => void findAgent()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white disabled:opacity-50"><Search className="h-4 w-4" />Find</button></div></section>}
 
-          {!preview && mode === "create" && <section className="grid gap-4 rounded-2xl border border-neutral-200 bg-white p-5 sm:grid-cols-2">
-            {[['name','Full name'],['phone','Mobile number'],['district','District'],['municipality','Municipality'],['placeName','Place or locality']].map(([key,label]) => <label key={key} className="text-sm font-bold text-neutral-700">{label}<input value={createFields[key as keyof typeof createFields]} onChange={(event) => setCreateFields((current) => ({ ...current, [key]: event.target.value }))} className={`${inputClass} mt-2`} /></label>)}
-            <label className="text-sm font-bold text-neutral-700">Outlet type<select value={createFields.outletType} onChange={(event) => setCreateFields((current) => ({ ...current, outletType: event.target.value }))} className={`${inputClass} mt-2`}>{OUTLETS.map((outlet) => <option key={outlet} value={outlet}>{outlet.replaceAll("_", " ")}</option>)}</select></label>
-            <button type="button" onClick={() => void createNewAgent()} disabled={busy || !draft.brandId} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] text-sm font-bold text-white disabled:opacity-50 sm:col-span-2"><UserPlus className="h-4 w-4" />Create identity</button>
-          </section>}
+          {!preview && mode === "create" && <><AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} /><button type="button" onClick={() => void createNewAgent()} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] text-sm font-bold text-white disabled:opacity-50"><UserPlus className="h-4 w-4" />Create identity</button></>}
 
           {createdMessage && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{createdMessage}</p>}
           {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><p className="mt-1 font-mono text-sm text-emerald-800">{preview.agentCode}</p><p className="mt-2 text-xs text-neutral-600">{preview.outletType?.replaceAll("_", " ") || "Outlet not set"} · {preview.municipality || preview.district || "Location unavailable"} · {preview.kycStatus.replaceAll("_", " ")}</p></section>}
+          {preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
-          {preview && <>
-            <section className="rounded-2xl border border-neutral-200 bg-white p-5"><h3 className="font-bold text-neutral-900">Inventory access</h3><div className="mt-3 grid gap-2 sm:grid-cols-3">{([['ALL_BUSES','All buses'],['ROUTES','Specific routes'],['SCHEDULES','Specific schedules']] as const).map(([value,label]) => <button key={value} type="button" onClick={() => setDraft((current) => ({ ...current, accessScope: value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`rounded-xl border px-3 py-3 text-sm font-bold ${draft.accessScope === value ? "border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B]" : "border-neutral-200 text-neutral-600"}`}>{label}</button>)}</div>
+          {preview && selectedBrandIds.length > 0 && <>
+            <section className="rounded-2xl border border-neutral-200 bg-white p-5"><h3 className="font-bold text-neutral-900">Inventory access</h3><div className="mt-3 grid gap-2 sm:grid-cols-3">{([['ALL_BUSES','All buses'],['ROUTES','Specific routes'],['SCHEDULES','Specific schedules']] as const).map(([value,label]) => { const disabled = selectedBrandIds.length !== 1 && value !== "ALL_BUSES"; return <button key={value} type="button" disabled={disabled} onClick={() => setDraft((current) => ({ ...current, accessScope: value, allowedRouteIds: [], allowedScheduleIds: [] }))} className={`rounded-xl border px-3 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40 ${draft.accessScope === value ? "border-[#7A1D1B] bg-[#7A1D1B]/5 text-[#7A1D1B]" : "border-neutral-200 text-neutral-600"}`}>{label}</button>; })}</div>{selectedBrandIds.length > 1 && <p className="mt-3 text-xs text-neutral-500">Specific route or schedule access is configured one brand at a time. Multiple brands receive all-bus access with the shared terms below.</p>}
               {draft.accessScope !== "ALL_BUSES" && <div className="mt-4 max-h-48 space-y-2 overflow-y-auto rounded-xl bg-neutral-50 p-3">{scopeOptions.length === 0 ? <p className="text-sm text-amber-700">No active choices exist for this brand.</p> : scopeOptions.map((option) => { const selected = (draft.accessScope === "ROUTES" ? draft.allowedRouteIds : draft.allowedScheduleIds).includes(option.id); const label = "departureTime" in option ? `${option.routeName || "Route"} · ${option.bus.number || option.bus.name || "Bus"} · ${option.departureTime}` : `${option.name}${option.code ? ` · ${option.code}` : ""}`; return <label key={option.id} className="flex cursor-pointer items-center gap-3 rounded-lg bg-white p-3 text-sm"><input type="checkbox" checked={selected} onChange={() => toggleScopeId(option.id)} /><span>{label}</span></label>; })}</div>}
             </section>
 
@@ -126,13 +155,13 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
               <label className="text-sm font-bold text-neutral-700">Max seats per booking<input type="number" min="1" value={draft.maxSeatsPerBooking} onChange={(event) => patchDraft("maxSeatsPerBooking", event.target.value)} placeholder="No limit" className={`${inputClass} mt-2`} /></label>
               <label className="text-sm font-bold text-neutral-700">Max discount %<input type="number" min="0" max="100" value={draft.maxDiscountPct} onChange={(event) => patchDraft("maxDiscountPct", event.target.value)} className={`${inputClass} mt-2`} /></label>
               {draft.canCancel && <label className="text-sm font-bold text-neutral-700">Cancel cutoff (minutes before departure)<input type="number" min="0" value={draft.cancelWindowMins} onChange={(event) => patchDraft("cancelWindowMins", event.target.value)} className={`${inputClass} mt-2`} /></label>}
-              <label className="text-sm font-bold text-neutral-700">Commission type<select value={draft.commissionMode} onChange={(event) => patchDraft("commissionMode", event.target.value as AssignmentDraft['commissionMode'])} className={`${inputClass} mt-2`}><option value="PERCENT">Percent of fare</option><option value="FLAT_PER_SEAT">Flat per seat</option><option value="FLAT_PER_BOOKING">Flat per booking</option></select></label>
+              <AgentSearchableSelect label="Commission type" value={draft.commissionMode} onChange={(value) => patchDraft("commissionMode", value as AssignmentDraft['commissionMode'])} placeholder="Select commission type" options={[{ value: "PERCENT", label: "Percent of fare" }, { value: "FLAT_PER_SEAT", label: "Flat per seat" }, { value: "FLAT_PER_BOOKING", label: "Flat per booking" }]} />
               <label className="text-sm font-bold text-neutral-700">Commission value<input type="number" min="0" value={draft.commissionValue} onChange={(event) => patchDraft("commissionValue", event.target.value)} className={`${inputClass} mt-2`} /><span className="mt-1 block text-xs font-normal text-neutral-500">Paid by your business, not by Shuvmarg.</span></label>
             </section>
           </>}
 
           {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          {preview && <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-xl border border-neutral-200 px-5 py-3 text-sm font-bold">Cancel</button><button type="button" onClick={() => void submit()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}Send invitation</button></div>}
+          {preview && <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded-xl border border-neutral-200 px-5 py-3 text-sm font-bold">Cancel</button><button type="button" onClick={() => void submit()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{selectedBrandIds.length === 0 && identityCreated ? "Done" : `Send ${selectedBrandIds.length > 1 ? `${selectedBrandIds.length} invitations` : "invitation"}`}</button></div>}
         </div>
       </div>
     </div>
