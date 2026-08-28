@@ -28,11 +28,3 @@ export interface StaffMember {
   createdAt?: string;
 }
 
-export interface StaffSummaryStats {
-  totalStaff: number;
-  driversCount: number;
-  conductorsCount: number;
-  activeCount: number;
-  agentsCount?: number;
-}
-
