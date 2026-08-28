@@ -54,6 +54,10 @@ test("staff workspace uses the real agent-assignment API and no fabricated count
   assert.match(agents, /Connect existing agent/);
   assert.match(agents, /role="tablist"/);
   assert.match(agents, /AgentSearchableSelect/);
+  assert.match(agents, /AUTO_REFRESH_MS/);
+  assert.match(agents, /visibilitychange/);
+  assert.match(agents, /window\.addEventListener\("focus"/);
+  assert.match(agents, /Refresh agents/);
   assert.doesNotMatch(agents, /<select/);
   assert.match(workspace, /Ticket agents/);
   assert.match(workspace, /Crew/);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { LoaderCircle, Plus, Search, ShieldAlert, Store } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { LoaderCircle, Plus, RefreshCw, Search, ShieldAlert, Store } from "lucide-react";
 import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/api-brands";
 import { listAgentAssignments, transitionAssignment, type AssignmentView } from "@/features/agent-assignment/api";
 import type { AgentAssignment, AssignmentStatus } from "@/features/agent-assignment/agent-assignment-contract";
@@ -29,6 +29,7 @@ const EMPTY_TAB: Record<AgentListTab, { title: string; help: string }> = {
   STOPPED: { title: "No paused or removed agents", help: "Agents appear here when you pause or end their access." },
 };
 const ACCESS_LABELS = { ALL_BUSES: "All trips", ROUTES: "Selected routes", SCHEDULES: "Selected departures" } as const;
+const AUTO_REFRESH_MS = 20_000;
 
 const commissionLabel = (row: AgentAssignment) => {
   if (row.commission.value === 0) return "No commission";
@@ -49,9 +50,16 @@ export default function AgentCountersList() {
   const [workingId, setWorkingId] = useState("");
   const [error, setError] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const requestIdRef = useRef(0);
+  const loadingRequestIdRef = useRef<number | null>(null);
 
-  const loadAssignments = useCallback(async () => {
-    setLoading(true); setError("");
+  const loadAssignments = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    const requestId = ++requestIdRef.current;
+    if (!silent) {
+      loadingRequestIdRef.current = requestId;
+      setLoading(true);
+    }
+    setError("");
     try {
       const groupedView = status === "INVITATIONS" || status === "STOPPED";
       const result = await listAgentAssignments({
@@ -59,12 +67,21 @@ export default function AgentCountersList() {
         ...(groupedView ? { view: status } : { status }),
         page,
       });
+      if (requestId !== requestIdRef.current) return;
       setAssignments(result.data);
       const pageCount = Math.max(1, result.pagination.totalPages);
       setTotalPages(pageCount);
       if (page > pageCount) setPage(pageCount);
-    } catch (failure) { setAssignments([]); setError((failure as Error).message); }
-    finally { setLoading(false); }
+    } catch (failure) {
+      if (requestId !== requestIdRef.current) return;
+      if (!silent) setAssignments([]);
+      setError(silent ? "Could not refresh agents. Showing the last loaded list." : (failure as Error).message);
+    } finally {
+      if (!silent && loadingRequestIdRef.current === requestId) {
+        loadingRequestIdRef.current = null;
+        setLoading(false);
+      }
+    }
   }, [brandId, page, status]);
 
   useEffect(() => {
@@ -74,6 +91,19 @@ export default function AgentCountersList() {
     // Assignments are server state and must be reloaded when their filters change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadAssignments();
+  }, [loadAssignments]);
+  useEffect(() => {
+    const refreshVisibleList = () => {
+      if (document.visibilityState === "visible") void loadAssignments({ silent: true });
+    };
+    window.addEventListener("focus", refreshVisibleList);
+    document.addEventListener("visibilitychange", refreshVisibleList);
+    const interval = window.setInterval(refreshVisibleList, AUTO_REFRESH_MS);
+    return () => {
+      window.removeEventListener("focus", refreshVisibleList);
+      document.removeEventListener("visibilitychange", refreshVisibleList);
+      window.clearInterval(interval);
+    };
   }, [loadAssignments]);
   const visible = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -99,7 +129,7 @@ export default function AgentCountersList() {
   return <section className="space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div><h2 className="text-xl font-bold text-neutral-900">Ticket agents</h2><p className="mt-1 text-sm text-neutral-500">Invite agents and manage where they can sell.</p></div>
-      <button type="button" onClick={() => setShowDialog(true)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white"><Plus className="h-4 w-4" />Add or connect agent</button>
+      <div className="flex flex-wrap gap-2 sm:flex-nowrap"><button type="button" onClick={() => void loadAssignments()} disabled={loading} aria-label="Refresh agents" className="flex h-11 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-700 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</button><button type="button" onClick={() => setShowDialog(true)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white"><Plus className="h-4 w-4" />Add or connect agent</button></div>
     </div>
 
     <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
