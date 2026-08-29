@@ -29,13 +29,45 @@ test("business profile actions do not link to retired route or schedule pages", 
   assert.match(operatorCard, /href="\/dashboard\/trips"/);
 });
 
-test("frontend-only staff workspace contains no staff API or fabricated counters", () => {
+test("staff workspace uses the real agent-assignment API and no fabricated counters", () => {
   const staffRoot = join(projectRoot, "src/components/dashboard/staff");
   const agents = readFileSync(join(staffRoot, "AgentCountersList.tsx"), "utf8");
+  const dialog = readFileSync(join(staffRoot, "AgentAssignmentDialog.tsx"), "utf8");
+  const workspace = readFileSync(join(staffRoot, "StaffManagementLayout.tsx"), "utf8");
+  const api = readFileSync(
+    join(projectRoot, "src/features/agent-assignment/api.ts"),
+    "utf8"
+  );
 
   assert.equal(existsSync(join(staffRoot, "staff-api.ts")), false);
   assert.doesNotMatch(agents, /DEFAULT_PARTNER_COUNTERS/);
-  assert.match(agents, /No sample or fabricated counters are shown/);
+  assert.match(agents, /listAgentAssignments/);
+  assert.match(agents, /transitionAssignment/);
+  assert.match(agents, /salesCount/);
+  assert.match(agents, /status === "ACTIVE"/);
+  assert.match(agents, /"INVITATIONS"/);
+  assert.match(agents, /"STOPPED"/);
+  assert.match(agents, /Active agents/);
+  assert.match(agents, /Invitations/);
+  assert.match(agents, /Paused & removed/);
+  assert.match(agents, /Add or connect agent/);
+  assert.match(agents, /Connect existing agent/);
+  assert.match(agents, /role="tablist"/);
+  assert.match(agents, /AgentSearchableSelect/);
+  assert.match(agents, /AUTO_REFRESH_MS/);
+  assert.match(agents, /visibilitychange/);
+  assert.match(agents, /window\.addEventListener\("focus"/);
+  assert.match(agents, /Refresh agents/);
+  assert.doesNotMatch(agents, /<select/);
+  assert.match(workspace, /Ticket agents/);
+  assert.match(workspace, /Crew/);
+  assert.equal(existsSync(join(staffRoot, "StaffSummaryKpis.tsx")), false);
+  assert.equal(existsSync(join(staffRoot, "AgentSummaryKpis.tsx")), false);
+  assert.match(api, /\/busowner\/agents\/assignments/);
+  assert.match(api, /query\.set\("view"/);
+  assert.match(dialog, /Create agent & send/);
+  assert.match(dialog, /Promise\.allSettled\(drafts\.map\(inviteAgent\)\)/);
+  assert.doesNotMatch(agents, /sample|fabricated|preview only/i);
 });
 
 test("business verification submits exactly the three backend-supported documents", () => {
