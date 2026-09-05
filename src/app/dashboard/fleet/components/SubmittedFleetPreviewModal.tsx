@@ -16,11 +16,11 @@ interface SubmittedFleetPreviewModalProps {
 }
 
 const REVIEW_LABELS: Record<FleetReviewRequirementKey, string> = {
-  vehicleDetails: "Vehicle details",
-  fleetImages: "Vehicle photos",
+  vehicleDetails: "Bus details",
+  fleetImages: "Bus photos",
   fitnessCert: "Fitness certificate",
   insurance: "Passenger insurance",
-  bluebook: "Vehicle bluebook",
+  bluebook: "Bus bluebook",
   routePermit: "Route permit",
   seatLayout: "Seat layout",
   routeSetup: "Journey and stops",
@@ -262,12 +262,12 @@ export default function SubmittedFleetPreviewModal({ fleetId, ownerId, onClose }
       <div className="flex h-[94svh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] border border-[#E5DDD7] bg-[#FFFCFA] shadow-2xl sm:h-[860px] sm:max-h-[94svh] sm:rounded-[28px]">
         <header className="flex items-start justify-between gap-4 border-b border-[#EAE3DD] bg-white px-5 py-4 sm:px-7 sm:py-5">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7A1D1B]">Fleet Verification</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#7A1D1B]">Bus review</div>
             <h2 id="submitted-fleet-title" className="mt-1 font-display text-xl font-bold text-[#191512]">
-              Submitted fleet application
+              Submitted bus
             </h2>
             <p className="mt-1 text-[11px] font-medium text-[#7B746E]">
-              This is the vehicle information currently held for compliance review.
+              This is the bus information currently held for review.
             </p>
           </div>
           <button

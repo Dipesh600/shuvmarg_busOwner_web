@@ -25,9 +25,9 @@ test("each fleet lifecycle status has an independent progress state", () => {
   assert.equal(getFleetSetupProgress({ approvalStatus: "REJECTED" }, true).label, "Changes requested");
   const approved = getFleetSetupProgress({ approvalStatus: "APPROVED", setupComplete: false }, true);
   assert.equal(approved.percentage, 90);
-  assert.match(approved.label, /operations setup pending/i);
+  assert.equal(approved.label, "Approved — finish setup");
 
   const live = getFleetSetupProgress({ approvalStatus: "APPROVED", setupComplete: true }, true);
   assert.equal(live.percentage, 100);
-  assert.equal(live.label, "Live and operational");
+  assert.equal(live.label, "Ready for passengers");
 });

@@ -319,7 +319,7 @@ export default function FleetRegistrationFlow({
             <div className="flex items-center gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#7A1D1B]">
-                  Fleet Setup
+                  Add bus
                 </p>
                 <h2 className="mt-0.5 text-lg font-black text-[#191512]">
                   {draft.vehicle.busName.trim() || "Add a bus"}

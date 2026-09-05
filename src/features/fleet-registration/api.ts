@@ -9,6 +9,7 @@ import { saveFleetRouteSetup } from "./api-route-setup";
 export interface FleetListItem {
   fleetId: string;
   fleetCode: string | null;
+  brandId?: string | null;
   busName: string;
   busNumber: string;
   busType: string;

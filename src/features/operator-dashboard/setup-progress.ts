@@ -80,10 +80,10 @@ export function calculateSetupProgress(
     isEvidenceBacked: true,
   };
 
-  // 3 future operational items (display only, not in percentage)
+  // 3 future bus-readiness items (display only, not in percentage)
   const vehicleItem: SetupChecklistItem = {
     id: "first_vehicle",
-    label: "First vehicle",
+    label: "First bus",
     description: "Bus details, bluebook, and route assignment",
     status: "not_started",
     isEvidenceBacked: false,
@@ -99,8 +99,8 @@ export function calculateSetupProgress(
 
   const operationalActivationItem: SetupChecklistItem = {
     id: "operational_activation",
-    label: "Operational activation",
-    description: "Schedule publishing and live ticket sales capability",
+    label: "Start selling tickets",
+    description: "Publish trips so passengers can book",
     status: "locked",
     isEvidenceBacked: false,
   };

@@ -83,7 +83,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
 
   const brandName =
     brands.find((b) => b.id === draft.vehicle.brandId)?.brandName ||
-    "Operator Fleet";
+    "Operator brand";
 
   const photosCount = Object.values(draft.files.photos).filter(Boolean).length;
   const docsCount = [
@@ -110,9 +110,9 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
             <CheckCircle2 className="size-5 text-amber-600" />
           </div>
           <div>
-            <h4 className="text-sm font-black text-amber-900">Fleet Submitted for Review</h4>
+            <h4 className="text-sm font-black text-amber-900">Bus submitted for review</h4>
             <p className="mt-0.5 text-xs font-medium text-amber-800">
-              This fleet is currently under review by the platform team. Editing is disabled until review is complete.
+              This bus is currently with Shuvmarg for review. Editing is disabled until review is complete.
             </p>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
 
       {/* ── 2-Column Main Review Grid ── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Section 1: Vehicle & Brand */}
+        {/* Section 1: Bus & Brand */}
         <section className="rounded-3xl border border-[#E8E1DB] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between border-b border-[#F0EAE4] pb-4">
             <div className="flex items-center gap-2.5">
@@ -218,7 +218,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
                 <Bus className="size-4" />
               </div>
               <h3 className="text-base font-black text-[#211D1A]">
-                1. Vehicle & Brand Profile
+                1. Bus & Brand Profile
               </h3>
             </div>
             {onEditStep && (
@@ -248,7 +248,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
               value={draft.vehicle.busType || "DELUXE"}
             />
             <ReviewRow
-              label="Vehicle Category"
+              label="Bus Category"
               value={draft.vehicle.vehicleType || "BUS"}
             />
             <ReviewRow
@@ -327,7 +327,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
           </div>
         </section>
 
-        {/* Section 3: Vehicle Photos */}
+        {/* Section 3: Bus Photos */}
         <section className="rounded-3xl border border-[#E8E1DB] bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between border-b border-[#F0EAE4] pb-4">
             <div className="flex items-center gap-2.5">
@@ -335,7 +335,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
                 <ImageIcon className="size-4" />
               </div>
               <h3 className="text-base font-black text-[#211D1A]">
-                3. Vehicle Photos ({photosCount}/4)
+                3. Bus Photos ({photosCount}/4)
               </h3>
             </div>
             {onEditStep && (
@@ -621,12 +621,12 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
         <ShieldCheck className="size-5 shrink-0 text-emerald-700" />
         <div>
           <p className="font-black text-emerald-950">
-            ShuvMarg Operator Platform Verification
+            Shuvmarg bus review
           </p>
           <p className="mt-0.5 text-emerald-800">
             Once submitted, your bus details, seat matrix, compliance permits,
-            and highway stops are verified by ShuvMarg Operations within 24
-            hours for live passenger booking.
+            and highway stops are reviewed by Shuvmarg before passengers can
+            book this bus.
           </p>
         </div>
       </div>

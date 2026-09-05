@@ -8,7 +8,7 @@ import CrewMembersList from "./CrewMembersList";
 type ActiveTab = "crew" | "agents";
 
 export default function StaffManagementLayout() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("agents");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("crew");
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">

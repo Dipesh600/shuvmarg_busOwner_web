@@ -70,7 +70,7 @@ export default function FleetSetupResumeBar({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="rounded-md bg-[#FDE7E6] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#7A1D1B]">
-                  Unfinished Setup
+                  Unfinished bus
                 </span>
                 <p className="truncate text-sm font-black text-[#191512]">{activeDraft.name}</p>
               </div>
@@ -89,11 +89,11 @@ export default function FleetSetupResumeBar({
                   setDrafts(listFleetDrafts());
                 }
               }}
-              title="Discard unfinished local setup"
+              title="Discard unfinished bus"
               className="inline-flex h-9 items-center gap-1 rounded-xl border border-transparent px-2.5 text-xs font-bold text-[#938A82] hover:bg-red-50 hover:text-red-700 transition"
             >
               <Trash2 className="size-3.5" />
-              Discard setup
+              Discard
             </button>
 
             {onStartFresh && (
@@ -133,11 +133,11 @@ export default function FleetSetupResumeBar({
                 In Progress
               </span>
               <p className="text-sm font-black text-[#191512]">
-                {visibleDrafts.length} Bus Setups In Progress
+                {visibleDrafts.length} unfinished buses
               </p>
             </div>
             <p className="mt-0.5 text-xs text-[#746E69]">
-              Continue previous bus or start registering another vehicle.
+              Continue an unfinished bus or add another one.
             </p>
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function FleetSetupResumeBar({
           href={`#fleet-${next.fleetId}`}
           className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#191512] px-4 text-xs font-bold text-white shadow-2xs transition hover:bg-black"
         >
-          View vehicle
+          View bus
           <ArrowRight className="size-3" />
         </a>
       </div>
