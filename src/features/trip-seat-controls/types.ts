@@ -5,6 +5,9 @@ export interface OwnerTrip {
   tripDate: string;
   departureTime: string;
   status: string;
+  brandId?: string;
+  tripId?: string;
+  arrivalTime?: string;
   busId?: { busName?: string; busNumber?: string };
   routeId?: { routeName?: string; fromCity?: string; toCity?: string };
 }

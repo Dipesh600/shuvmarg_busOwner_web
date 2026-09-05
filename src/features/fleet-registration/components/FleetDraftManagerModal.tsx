@@ -35,12 +35,12 @@ function formatRelativeTime(isoString: string) {
 }
 
 const STEP_LABELS: Record<string, string> = {
-  vehicle: "Step 1 · Vehicle Details",
+  vehicle: "Step 1 · Bus details",
   layout: "Step 2 · Seat Layout",
-  photos: "Step 3 · Vehicle Photos",
+  photos: "Step 3 · Bus photos",
   documents: "Step 4 · Documents",
-  route: "Step 5 · Route Assignment",
-  review: "Step 6 · Final Review",
+  route: "Step 5 · Route & Stops",
+  review: "Step 6 · Review",
 };
 
 export default function FleetDraftManagerModal({
@@ -102,9 +102,9 @@ export default function FleetDraftManagerModal({
               <BusFront className="size-4" />
             </div>
             <div>
-              <h3 className="text-base font-black text-[#191512]">Saved Bus Drafts</h3>
+              <h3 className="text-base font-black text-[#191512]">Saved buses</h3>
               <p className="text-[11px] text-[#746E69]">
-                {drafts.length} unfinished bus setup{drafts.length === 1 ? "" : "s"} on this device
+                {drafts.length} unfinished bus{drafts.length === 1 ? "" : "es"} on this device
               </p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function FleetDraftManagerModal({
 
         {/* Action Top bar: Start Fresh */}
         <div className="flex items-center justify-between border-b border-[#EEE8E2] bg-[#FAF8F5] px-6 py-3">
-          <p className="text-xs font-bold text-[#655E58]">Want to register another vehicle?</p>
+          <p className="text-xs font-bold text-[#655E58]">Want to add another bus?</p>
           <button
             type="button"
             onClick={() => {

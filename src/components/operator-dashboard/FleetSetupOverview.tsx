@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BusFront, Plus, Trash2 } from "lucide-react";
-import type { OperatorFleetListItem } from "@/features/operator-dashboard/operator-dashboard-contract";
+import { ArrowRight, BusFront, Plus, Route, Trash2 } from "lucide-react";
+import type {
+  OperatorFleetListItem,
+  OperatorFleetSetupStatus,
+} from "@/features/operator-dashboard/operator-dashboard-contract";
+import { buildFleetLifecycleStory, type FleetLifecycleTone } from "@/features/operator-dashboard/fleet-lifecycle-story";
 import {
   deleteFleetRegistrationDraft,
   listFleetDrafts,
@@ -15,9 +19,13 @@ import {
 export default function FleetSetupOverview({
   fleets,
   onAddVehicle,
+  setupStatusesByFleetId = {},
+  onOpenOperations,
 }: {
   fleets: OperatorFleetListItem[];
   onAddVehicle: (draftId?: string) => void;
+  setupStatusesByFleetId?: Record<string, OperatorFleetSetupStatus>;
+  onOpenOperations?: (fleetId: string) => void;
 }) {
   const [drafts, setDrafts] = useState<DraftMetadata[]>(() => listFleetDrafts());
 
@@ -39,18 +47,24 @@ export default function FleetSetupOverview({
       !(draft.busNumber && serverFleetNumbers.has(draft.busNumber.trim().toUpperCase()))
   );
   const totalItems = visibleDrafts.length + fleets.length;
+  const badgeClasses: Record<FleetLifecycleTone, string> = {
+    neutral: "bg-[#FAF8F5] text-[#655E58]",
+    warning: "bg-amber-50 text-amber-800",
+    danger: "bg-red-50 text-red-700",
+    success: "bg-emerald-50 text-emerald-700",
+  };
 
   return (
     <div className="p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#817A74]">
-            Fleet setup
+            Your buses
           </p>
           <h3 className="mt-1 text-lg font-bold text-[#211D1A]">
             {totalItems
-              ? `${totalItems} vehicle${totalItems === 1 ? "" : "s"}${visibleDrafts.length ? ` (${visibleDrafts.length} in progress)` : ""}`
-              : "No vehicles yet"}
+              ? `${totalItems} bus${totalItems === 1 ? "" : "es"}${visibleDrafts.length ? ` (${visibleDrafts.length} unfinished)` : ""}`
+              : "No buses yet"}
           </h3>
         </div>
 
@@ -94,7 +108,7 @@ export default function FleetSetupOverview({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="rounded-md bg-[#FDE7E6] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#7A1D1B]">
-                    Unfinished setup
+                    Unfinished bus
                   </span>
                   <h4 className="truncate text-sm font-black text-[#191512]">{draft.name}</h4>
                 </div>
@@ -135,16 +149,13 @@ export default function FleetSetupOverview({
           </article>
         ))}
 
-        {/* Server-persisted Fleets */}
+        {/* Server-saved buses */}
         {fleets.map((fleet) => {
-          const status = String(fleet.approvalStatus || "DRAFT").toUpperCase();
-          const presentation = status === "APPROVED"
-            ? { label: "Approved", badge: "bg-emerald-50 text-emerald-700" }
-            : status === "PENDING"
-              ? { label: "In review", badge: "bg-amber-50 text-amber-700" }
-              : status === "REJECTED"
-                ? { label: "Changes requested", badge: "bg-red-50 text-red-700" }
-                : { label: "Setup in progress", badge: "bg-[#FAF8F5] text-[#655E58]" };
+          const story = buildFleetLifecycleStory(
+            fleet,
+            setupStatusesByFleetId[fleet.fleetId] || null,
+            { businessApproved: true },
+          );
           return (
             <article
               key={fleet.fleetId}
@@ -159,25 +170,63 @@ export default function FleetSetupOverview({
                   <p className="mt-0.5 font-mono text-[10px] font-bold text-[#817A74]">
                     {fleet.busNumber}
                   </p>
-                  {status === "DRAFT" && fleet.createdBy === "ADMIN" && (
-                    <p className="mt-1 text-[10px] font-bold text-[#7A1D1B]">
-                      Prepared by Shuvmarg · review and finish setup
-                    </p>
+                  <p className={`mt-1 text-[10px] font-bold ${
+                    story.badgeTone === "danger"
+                      ? "text-red-700"
+                      : story.badgeTone === "warning"
+                        ? "text-amber-700"
+                        : story.preparedByShuvmarg || story.needsOperationsSetup
+                          ? "text-[#7A1D1B]"
+                          : "text-[#817A74]"
+                  }`}>
+                    {story.description}
+                  </p>
+                  {(story.routeText || story.nextStepLabel || story.progressPercentage !== null) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold text-[#746E69]">
+                      {story.routeText && (
+                        <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-[#EEE8E2] bg-[#FAF8F5] px-2 py-1">
+                          <Route className="size-3 text-[#7A1D1B]" />
+                          <span className="truncate">{story.routeText}</span>
+                          {story.routeCode && (
+                            <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-[#938A82]">
+                              {story.routeCode}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {story.nextStepLabel && (
+                        <span>{story.isOperational ? "Status" : "Do next"}: {story.nextStepLabel}</span>
+                      )}
+                      {story.progressText && (
+                        <span>{story.progressText}</span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-bold ${presentation.badge}`}>
-                  {presentation.label}
+                <span className={`w-fit rounded-full px-3 py-1 text-[10px] font-bold ${badgeClasses[story.badgeTone]}`}>
+                  {story.label}
                 </span>
-                <Link
-                  href={`/dashboard/fleet?vehicle=${fleet.fleetId}#fleet-${fleet.fleetId}`}
-                  className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#DCCFC8] px-3 text-xs font-bold text-[#7A1D1B] hover:bg-[#FFF7F4] transition"
-                >
-                  Open
-                  <ArrowRight className="size-3.5" />
-                </Link>
+                {story.needsOperationsSetup && onOpenOperations ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenOperations(fleet.fleetId)}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#DCCFC8] px-3 text-xs font-bold text-[#7A1D1B] hover:bg-[#FFF7F4] transition"
+                  >
+                    {story.primaryActionLabel || "Continue setup"}
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`/dashboard/fleet?vehicle=${fleet.fleetId}#fleet-${fleet.fleetId}`}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-[#DCCFC8] px-3 text-xs font-bold text-[#7A1D1B] hover:bg-[#FFF7F4] transition"
+                  >
+                    Open
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                )}
               </div>
             </article>
           );

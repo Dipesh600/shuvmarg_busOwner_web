@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, BusFront, Loader2, RefreshCw } from "lucide-react";
 import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBar";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
@@ -28,6 +29,7 @@ import { FleetCard } from "./components/FleetCard";
 import SubmittedFleetPreviewModal from "./components/SubmittedFleetPreviewModal";
 
 export default function FleetPage() {
+  const router = useRouter();
   const [items, setItems] = useState<FleetListItem[]>([]);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -63,7 +65,7 @@ export default function FleetPage() {
       applyDashboard(dashboard);
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to load fleet."
+        cause instanceof Error ? cause.message : "Unable to load buses."
       );
     } finally {
       setLoading(false);
@@ -80,7 +82,7 @@ export default function FleetPage() {
       .catch((cause) => {
         if (active)
           setError(
-            cause instanceof Error ? cause.message : "Unable to load fleet."
+            cause instanceof Error ? cause.message : "Unable to load buses."
           );
       })
       .finally(() => {
@@ -215,7 +217,7 @@ export default function FleetPage() {
         correction ? data.rejectionReason || "Shuvmarg requested corrections before resubmission." : null,
       );
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : correction ? "Unable to open the requested corrections." : "Unable to open this fleet setup.");
+      setError(cause instanceof Error ? cause.message : correction ? "Unable to open the requested corrections." : "Unable to open this bus setup.");
     }
   }
 
@@ -263,7 +265,7 @@ export default function FleetPage() {
           count={items.length}
         />
 
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Fleet status">
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Bus status">
           {([
             ["ALL", "All", items.length],
             ["DRAFT", "Drafts", viewCounts.DRAFT || 0],
@@ -286,7 +288,7 @@ export default function FleetPage() {
         {loading ? (
           <div className="flex h-56 items-center justify-center rounded-3xl border border-[#E8E1DB] bg-white text-sm text-[#746E69]">
             <Loader2 className="mr-2 size-4 animate-spin" />
-            Loading fleet…
+            Loading buses…
           </div>
         ) : error ? (
           <div className="rounded-3xl border border-red-200 bg-white p-8 text-center">
@@ -314,10 +316,12 @@ export default function FleetPage() {
                   fleet={fleet}
                   businessApproved={businessApproved}
                   localDraftId={localDraftId}
+                  setupStatus={dashboardState?.fleetSetupStatusesByFleetId[fleet.fleetId] || null}
                   onOpenFleet={handleOpenFleet}
                   onPreviewFleet={setPreviewFleetId}
                   onOpenServerDraft={(fleetId) => void openServerFleet(fleetId, false)}
                   onCorrectRejectedFleet={correctRejectedFleet}
+                  onOpenOperations={(fleetId) => router.push(`/dashboard?setupFleet=${encodeURIComponent(fleetId)}`)}
                 />
               );
             })}

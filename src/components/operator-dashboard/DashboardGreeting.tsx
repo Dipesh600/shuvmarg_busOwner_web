@@ -38,7 +38,7 @@ export default function DashboardGreeting({ ownerName }: DashboardGreetingProps)
           <span className="text-[#D96861]">{firstName}</span>,
         </h1>
         <p className="text-xs sm:text-sm text-[#746E69] mt-0.5 font-medium">
-          Complete your business setup, prepare your fleet and unlock live operations.
+          Complete your business setup, add your buses, and start taking bookings.
         </p>
       </div>
 

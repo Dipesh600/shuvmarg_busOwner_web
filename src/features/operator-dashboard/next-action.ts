@@ -56,7 +56,7 @@ export function determineNextAction(
 
     case "approved":
       return {
-        label: "Prepare your first vehicle",
+        label: "Add your first bus",
         description:
           "Fleet registration will be available in the next setup step.",
         badge: "Upcoming step",
@@ -68,7 +68,7 @@ export function determineNextAction(
       return {
         label: "Complete business verification",
         description:
-          "Submit your company registration and owner identification documents to unlock live operations.",
+          "Submit your company registration and owner identification documents before buses can take bookings.",
         badge: "Action required",
         href: BUSINESS_SETUP_ROUTE,
         disabled: false,

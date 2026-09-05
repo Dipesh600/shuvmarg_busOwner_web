@@ -16,7 +16,7 @@ export function FleetPageHeader({
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7A1D1B]">
-          Fleet
+          My buses
         </p>
         <h1 className="mt-1 text-3xl font-black text-[#191512]">Your buses</h1>
       </div>

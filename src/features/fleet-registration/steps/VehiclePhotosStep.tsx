@@ -36,11 +36,11 @@ export default function VehiclePhotosStep({
   return (
     <div className="space-y-4">
       <div>
-        <h4 className="font-black text-[#211D1A]">Vehicle Photos</h4>
+        <h4 className="font-black text-[#211D1A]">Bus photos</h4>
         <p className="mt-1 text-xs text-[#746E69]">
           {readOnly
-            ? "Photos submitted with this vehicle for platform verification."
-            : "Upload clear photos of your vehicle. These appear on passenger booking receipts and boarding guides."}
+            ? "Photos submitted with this bus for review."
+            : "Upload clear photos of your bus. These help passengers recognize it before boarding."}
         </p>
       </div>
 

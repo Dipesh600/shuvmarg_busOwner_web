@@ -140,7 +140,7 @@ export default function BusinessVerificationCard({
         <div className="text-[10px] text-[#746E69]">
           {kycStatus?.updatedAt
             ? `Updated: ${new Date(kycStatus.updatedAt).toLocaleDateString()}`
-            : "Required for live operations"}
+            : "Required before buses can take bookings"}
         </div>
 
         {verificationStatus !== "approved" && verificationStatus !== "pending" && (

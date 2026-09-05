@@ -1,26 +1,15 @@
 import React from "react";
-import { CheckCircle, Clock, ShieldAlert } from "lucide-react";
+import { CheckCircle, ShieldAlert } from "lucide-react";
 import { StaffOperationalStatus } from "./staff-contract";
 
 interface StaffStatusBadgeProps {
   status: StaffOperationalStatus | string;
-  accountStatus?: "invited" | "active" | "inactive";
 }
 
 export default function StaffStatusBadge({
   status,
-  accountStatus,
 }: StaffStatusBadgeProps) {
   const normStatus = String(status || "").toUpperCase();
-
-  if (accountStatus === "invited") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
-        <Clock className="w-3 h-3" />
-        <span>Invited (SMS Sent)</span>
-      </span>
-    );
-  }
 
   switch (normStatus) {
     case "AVAILABLE":

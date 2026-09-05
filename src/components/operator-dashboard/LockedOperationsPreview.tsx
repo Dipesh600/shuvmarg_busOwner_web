@@ -9,13 +9,13 @@ export default function LockedOperationsPreview() {
     {
       id: "routes",
       title: "Routes & Stops",
-      description: "Routes unlock after business verification.",
+      description: "Available after your bus is approved.",
       iconPath: "/operator-dashboard/icons/routes.svg",
     },
     {
       id: "trips",
       title: "Trip Schedules",
-      description: "Trips will appear after route schedule assignment.",
+      description: "Available after stops and timings are added.",
       iconPath: "/operator-dashboard/icons/trips.svg",
     },
     {
@@ -40,14 +40,14 @@ export default function LockedOperationsPreview() {
             className="text-base font-bold text-[#161311]"
             style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
           >
-            Operational Capabilities Preview
+            What unlocks next
           </h3>
           <p className="text-xs text-[#746E69] mt-0.5 font-medium">
-            Future operational features available after setup approval.
+            These tools open as your bus gets ready for passengers.
           </p>
         </div>
         <span className="text-[10px] font-bold text-[#746E69] uppercase tracking-wider bg-[#FAF8F5] px-2.5 py-1 rounded-lg border border-[#EEE8E2]">
-          Locked Capabilities
+          Coming up
         </span>
       </div>
 

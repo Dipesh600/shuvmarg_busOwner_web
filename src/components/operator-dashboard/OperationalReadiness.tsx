@@ -2,16 +2,22 @@
 
 import React from "react";
 import { CheckCircle2, Clock, Lock, ShieldAlert } from "lucide-react";
-import { OperatorFleetListItem, VerificationStatus } from "@/features/operator-dashboard/operator-dashboard-contract";
+import {
+  OperatorFleetListItem,
+  OperatorFleetSetupStatus,
+  VerificationStatus,
+} from "@/features/operator-dashboard/operator-dashboard-contract";
 
 interface OperationalReadinessProps {
   verificationStatus: VerificationStatus;
   fleets?: OperatorFleetListItem[];
+  setupStatusesByFleetId?: Record<string, OperatorFleetSetupStatus>;
 }
 
 export default function OperationalReadiness({
   verificationStatus,
   fleets = [],
+  setupStatusesByFleetId = {},
 }: OperationalReadinessProps) {
   let businessState: "complete" | "in_progress" | "not_started" = "not_started";
   if (verificationStatus === "approved") {
@@ -21,6 +27,22 @@ export default function OperationalReadiness({
   }
 
   const fleetStatuses = fleets.map((fleet) => String(fleet.approvalStatus || "DRAFT").toUpperCase());
+  const approvedSetups = fleets
+    .filter((fleet) => String(fleet.approvalStatus || "").toUpperCase() === "APPROVED")
+    .map((fleet) => setupStatusesByFleetId[fleet.fleetId])
+    .filter((setup): setup is OperatorFleetSetupStatus => Boolean(setup));
+  const hasOperationalFleet = fleets.some(
+    (fleet) =>
+      String(fleet.approvalStatus || "").toUpperCase() === "APPROVED" &&
+      (fleet.setupComplete || setupStatusesByFleetId[fleet.fleetId]?.isFullyOperational),
+  );
+  const hasApprovedFleet = fleetStatuses.includes("APPROVED");
+  const hasScheduledFleet = approvedSetups.some(
+    (setup) => setup.steps.scheduleCreated || setup.isFullyOperational || setup.setupComplete,
+  );
+  const hasOperationsInProgress = approvedSetups.some(
+    (setup) => !setup.isFullyOperational && !setup.setupComplete,
+  );
   const fleetState = fleetStatuses.includes("APPROVED")
     ? "complete"
     : fleetStatuses.includes("PENDING")
@@ -30,6 +52,18 @@ export default function OperationalReadiness({
         : fleetStatuses.length > 0
           ? "in_progress"
           : verificationStatus === "approved" ? "not_started" : "locked";
+  const routeScheduleState = hasScheduledFleet || hasOperationalFleet
+    ? "complete"
+    : hasApprovedFleet && hasOperationsInProgress
+      ? "in_progress"
+      : fleetState === "complete"
+        ? "not_started"
+        : "locked";
+  const goLiveState = hasOperationalFleet
+    ? "complete"
+    : hasScheduledFleet
+      ? "in_progress"
+      : "locked";
 
   const stages = [
     {
@@ -42,23 +76,23 @@ export default function OperationalReadiness({
     {
       id: "fleet",
       number: "2",
-      label: "Fleet Registration",
-      description: "Vehicle bluebooks, capacity & seat maps",
+      label: "Bus Approval",
+      description: "Bus details, documents and seat map",
       status: fleetState,
     },
     {
       id: "route",
       number: "3",
-      label: "Route & Schedule",
-      description: "Stops, departure times & base fares",
-      status: fleetState === "complete" ? "not_started" : "locked",
+      label: "Stops & Trips",
+      description: "Choose stops, timings and trip days",
+      status: routeScheduleState,
     },
     {
       id: "golive",
       number: "4",
-      label: "Go Live",
-      description: "Publish schedules & sell tickets",
-      status: "locked",
+      label: "Start Selling",
+      description: "Turn on booking for passengers",
+      status: goLiveState,
     },
   ];
 
@@ -112,14 +146,14 @@ export default function OperationalReadiness({
             className="text-lg font-bold text-[#161311]"
             style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
           >
-            Operational Readiness Sequence
+            Journey to first booking
           </h3>
           <p className="text-xs text-[#746E69] mt-0.5 font-medium">
-            Each stage unlocks sequentially as prerequisites are verified.
+            Finish these steps before passengers can book your bus.
           </p>
         </div>
         <div className="text-[11px] font-semibold text-[#746E69] bg-[#FAF8F5] px-3 py-1.5 rounded-xl border border-[#EEE8E2] self-start sm:self-auto">
-          Prerequisite Enforced
+          Step by step
         </div>
       </div>
 

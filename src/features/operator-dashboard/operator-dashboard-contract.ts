@@ -81,6 +81,7 @@ export interface BusOwnerKycStatus {
 export interface OperatorFleetListItem {
   fleetId: string;
   fleetCode: string | null;
+  brandId?: string | null;
   busName: string;
   busNumber: string;
   busType?: string;
@@ -105,6 +106,54 @@ export interface OperatorFleetListItem {
 export interface OperatorFleetOverview {
   items: OperatorFleetListItem[];
   totalItems: number;
+}
+
+export type FleetOperationsStepKey =
+  | "routeAssigned"
+  | "routeConfigured"
+  | "driverAssigned"
+  | "scheduleCreated"
+  | "activated";
+
+export interface FleetOperationsStepDetail {
+  key: FleetOperationsStepKey;
+  label: string;
+  complete: boolean;
+}
+
+export interface AssignedRouteSummary {
+  corridorId: string | null;
+  code: string | null;
+  origin: string | null;
+  destination: string | null;
+  label: string | null;
+}
+
+export interface OperatorFleetSetupStatus {
+  fleetId: string;
+  brandId?: string | null;
+  busName: string | null;
+  busNumber: string | null;
+  approvalStatus: string | null;
+  setupComplete: boolean;
+  nextStep: FleetOperationsStepKey | "complete";
+  isFullyOperational: boolean;
+  steps: Partial<Record<FleetOperationsStepKey, boolean>>;
+  stepDetails: FleetOperationsStepDetail[];
+  progress: {
+    completedSteps: number;
+    totalSteps: number;
+    percentage: number;
+  };
+  blockingReasons: string[];
+  scheduleId?: string | null;
+  returnScheduleId?: string | null;
+  assignedRoute?: AssignedRouteSummary | null;
+  assignedCorridor?: unknown;
+  assignedRouteConfigs?: unknown[];
+  assignedDriver?: unknown;
+  outboundScheduleData?: unknown;
+  returnScheduleData?: unknown;
 }
 
 export interface SetupEvidence {
@@ -133,17 +182,117 @@ export interface OperatorDashboardState {
   profile: BusOwnerProfile | null;
   kycStatus: BusOwnerKycStatus | null;
   fleet: OperatorFleetOverview;
+  firstFleetSetup: OperatorFleetSetupStatus | null;
+  fleetSetupStatusesByFleetId: Record<string, OperatorFleetSetupStatus>;
   verificationStatus: VerificationStatus;
   evidence: SetupEvidence;
   capabilities: OperatorCapabilities;
 }
 
+export function isApprovedFleet(vehicle: Pick<OperatorFleetListItem, "approvalStatus">): boolean {
+  return String(vehicle.approvalStatus || "").trim().toUpperCase() === "APPROVED";
+}
+
+export function isOperationalFleet(
+  vehicle: Pick<OperatorFleetListItem, "approvalStatus" | "setupComplete">
+): boolean {
+  return isApprovedFleet(vehicle) && vehicle.setupComplete === true;
+}
+
+export function hasOperationalApprovedFleet(
+  state: Pick<OperatorDashboardState, "fleet">
+): boolean {
+  return state.fleet.items.some(isOperationalFleet);
+}
+
+export function findFirstApprovedFleetAwaitingOperations(
+  state: Pick<OperatorDashboardState, "fleet">
+): OperatorFleetListItem | null {
+  return state.fleet.items.find(
+    (vehicle) => isApprovedFleet(vehicle) && vehicle.setupComplete !== true
+  ) || null;
+}
+
+export function findApprovedFleetAwaitingOperationsById(
+  state: Pick<OperatorDashboardState, "fleet">,
+  fleetId?: string | null,
+): OperatorFleetListItem | null {
+  if (!fleetId) return null;
+  return state.fleet.items.find(
+    (vehicle) =>
+      vehicle.fleetId === fleetId &&
+      isApprovedFleet(vehicle) &&
+      vehicle.setupComplete !== true,
+  ) || null;
+}
+
+export function applyFleetSetupStatusToFleetItems(
+  items: OperatorFleetListItem[],
+  setupStatuses: OperatorFleetSetupStatus[],
+): OperatorFleetListItem[] {
+  const setupStatusByFleetId = new Map(
+    setupStatuses.map((setup) => [setup.fleetId, setup]),
+  );
+
+  return items.map((fleet) => {
+    const setup = setupStatusByFleetId.get(fleet.fleetId);
+    return setup
+      ? { ...fleet, setupComplete: setup.setupComplete || setup.isFullyOperational }
+      : fleet;
+  });
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function entityName(value: unknown): string | null {
+  if (!isPlainRecord(value)) return null;
+  return stringValue(value.name) || stringValue(value.city);
+}
+
+export function normalizeAssignedRouteSummary(
+  value: unknown,
+  fallbackCorridor?: unknown,
+): AssignedRouteSummary | null {
+  const source = isPlainRecord(value) ? value : isPlainRecord(fallbackCorridor) ? fallbackCorridor : null;
+  if (!source) return null;
+
+  const origin =
+    stringValue(source.origin) ||
+    entityName(source.originId) ||
+    entityName(source.originStopId);
+  const destination =
+    stringValue(source.destination) ||
+    entityName(source.destinationId) ||
+    entityName(source.destinationStopId);
+  const code =
+    stringValue(source.code) ||
+    stringValue(source.corridorCode);
+  const corridorId =
+    stringValue(source.corridorId) ||
+    stringValue(source._id) ||
+    stringValue(source.id);
+
+  if (!origin && !destination && !code && !corridorId) return null;
+
+  return {
+    corridorId,
+    code,
+    origin,
+    destination,
+    label: origin && destination ? `${origin} to ${destination}` : stringValue(source.label) || code,
+  };
+}
+
 export function isFirstLoginOverview(
   state: Pick<OperatorDashboardState, "fleet">
 ): boolean {
-  return !state.fleet.items.some(
-    (vehicle) => String(vehicle.approvalStatus || "").trim().toUpperCase() === "APPROVED"
-  );
+  return !hasOperationalApprovedFleet(state);
 }
 
 export function hasKycSubmissionEvidence(
