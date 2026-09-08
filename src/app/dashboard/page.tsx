@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardGreeting from "@/components/operator-dashboard/DashboardGreeting";
 import SetupProgressPanel from "@/components/operator-dashboard/SetupProgressPanel";
 import BusinessVerificationCard from "@/components/operator-dashboard/BusinessVerificationCard";
@@ -10,11 +11,14 @@ import LockedOperationsPreview from "@/components/operator-dashboard/LockedOpera
 import OperatorSupportCard from "@/components/operator-dashboard/OperatorSupportCard";
 import FirstLoginOverview from "@/components/operator-dashboard/FirstLoginOverview";
 import {
+  findApprovedFleetAwaitingOperationsById,
+  findFirstApprovedFleetAwaitingOperations,
   isFirstLoginOverview,
   OperatorDashboardState,
 } from "@/features/operator-dashboard/operator-dashboard-contract";
 import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import FirstFleetOperationsSetup from "@/components/operator-dashboard/FirstFleetOperationsSetup";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -23,9 +27,13 @@ function getErrorMessage(error: unknown): string {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [data, setData] = useState<OperatorDashboardState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestedSetupFleetId = typeof window === "undefined"
+    ? null
+    : new URLSearchParams(window.location.search).get("setupFleet");
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -104,9 +112,15 @@ export default function DashboardPage() {
 
   const { profile, verificationStatus, evidence } = data;
   const ownerName = profile?.profile?.name || null;
+  const requestedApprovedFleetAwaitingOperations = findApprovedFleetAwaitingOperationsById(data, requestedSetupFleetId);
+  const approvedFleetAwaitingOperations =
+    requestedApprovedFleetAwaitingOperations || findFirstApprovedFleetAwaitingOperations(data);
+  const approvedFleetSetup = approvedFleetAwaitingOperations
+    ? data.fleetSetupStatusesByFleetId[approvedFleetAwaitingOperations.fleetId] || null
+    : null;
 
   if (isFirstLoginOverview(data)) {
-    return <FirstLoginOverview state={data} />;
+    return <FirstLoginOverview state={data} initialOperationsFleetId={requestedSetupFleetId} />;
   }
 
   return (
@@ -135,8 +149,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 3. Operational Readiness Sequence Row */}
-      <OperationalReadiness verificationStatus={verificationStatus} fleets={data.fleet.items} />
+      {/* 3. First booking journey row */}
+      <OperationalReadiness
+        verificationStatus={verificationStatus}
+        fleets={data.fleet.items}
+        setupStatusesByFleetId={data.fleetSetupStatusesByFleetId}
+      />
+
+      {approvedFleetAwaitingOperations && approvedFleetSetup && (
+        <FirstFleetOperationsSetup
+          fleet={approvedFleetAwaitingOperations}
+          setup={approvedFleetSetup}
+          eyebrow="Approved bus awaiting launch"
+          onBackToBuses={() => router.push("/dashboard/fleet")}
+        />
+      )}
 
       {/* 4. Bottom Workspace Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -151,20 +178,20 @@ export default function DashboardPage() {
                 Platform Notice
               </div>
               <h4 className="text-sm font-bold text-[#161311]">
-                Truthful Operational Mode
+                Real setup status
               </h4>
               <p className="text-xs text-[#746E69] leading-relaxed">
-                Your dashboard displays live system status only. Booking, fleet, route, and settlement features unlock automatically as setup milestones are verified.
+                This dashboard only shows what is already approved or ready. More tools unlock as each step is completed.
               </p>
             </div>
             <div className="text-[10px] text-neutral-400 font-mono">
-              Status: Truthful Account Overview
+              Status: Live account view
             </div>
           </div>
         </div>
       </div>
 
-      {/* Locked Capabilities Row */}
+      {/* Coming-up tools row */}
       <LockedOperationsPreview />
     </div>
   );

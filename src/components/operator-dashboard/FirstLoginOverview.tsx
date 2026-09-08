@@ -13,10 +13,15 @@ import {
   Clock3,
   FileText,
   Landmark,
+  Route,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
 import type { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
+import {
+  findApprovedFleetAwaitingOperationsById,
+  findFirstApprovedFleetAwaitingOperations,
+} from "@/features/operator-dashboard/operator-dashboard-contract";
 import {
   calculateBusinessDraftProgress,
   EMPTY_BUSINESS_VERIFICATION_DRAFT,
@@ -32,12 +37,14 @@ import BusinessSetupModal from "./BusinessSetupModal";
 import SubmittedBusinessPreviewModal from "./business-setup-modal/SubmittedBusinessPreviewModal";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 import FleetSetupOverview from "./FleetSetupOverview";
+import FirstFleetOperationsSetup from "./FirstFleetOperationsSetup";
 import { cleanupLockedServerFleetDrafts, setActiveDraftId } from "@/features/fleet-registration/fleet-registration-draft-storage";
 
-type SetupTrack = "business" | "fleet";
+type SetupTrack = "business" | "fleet" | "operations";
 
 interface FirstLoginOverviewProps {
   state: OperatorDashboardState;
+  initialOperationsFleetId?: string | null;
 }
 
 const INITIAL_PROGRESS = calculateBusinessDraftProgress(
@@ -45,9 +52,20 @@ const INITIAL_PROGRESS = calculateBusinessDraftProgress(
   []
 );
 
-export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
+export default function FirstLoginOverview({
+  state,
+  initialOperationsFleetId = null,
+}: FirstLoginOverviewProps) {
+  const [selectedOperationsFleetId, setSelectedOperationsFleetId] = useState<string | null>(initialOperationsFleetId);
+  const requestedApprovedFleet = findApprovedFleetAwaitingOperationsById(state, selectedOperationsFleetId);
+  const firstApprovedFleet = requestedApprovedFleet || findFirstApprovedFleetAwaitingOperations(state);
+  const selectedFleetSetup = firstApprovedFleet
+    ? state.fleetSetupStatusesByFleetId[firstApprovedFleet.fleetId] ||
+      (state.firstFleetSetup?.fleetId === firstApprovedFleet.fleetId ? state.firstFleetSetup : null)
+    : null;
+  const hasOperationsSetup = Boolean(firstApprovedFleet && selectedFleetSetup);
   const [activeTrack, setActiveTrack] = useState<SetupTrack>(
-    state.verificationStatus === "approved" ? "fleet" : "business"
+    hasOperationsSetup ? "operations" : state.verificationStatus === "approved" ? "fleet" : "business"
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -198,7 +216,9 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
   ];
 
   const progressPercentage = isDraft ? draftProgress.percentage : isBusinessApproved ? 100 : 75;
-  const headerTitle = isDraft
+  const headerTitle = hasOperationsSetup
+    ? "Your first bus is approved — get it ready"
+    : isDraft
     ? "Complete your business setup"
     : isPending
       ? "Business review in progress"
@@ -239,14 +259,14 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         <div className="flex flex-col gap-4 border-b border-[#E8E1DB] bg-[linear-gradient(110deg,#FFF9F5_0%,#FFFFFF_60%,#FFF3EF_100%)] px-5 py-5 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#7A1D1B]">
-              Operator setup
+              Setup journey
             </div>
             <h2 className="mt-1 font-display text-xl font-bold text-[#191512] sm:text-2xl">
               {headerTitle}
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 rounded-2xl border border-[#E5DCD5] bg-white p-1.5 shadow-sm" role="tablist">
+          <div className={`grid ${hasOperationsSetup ? "grid-cols-3" : "grid-cols-2"} rounded-2xl border border-[#E5DCD5] bg-white p-1.5 shadow-sm`} role="tablist">
             <button
               type="button"
               role="tab"
@@ -265,8 +285,20 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
               className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition ${activeTrack === "fleet" ? "bg-[#7A1D1B] text-white" : "text-[#655E58] hover:bg-[#FAF7F4]"}`}
             >
               <BusFront className="h-4 w-4" />
-              Fleet Setup
+              Buses
             </button>
+            {hasOperationsSetup && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTrack === "operations"}
+                onClick={() => setActiveTrack("operations")}
+                className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition ${activeTrack === "operations" ? "bg-[#7A1D1B] text-white" : "text-[#655E58] hover:bg-[#FAF7F4]"}`}
+              >
+                <Route className="h-4 w-4" />
+                Get Bus Ready
+              </button>
+            )}
           </div>
         </div>
 
@@ -370,7 +402,7 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
                   if (isDraft) openSetup(draftNextAction.step);
                   else if (isRejected) openSetup(state.kycStatus?.documents?.some((document) => document.rejectionReason) ? 2 : 0);
                   else if (isPending) setActiveTrack("fleet");
-                  else setActiveTrack("fleet");
+                  else setActiveTrack(hasOperationsSetup ? "operations" : "fleet");
                 }}
                 className={`${isDraft ? "mt-6" : "mt-2.5"} inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] px-4 py-3 text-xs font-bold text-white transition hover:bg-[#5C1414]`}
               >
@@ -379,9 +411,20 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
               </button>
             </aside>
           </div>
+        ) : activeTrack === "operations" && firstApprovedFleet && selectedFleetSetup ? (
+          <FirstFleetOperationsSetup
+            fleet={firstApprovedFleet}
+            setup={selectedFleetSetup}
+            onBackToBuses={() => setActiveTrack("fleet")}
+          />
         ) : (
           <FleetSetupOverview
             fleets={state.fleet.items}
+            setupStatusesByFleetId={state.fleetSetupStatusesByFleetId}
+            onOpenOperations={(fleetId) => {
+              setSelectedOperationsFleetId(fleetId);
+              setActiveTrack("operations");
+            }}
             onAddVehicle={(draftId?: string) => {
               if (draftId) {
                 setActiveDraftId(draftId);
@@ -392,7 +435,9 @@ export default function FirstLoginOverview({ state }: FirstLoginOverviewProps) {
         )}
       </section>
 
-      <OperationalReadiness verificationStatus={state.verificationStatus} fleets={state.fleet.items} />
+      {!hasOperationsSetup && (
+        <OperationalReadiness verificationStatus={state.verificationStatus} fleets={state.fleet.items} />
+      )}
 
       {modalOpen && profile && ownerKey && (
         <BusinessSetupModal

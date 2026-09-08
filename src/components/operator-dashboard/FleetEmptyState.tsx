@@ -37,18 +37,18 @@ export default function FleetEmptyState({
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[11px] font-bold text-[#746E69] uppercase tracking-wider mb-1">
-              Fleet Readiness
+              My buses
             </div>
             <h3
               className="text-lg font-bold text-[#161311]"
               style={{ fontFamily: '"Neue Machina", system-ui, sans-serif' }}
             >
-              Vehicle Inventory
+              Your buses
             </h3>
           </div>
           <Image
             src="/operator-dashboard/illustrations/empty-fleet.svg"
-            alt="Empty Fleet"
+            alt="No buses yet"
             width={48}
             height={48}
             className="flex-shrink-0"
@@ -59,7 +59,7 @@ export default function FleetEmptyState({
           <div className="bg-[#FFF8F7] rounded-2xl p-4 border border-[#F0CACA] space-y-2">
             <div className="flex items-center justify-between">
               <span className="rounded-md bg-[#FDE7E6] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-[#7A1D1B]">
-                Unfinished setup
+                Unfinished bus
               </span>
               <button
                 type="button"
@@ -84,10 +84,10 @@ export default function FleetEmptyState({
         ) : (
           <div className="bg-[#FAF8F5] rounded-2xl p-4 border border-[#EEE8E2] space-y-1">
             <h4 className="text-sm font-bold text-[#161311]">
-              No vehicles added yet
+              No buses added yet
             </h4>
             <p className="text-xs text-[#746E69] leading-relaxed">
-              Prepare vehicles now. Business approval is required only when you submit a completed vehicle for review.
+              Add buses now. Business approval is only needed when you submit a bus for review.
             </p>
           </div>
         )}
@@ -102,7 +102,7 @@ export default function FleetEmptyState({
             }}
             className="w-full py-2.5 px-4 rounded-xl bg-[#7A1D1B] text-white font-semibold text-xs flex items-center justify-center gap-2 hover:bg-[#641715] transition shadow-2xs"
           >
-            <span>Continue vehicle setup</span>
+            <span>Continue bus setup</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         ) : (
@@ -111,7 +111,7 @@ export default function FleetEmptyState({
             className="w-full py-2.5 px-4 rounded-xl bg-[#FAF8F5] text-[#746E69] font-semibold text-xs border border-[#EEE8E2] flex items-center justify-center gap-2 hover:border-[#CDBDB5]"
           >
             <Plus className="w-4 h-4 text-neutral-400" />
-            <span>Prepare a vehicle</span>
+            <span>Add a bus</span>
           </button>
         )}
       </div>

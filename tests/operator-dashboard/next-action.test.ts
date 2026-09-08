@@ -41,10 +41,10 @@ test("next-action mapping rules (Operator Dashboard)", async (t) => {
   );
 
   await t.test(
-    "approved KYC returns 'Prepare your first vehicle' disabled upcoming step",
+    "approved KYC returns 'Add your first bus' disabled upcoming step",
     () => {
       const action = determineNextAction({ verificationStatus: "approved" });
-      assert.equal(action.label, "Prepare your first vehicle");
+      assert.equal(action.label, "Add your first bus");
       assert.equal(action.disabled, true);
       assert.equal(action.href, null);
       assert.equal(action.badge, "Upcoming step");

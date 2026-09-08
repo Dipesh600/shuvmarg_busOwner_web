@@ -113,7 +113,7 @@ export default function OperatorTopBar({
           <Search className="w-4 h-4 lg:w-5 lg:h-5 text-neutral-400 absolute left-4 lg:left-4.5 top-1/2 -translate-y-1/2 pointer-events-none transition-all" />
           <input
             type="text"
-            placeholder="Search setup, fleet, routes…"
+            placeholder="Search buses, routes, setup…"
             className="w-full h-11 lg:h-12 2xl:h-[52px] pl-11 lg:pl-12 pr-4 lg:pr-5 bg-white rounded-2xl border border-[#EEE8E2] text-xs lg:text-sm font-medium text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10 transition-all shadow-2xs hover:border-neutral-300"
             aria-label="Contextual search"
           />
