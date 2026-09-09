@@ -269,6 +269,13 @@ function LoginContent() {
                   )}
                 </button>
 
+                <p className="text-[14px] text-neutral-500 text-center">
+                  Invited by Shuvmarg?{" "}
+                  <Link href="/activate-account" className="text-[#7A1D1B] font-semibold hover:underline">
+                    Activate your account
+                  </Link>
+                </p>
+
                 <div className="relative py-4 flex items-center">
                   <div className="flex-grow border-t border-neutral-200" />
                   <span className="flex-shrink-0 mx-4 text-neutral-400 text-[13px] bg-white">New to Shuv Marg?</span>
