@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Search, X } from "lucide-react";
 import type { OperatorBrand } from "@/features/fleet-registration/api-brands";
 import {
-  createAgent, inviteAgent, listAssignmentOptions, lookupAgent,
+  createAgent, inviteAgent, listAssignmentOptions, lookupAgent, resendAgentInvitation,
 } from "@/features/agent-assignment/api";
 import {
   EMPTY_ASSIGNMENT_DRAFT, assignmentDraftsForBrands, validateAssignmentDraft,
@@ -41,6 +41,8 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
   const [createdMessage, setCreatedMessage] = useState("");
   const [createdMessageTone, setCreatedMessageTone] = useState<"success" | "warning">("success");
   const [identityCreated, setIdentityCreated] = useState(false);
+  const [createdAgentId, setCreatedAgentId] = useState("");
+  const [createdSmsNeedsAttention, setCreatedSmsNeedsAttention] = useState(false);
   const [createFields, setCreateFields] = useState<CreateAgentFields>({
     name: "", phone: "", outletType: "TICKET_COUNTER", district: "", municipality: "", placeName: "",
   });
@@ -108,6 +110,7 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
     setBusy(true); setError("");
     try {
       let agentCode = draft.agentCode;
+      let keepOpenForSms = false;
       if (creatingIdentity) {
         const created = await createAgent({
           ...createFields,
@@ -115,27 +118,48 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
         });
         agentCode = created.agentCode;
         setIdentityCreated(true);
+        setCreatedAgentId(created.agentId);
         patchDraft("agentCode", agentCode);
         const smsStatus = created.smsStatus
           || (created.smsSent ? "QUEUED" : created.requiresAgentActivation ? "FAILED" : "NOT_REQUIRED");
-        setCreatedMessageTone(smsStatus === "FAILED" ? "warning" : "success");
+        setCreatedMessageTone(["FAILED", "PENDING"].includes(smsStatus) ? "warning" : "success");
+        keepOpenForSms = ["FAILED", "PENDING"].includes(smsStatus);
+        setCreatedSmsNeedsAttention(keepOpenForSms);
         setCreatedMessage(smsStatus === "QUEUED"
-          ? "Agent account created and login details queued by SMS."
-          : smsStatus === "FAILED"
-            ? "Agent account created, but the login SMS failed. Contact Shuvmarg support."
+          ? "Agent account created and activation instructions accepted into the SMS queue."
+          : ["FAILED", "PENDING"].includes(smsStatus)
+            ? "Agent account created. The activation SMS is saved for retry; you can resend it if needed."
             : "The existing Shuvmarg login will be used; no new SMS was needed.");
       }
       const drafts = assignmentDraftsForBrands({ ...draft, agentCode }, selectedBrandIds);
       const results = await Promise.allSettled(drafts.map(inviteAgent));
       const failedIds = drafts.filter((_, index) => results[index].status === "rejected").map((item) => item.brandId);
       if (failedIds.length < drafts.length) onInvited();
-      if (failedIds.length === 0) return onClose();
+      if (failedIds.length === 0) {
+        if (keepOpenForSms) { changeBrands([]); return; }
+        return onClose();
+      }
       changeBrands(failedIds);
       if (creatingIdentity) await findAgent(agentCode, true);
       const firstFailure = results.find((result) => result.status === "rejected");
       const detail = firstFailure?.status === "rejected" && firstFailure.reason instanceof Error
         ? firstFailure.reason.message : "Try the remaining brands again.";
       setError(`${drafts.length - failedIds.length} invitation(s) sent; ${failedIds.length} failed. ${detail}`);
+    } catch (failure) { setError((failure as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const resendCreatedActivation = async () => {
+    if (!createdAgentId) return;
+    setBusy(true); setError("");
+    try {
+      const response = await resendAgentInvitation(createdAgentId);
+      const accepted = response.data.smsStatus === "PROVIDER_ACCEPTED";
+      setCreatedSmsNeedsAttention(!accepted);
+      setCreatedMessageTone(accepted ? "success" : "warning");
+      setCreatedMessage(response.message || (accepted
+        ? "Activation instructions were accepted into the SMS queue."
+        : "Activation instructions are saved for automatic retry."));
     } catch (failure) { setError((failure as Error).message); }
     finally { setBusy(false); }
   };
@@ -159,7 +183,7 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
 
           {!preview && mode === "create" && <AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} />}
 
-          {createdMessage && <p className={`rounded-xl border p-3 text-sm ${createdMessageTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{createdMessage}</p>}
+          {createdMessage && <div className={`rounded-xl border p-3 text-sm ${createdMessageTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}><p>{createdMessage}</p>{createdSmsNeedsAttention && createdAgentId && <button type="button" disabled={busy} onClick={() => void resendCreatedActivation()} className="mt-3 rounded-lg border border-current px-3 py-2 text-xs font-bold disabled:opacity-50">Resend activation SMS</button>}</div>}
           {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><p className="mt-1 font-mono text-sm text-emerald-800">{preview.agentCode}</p><p className="mt-2 text-xs text-neutral-600">{outletLabel(preview.outletType)} · {preview.municipality || preview.district || "Location unavailable"} · {verificationLabel(preview.kycStatus)}</p></section>}
           {preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
