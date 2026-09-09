@@ -6,14 +6,23 @@ import { assignmentPayload } from "./agent-assignment-contract";
 interface Envelope<T> { success: boolean; data: T; message?: string; }
 interface Page<T> extends Envelope<T[]> { pagination: { page: number; limit: number; total: number; totalPages: number }; }
 
-export type SmsStatus = "QUEUED" | "FAILED" | "NOT_REQUIRED";
+export type SmsStatus = "PENDING" | "QUEUED" | "FAILED" | "NOT_REQUIRED";
 export type AssignmentView = "CURRENT" | "HISTORY" | "INVITATIONS" | "STOPPED";
 export interface CreatedAgent {
   agentCode: string;
+  agentId: string;
   name: string;
   smsSent: boolean;
   smsStatus?: SmsStatus;
   requiresAgentActivation: boolean;
+}
+
+export async function resendAgentInvitation(agentId: string) {
+  const payload = await read<Envelope<{ agentId: string; smsStatus: string; messageId: string }>>(
+    await authFetch(`/busowner/agents/${agentId}/invitation/resend`, { method: "POST" }),
+    "Failed to resend activation instructions",
+  );
+  return payload;
 }
 
 async function read<T>(response: Response, fallback: string): Promise<T> {

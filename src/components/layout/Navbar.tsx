@@ -69,7 +69,7 @@ export default function Navbar() {
   }, [mobileMenuOpen]);
 
   // Hide Navbar completely on dashboard, register, login, and forgot-password pages
-  if (pathname?.startsWith("/dashboard") || pathname === "/register" || pathname === "/login" || pathname === "/forgot-password") return null;
+  if (pathname?.startsWith("/dashboard") || pathname === "/register" || pathname === "/login" || pathname === "/forgot-password" || pathname === "/activate-account") return null;
 
   return (
     <>

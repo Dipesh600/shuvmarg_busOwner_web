@@ -33,7 +33,7 @@ const footerCols = [
 
 export default function Footer() {
   const pathname = usePathname();
-  if (pathname === "/register" || pathname === "/login" || pathname === "/forgot-password") return null;
+  if (pathname === "/register" || pathname === "/login" || pathname === "/forgot-password" || pathname === "/activate-account") return null;
 
   return (
     <>
