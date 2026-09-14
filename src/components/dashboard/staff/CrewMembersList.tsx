@@ -6,12 +6,13 @@ import {
   Search, ShieldAlert, UserRoundCheck, UsersRound,
 } from "lucide-react";
 import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/api-brands";
-import { listCrew, removeCrew, updateCrewStatus, type CrewAssignmentResult } from "@/features/crew-management/api";
+import { listCrew, removeCrew, resendCrewInvitation, updateCrewStatus, type CrewAssignmentResult } from "@/features/crew-management/api";
 import type { StaffMember, StaffOperationalStatus, StaffRole } from "./staff-contract";
 import StaffCardActionsMenu from "./StaffCardActionsMenu";
 import StaffStatusBadge from "./StaffStatusBadge";
 import CrewAssignmentDialog from "./CrewAssignmentDialog";
 import ConductorTripsDialog from "./ConductorTripsDialog";
+import CrewVehicleAccessDialog from "./CrewVehicleAccessDialog";
 
 const STATUS_OPTIONS: Array<{ value: "" | StaffOperationalStatus; label: string }> = [
   { value: "", label: "All statuses" }, { value: "AVAILABLE", label: "Available" },
@@ -37,8 +38,9 @@ export default function CrewMembersList() {
   const [workingId, setWorkingId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<{ text: string; warning?: boolean } | null>(null);
-  const [dialog, setDialog] = useState<{ existing?: StaffMember; resend?: boolean } | null>(null);
+  const [dialog, setDialog] = useState<{ existing?: StaffMember } | null>(null);
   const [tripTarget, setTripTarget] = useState<StaffMember | null>(null);
+  const [vehicleTarget, setVehicleTarget] = useState<StaffMember | null>(null);
   const [renderedAt] = useState(() => Date.now());
   const requestRef = useRef(0);
 
@@ -94,6 +96,15 @@ export default function CrewMembersList() {
     if (next !== "AVAILABLE" && next !== "OFF_DUTY") return;
     void mutate(staff, () => updateCrewStatus(staff, next), next === "AVAILABLE" ? "Crew member is available." : "Crew member is off duty.");
   };
+  const resendInvitation = async (staff: StaffMember) => {
+    setWorkingId(staff.id); setError(""); setNotice(null);
+    try {
+      const result = await resendCrewInvitation(staff);
+      setNotice({ text: result.message, warning: result.data.notificationStatus !== "QUEUED" });
+      await load();
+    } catch (failure) { setError((failure as Error).message); }
+    finally { setWorkingId(""); }
+  };
   const saved = (message: string, warning = false, result?: CrewAssignmentResult) => {
     if (result?.profileId) setCrew(current => current.map(staff => staff.id === result.profileId
       ? { ...staff, status: result.profileStatus || staff.status,
@@ -104,6 +115,7 @@ export default function CrewMembersList() {
     setDialog(null); setNotice({ text: message, warning }); void load();
   };
   const brandName = (id: string) => brands.find(brand => brand.id === id)?.brandName || "Operator brand";
+  const vehicleScopeLabel = (staff: StaffMember) => switchVehicleScope(staff.vehicleScope, staff.allowedVehicleIds?.length || 0);
 
   return <section className="space-y-5">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -117,7 +129,7 @@ export default function CrewMembersList() {
         {(["driver", "conductor"] as StaffRole[]).map(value => <button key={value} type="button" role="tab" aria-selected={role === value} onClick={() => changeRole(value)} className={"rounded-xl px-4 py-2.5 text-sm font-bold capitalize transition " + (role === value ? "bg-[#7A1D1B] text-white" : "bg-[#F7F3F1] text-[#635B55] hover:bg-[#EFE7E3]")}>{value}s</button>)}
       </div>
       <div className="grid gap-3 lg:grid-cols-[1fr_240px_210px]">
-        <label className="text-xs font-bold text-neutral-700">Search<div className="relative mt-1.5"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={search} maxLength={100} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder={role === "driver" ? "Name, phone or license" : "Name or phone"} className={inputClass + " w-full pl-10"} /></div></label>
+        <label className="text-xs font-bold text-neutral-700">Search your crew<div className="relative mt-1.5"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={search} maxLength={100} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder={role === "driver" ? "Name, phone or license" : "Name or phone"} className={inputClass + " w-full pl-10"} /></div></label>
         <label className="text-xs font-bold text-neutral-700">Brand<select value={brandId} onChange={event => { setBrandId(event.target.value); setPage(1); }} className={inputClass + " mt-1.5 w-full"}><option value="">All brands</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.brandName}</option>)}</select></label>
         <label className="text-xs font-bold text-neutral-700">Status<select value={status} onChange={event => { setStatus(event.target.value as typeof status); setPage(1); }} className={inputClass + " mt-1.5 w-full"}>{STATUS_OPTIONS.map(option => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}</select></label>
       </div>
@@ -131,37 +143,47 @@ export default function CrewMembersList() {
       : crew.length === 0 ? <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-16 text-center shadow-sm"><UsersRound className="mx-auto h-10 w-10 text-neutral-400" /><h3 className="mt-4 text-lg font-bold text-neutral-900">No {role}s match this view</h3><p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">{brandId || status || search ? "Try clearing a filter." : "Add your first crew member to connect their Partner app access."}</p>{!brandId && !status && !search && <button type="button" onClick={() => setDialog({})} className="mt-5 rounded-xl border border-[#7A1D1B] px-4 py-2.5 text-sm font-bold text-[#7A1D1B]">Add {role}</button>}</div>
       : <div className="grid gap-4 lg:grid-cols-2">{crew.map(staff => {
         const expired = staff.licenseExpiry && new Date(staff.licenseExpiry).getTime() < renderedAt;
+        const accessActive = staff.accessStatus === "ACTIVE";
         const securityUpdateRequired = staff.role === "driver" && staff.approvalStatus === "PENDING";
         const driverRejected = staff.role === "driver" && staff.approvalStatus === "REJECTED";
         return <article key={staff.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EE] text-[#7A1D1B]">{staff.role === "driver" ? <BusFront className="h-5 w-5" /> : <UserRoundCheck className="h-5 w-5" />}</span><div className="min-w-0"><h3 className="truncate font-bold text-neutral-900">{staff.fullName}</h3><p className="mt-0.5 text-xs text-neutral-500">{staff.phone} · {brandName(staff.brandId)}</p></div></div>
-            {activeStatus(staff.status) && staff.userId && <StaffCardActionsMenu staff={staff} canChangeStatus={staff.status === "AVAILABLE" || staff.status === "OFF_DUTY"} onStatusChange={next => updateStatus(staff, next)} onRemove={() => remove(staff)} />}</div>
-          <div className="mt-4 flex flex-wrap gap-2"><StaffStatusBadge status={staff.status} />
-            {staff.accessStatus === "INVITED" && <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700"><Clock className="h-3 w-3" />Account setup pending</span>}
-            {staff.accessStatus === "ACTIVE" && <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase text-blue-700"><CheckCircle2 className="h-3 w-3" />Account active</span>}
+          <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EE] text-[#7A1D1B]">{staff.role === "driver" ? <BusFront className="h-5 w-5" /> : <UserRoundCheck className="h-5 w-5" />}</span><div className="min-w-0"><h3 className="truncate font-bold text-neutral-900">{staff.fullName}</h3>{staff.staffCode && <p className="mt-0.5 font-mono text-xs font-bold text-[#7A1D1B]">{staff.staffCode}</p>}<p className="mt-0.5 text-xs text-neutral-500">{staff.phone} · {brandName(staff.brandId)}</p></div></div>
+            {activeStatus(staff.status) && staff.userId && <StaffCardActionsMenu staff={staff} canChangeStatus={accessActive && (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY")} onStatusChange={next => updateStatus(staff, next)} onRemove={() => remove(staff)} />}</div>
+          <div className="mt-4 flex flex-wrap gap-2">{accessActive && <StaffStatusBadge status={staff.status} />}
+            {staff.accessStatus === "INVITED" && <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700"><Clock className="h-3 w-3" />{staff.accountStatus === "active" ? "Acceptance pending" : "Account setup pending"}</span>}
+            {accessActive && <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase text-blue-700"><CheckCircle2 className="h-3 w-3" />Crew access active</span>}
             {staff.accessStatus === "NOT_LINKED" && <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Registry only</span>}
             {staff.accessStatus === "SUSPENDED" && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">Account access suspended</span>}
+            {staff.accessStatus === "DECLINED" && <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Invitation declined</span>}
+            {staff.accessStatus === "LEFT" && <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Left operator</span>}
             {staff.accessStatus === "REMOVED" && <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-700">Crew access removed</span>}
-            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "PENDING" && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">Setup SMS pending</span>}
-            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "FAILED" && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">Setup SMS failed</span>}
-            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "QUEUED" && <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase text-emerald-700">Setup SMS queued</span>}
+            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "PENDING" && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">SMS waiting for delivery</span>}
+            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "FAILED" && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">SMS delivery failed</span>}
             {securityUpdateRequired && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">Security update required</span>}
             {driverRejected && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">Driver blocked</span>}</div>
           {staff.role === "driver" ? <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-neutral-50 p-3 text-sm"><div><dt className="text-xs text-neutral-500">License</dt><dd className="font-semibold text-neutral-800">{staff.licenseNumber || "Missing"} · {staff.licenseType || "—"}</dd></div><div><dt className="text-xs text-neutral-500">Valid until</dt><dd className={"font-semibold " + (expired ? "text-red-700" : "text-neutral-800")}>{formatExpiry(staff.licenseExpiry)}</dd></div></dl>
             : <div className="mt-4 rounded-xl bg-neutral-50 p-3"><p className="text-xs text-neutral-500">Assigned trips</p><p className="mt-1 font-semibold text-neutral-800">{staff.assignedTrips?.length || 0} trip{staff.assignedTrips?.length === 1 ? "" : "s"}</p></div>}
+          {["INVITED", "ACTIVE"].includes(staff.accessStatus) && <div className="mt-3 flex items-center justify-between rounded-xl border border-neutral-100 px-3 py-2.5"><div><p className="text-xs text-neutral-500">Vehicle access</p><p className="mt-0.5 text-sm font-bold text-neutral-800">{vehicleScopeLabel(staff)}</p></div><button type="button" onClick={() => setVehicleTarget(staff)} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">Edit</button></div>}
           {(expired || securityUpdateRequired || driverRejected || staff.status === "SUSPENDED") && <div className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{staff.status === "SUSPENDED" || driverRejected ? "This driver is blocked. Contact Shuvmarg support before restoring access." : expired ? "The licence has expired. Upload a valid replacement before assignment." : "Upload the licence once to complete the automated security checks."}</span></div>}
           <div className="mt-4 flex flex-wrap gap-2">
             {staff.role === "conductor" && staff.accessStatus === "ACTIVE" && activeStatus(staff.status) && <button type="button" onClick={() => setTripTarget(staff)} className="flex items-center gap-2 rounded-lg border border-[#7A1D1B]/30 px-3 py-2 text-xs font-bold text-[#7A1D1B]"><BadgeCheck className="h-3.5 w-3.5" />Manage trips</button>}
-            {staff.accessStatus === "INVITED" && activeStatus(staff.status) && <button type="button" onClick={() => setDialog({ existing: staff, resend: true })} className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Retry setup SMS</button>}
+            {staff.accessStatus === "INVITED" && ["PENDING", "FAILED"].includes(staff.invitationDeliveryStatus) && activeStatus(staff.status) && <button type="button" disabled={workingId === staff.id} onClick={() => void resendInvitation(staff)} className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 disabled:opacity-50">Resend invitation SMS</button>}
             {securityUpdateRequired && activeStatus(staff.status) && <button type="button" onClick={() => setDialog({ existing: staff })} className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Complete security check</button>}
             {staff.status === "INACTIVE" && !driverRejected && <button type="button" onClick={() => setDialog({ existing: staff })} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800">Rehire crew member</button>}
-            {(staff.status === "AVAILABLE" || staff.status === "OFF_DUTY") && staff.userId && <button type="button" disabled={workingId === staff.id} onClick={() => updateStatus(staff, staff.status === "OFF_DUTY" ? "AVAILABLE" : "OFF_DUTY")} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700 disabled:opacity-50">{staff.status === "OFF_DUTY" ? "Mark available" : "Mark off duty"}</button>}
+            {accessActive && (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY") && staff.userId && <button type="button" disabled={workingId === staff.id} onClick={() => updateStatus(staff, staff.status === "OFF_DUTY" ? "AVAILABLE" : "OFF_DUTY")} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700 disabled:opacity-50">{staff.status === "OFF_DUTY" ? "Mark available" : "Mark off duty"}</button>}
           </div>
         </article>;
       })}</div>}
 
     {totalPages > 1 && <nav aria-label="Crew pages" className="flex items-center justify-center gap-3"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => value - 1)} className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-bold disabled:opacity-40">Previous</button><span className="text-sm text-neutral-500">Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages || loading} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-bold disabled:opacity-40">Next</button></nav>}
-    {dialog && <CrewAssignmentDialog brands={brands} initialRole={role} existing={dialog.existing} resend={dialog.resend} onClose={() => setDialog(null)} onSaved={saved} />}
+    {dialog && <CrewAssignmentDialog brands={brands} initialRole={role} initialBrandId={brandId || undefined} existing={dialog.existing} onClose={() => setDialog(null)} onSaved={saved} />}
     {tripTarget && <ConductorTripsDialog conductor={tripTarget} onClose={() => { setTripTarget(null); void load(); }} onSaved={message => setNotice({ text: message })} />}
+    {vehicleTarget && <CrewVehicleAccessDialog staff={vehicleTarget} onClose={() => setVehicleTarget(null)} onSaved={message => { setVehicleTarget(null); setNotice({ text: message }); void load(); }} />}
   </section>;
+}
+
+function switchVehicleScope(scope: StaffMember["vehicleScope"], count: number) {
+  if (scope === "ONE_VEHICLE") return "One vehicle";
+  if (scope === "SELECTED_VEHICLES") return `${count} selected vehicle${count === 1 ? "" : "s"}`;
+  return "Any vehicle in this brand";
 }

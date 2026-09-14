@@ -12,6 +12,7 @@ export interface AgentPreview {
   kycStatus: string;
   isVerified: boolean;
   canBeAssigned?: boolean;
+  phone?: string;
 }
 
 export interface AssignmentTerms {

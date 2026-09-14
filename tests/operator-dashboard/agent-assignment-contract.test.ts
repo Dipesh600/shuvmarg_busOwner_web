@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   AGENT_PERMISSION_AVAILABILITY,
   EMPTY_ASSIGNMENT_DRAFT,
@@ -7,6 +9,8 @@ import {
   assignmentPayload,
   validateAssignmentDraft,
 } from "../../src/features/agent-assignment/agent-assignment-contract.ts";
+
+const projectRoot = join(import.meta.dirname, "../..");
 
 const valid = () => ({
   ...structuredClone(EMPTY_ASSIGNMENT_DRAFT),
@@ -86,4 +90,18 @@ test("multiple brands create one fail-closed all-bus invitation per unique brand
 
 test("no selected brand creates no assignment invitation", () => {
   assert.deepEqual(assignmentDraftsForBrands(valid(), []), []);
+});
+
+test("existing agent lookup accepts an Agent ID or exact mobile number", () => {
+  const api = readFileSync(join(projectRoot, "src/features/agent-assignment/api.ts"), "utf8");
+  const dialog = readFileSync(
+    join(projectRoot, "src/components/dashboard/staff/AgentAssignmentDialog.tsx"),
+    "utf8",
+  );
+
+  assert.match(api, /URLSearchParams\(\{ identifier:/);
+  assert.match(api, /\/busowner\/agents\/lookup\?\$\{query\.toString\(\)\}/);
+  assert.match(dialog, /Agent ID or mobile number/);
+  assert.match(dialog, /98XXXXXXXX/);
+  assert.match(dialog, /preview\.phone/);
 });

@@ -8,7 +8,23 @@ export interface OwnerTrip {
   brandId?: string;
   tripId?: string;
   arrivalTime?: string;
-  busId?: { busName?: string; busNumber?: string };
+  busId?: { _id?: string; busName?: string; busNumber?: string };
+  scheduleId?: string;
+  corridorId?: string;
+  routeSnapshot?: {
+    corridor?: {
+      corridorId?: string;
+      origin?: { name?: string };
+      destination?: { name?: string };
+    };
+    routeVersion?: {
+      variantId?: string;
+      name?: string;
+      direction?: "FORWARD" | "RETURN";
+      revisionNumber?: number;
+    };
+    assignment?: { scope?: string; reason?: string | null };
+  } | null;
   routeId?: { routeName?: string; fromCity?: string; toCity?: string };
 }
 

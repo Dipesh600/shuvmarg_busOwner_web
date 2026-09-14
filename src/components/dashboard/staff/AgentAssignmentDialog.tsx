@@ -77,7 +77,7 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
   };
 
   const findAgent = async (code = draft.agentCode, preserveCreatedMessage = false) => {
-    if (!code.trim()) return setError("Enter the agent ID.");
+    if (!code.trim()) return setError("Enter an Agent ID or mobile number.");
     setBusy(true); setError("");
     if (!preserveCreatedMessage) setCreatedMessage("");
     try {
@@ -179,12 +179,12 @@ export default function AgentAssignmentDialog({ brands, onClose, onInvited }: Pr
 
           {mode === "code" && !preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
-          {!preview && mode === "code" && <section className="rounded-2xl border border-neutral-200 bg-white p-5"><label className="text-sm font-bold text-neutral-700">Agent ID</label><div className="mt-2 flex gap-2"><input value={draft.agentCode} onChange={(event) => patchDraft("agentCode", event.target.value)} placeholder="SM-AG-…" className={inputClass} /><button type="button" onClick={() => void findAgent()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white disabled:opacity-50"><Search className="h-4 w-4" />Find</button></div></section>}
+          {!preview && mode === "code" && <section className="rounded-2xl border border-neutral-200 bg-white p-5"><label className="text-sm font-bold text-neutral-700">Agent ID or mobile number</label><div className="mt-2 flex gap-2"><input value={draft.agentCode} onChange={(event) => patchDraft("agentCode", event.target.value)} placeholder="SM-AG-… or 98XXXXXXXX" inputMode="text" autoComplete="off" className={inputClass} /><button type="button" onClick={() => void findAgent()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold text-white disabled:opacity-50"><Search className="h-4 w-4" />Find</button></div><p className="mt-2 text-xs text-neutral-500">Use the exact mobile number registered to the agent account.</p></section>}
 
           {!preview && mode === "create" && <AgentCreateFields fields={createFields} brands={brands} brandIds={selectedBrandIds} onFieldsChange={setCreateFields} onBrandIdsChange={changeBrands} />}
 
           {createdMessage && <div className={`rounded-xl border p-3 text-sm ${createdMessageTone === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}><p>{createdMessage}</p>{createdSmsNeedsAttention && createdAgentId && <button type="button" disabled={busy} onClick={() => void resendCreatedActivation()} className="mt-3 rounded-lg border border-current px-3 py-2 text-xs font-bold disabled:opacity-50">Resend activation SMS</button>}</div>}
-          {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><p className="mt-1 font-mono text-sm text-emerald-800">{preview.agentCode}</p><p className="mt-2 text-xs text-neutral-600">{outletLabel(preview.outletType)} · {preview.municipality || preview.district || "Location unavailable"} · {verificationLabel(preview.kycStatus)}</p></section>}
+          {preview && <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="font-bold text-neutral-900">{preview.name || "Unnamed agent"}</p><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-emerald-800"><span className="font-mono">{preview.agentCode}</span>{preview.phone && <span>{preview.phone}</span>}</div><p className="mt-2 text-xs text-neutral-600">{outletLabel(preview.outletType)} · {preview.municipality || preview.district || "Location unavailable"} · {verificationLabel(preview.kycStatus)}</p></section>}
           {preview && <AgentBrandMultiSelect options={brands.filter((brand) => brand.status === "ACTIVE").map((brand) => ({ value: brand.id, label: brand.brandName }))} values={selectedBrandIds} onChange={changeBrands} />}
 
           {(preview || mode === "create") && selectedBrandIds.length > 0 && <>

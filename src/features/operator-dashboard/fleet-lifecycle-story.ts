@@ -55,9 +55,14 @@ export const FLEET_OPERATIONS_NEXT_STEP_COPY: Record<
     detail: "Pick the stops this bus will serve and add the arrival/departure times passengers will see.",
   },
   driverAssigned: {
-    title: "Assign driver",
-    short: "Assign driver",
-    detail: "Choose the approved driver or crew member who will operate this bus.",
+    title: "Choose current driver",
+    short: "Current driver",
+    detail: "Choose who will drive this bus now. You can rotate the assignment later.",
+  },
+  conductorAssigned: {
+    title: "Choose current conductor",
+    short: "Current conductor",
+    detail: "Choose who will conduct this bus now. You can rotate the assignment later.",
   },
   scheduleCreated: {
     title: "Add trip schedule",

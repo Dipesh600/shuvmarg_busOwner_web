@@ -7,8 +7,17 @@ export type StaffOperationalStatus =
   | "INACTIVE"
   | "SUSPENDED";
 
-export type StaffAccessStatus = "NOT_LINKED" | "INVITED" | "ACTIVE" | "SUSPENDED" | "REMOVED";
+export type StaffAccessStatus = "NOT_LINKED" | "INVITED" | "ACTIVE" | "SUSPENDED" | "DECLINED" | "LEFT" | "REMOVED";
 export type InvitationDeliveryStatus = "NOT_REQUIRED" | "PENDING" | "QUEUED" | "FAILED";
+export type CrewVehicleScope = "ANY_VEHICLE" | "ONE_VEHICLE" | "SELECTED_VEHICLES";
+
+export interface CrewAccessHistoryEvent {
+  from?: StaffAccessStatus | null;
+  to: StaffAccessStatus;
+  at: string;
+  actorType: "OWNER" | "CREW" | "SYSTEM";
+  reason?: string | null;
+}
 
 export interface AssignedCrewTrip {
   id: string;
@@ -24,6 +33,8 @@ export interface AssignedCrewTrip {
 export interface StaffMember {
   id: string;
   userId?: string;
+  identityId?: string | null;
+  staffCode?: string | null;
   role: StaffRole;
   fullName: string;
   phone: string;
@@ -34,6 +45,7 @@ export interface StaffMember {
   approvalStatus?: string;
   accessStatus: StaffAccessStatus;
   invitationDeliveryStatus: InvitationDeliveryStatus;
+  accountStatus?: string | null;
   phoneVerified?: boolean;
   invitedAt?: string | null;
   activatedAt?: string | null;
@@ -47,4 +59,10 @@ export interface StaffMember {
   removedAt?: string | null;
   assignedBusId?: string | null;
   assignedTrips?: AssignedCrewTrip[];
+  declinedAt?: string | null;
+  leftAt?: string | null;
+  accessEndedReason?: string | null;
+  vehicleScope?: CrewVehicleScope;
+  allowedVehicleIds?: string[];
+  accessHistory?: CrewAccessHistoryEvent[];
 }

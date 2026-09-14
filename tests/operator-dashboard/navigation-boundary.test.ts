@@ -32,6 +32,10 @@ test("business profile actions do not link to retired route or schedule pages", 
 test("staff workspace uses the real agent-assignment API and no fabricated counters", () => {
   const staffRoot = join(projectRoot, "src/components/dashboard/staff");
   const agents = readFileSync(join(staffRoot, "AgentCountersList.tsx"), "utf8");
+  assert.match(agents, /Agent access active/);
+  assert.match(agents, /Invitation pending/);
+  assert.match(agents, /settings below start only after the agent accepts/);
+  assert.match(agents, /row\.status === "ACTIVE" && <button/);
   const dialog = readFileSync(join(staffRoot, "AgentAssignmentDialog.tsx"), "utf8");
   const workspace = readFileSync(join(staffRoot, "StaffManagementLayout.tsx"), "utf8");
   const api = readFileSync(

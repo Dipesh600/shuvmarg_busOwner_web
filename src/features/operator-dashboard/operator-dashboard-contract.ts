@@ -112,6 +112,7 @@ export type FleetOperationsStepKey =
   | "routeAssigned"
   | "routeConfigured"
   | "driverAssigned"
+  | "conductorAssigned"
   | "scheduleCreated"
   | "activated";
 
@@ -127,6 +128,68 @@ export interface AssignedRouteSummary {
   origin: string | null;
   destination: string | null;
   label: string | null;
+}
+
+export interface OperatorSetupTiming {
+  estimatedArrival?: string;
+  estimatedDeparture?: string;
+  dayOffset?: number;
+}
+
+export interface OperatorSetupRouteConfig {
+  _id: string;
+  patternName?: string;
+  status?: string;
+  activeStops?: unknown[];
+  returnActiveStops?: unknown[];
+  timingConfig?: OperatorSetupTiming[];
+  returnTimingConfig?: OperatorSetupTiming[];
+  variantId?: {
+    _id?: string;
+    name?: string;
+    direction?: "FORWARD" | "RETURN";
+    returnVariantId?: string;
+  } | string;
+}
+
+export interface OperatorSetupSchedule {
+  _id?: string;
+  status?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  arrivalDayOffset?: number;
+  recurrence?: "DAILY" | "WEEKLY" | "CUSTOM";
+  daysOfWeek?: number[];
+  effectiveFrom?: string;
+  returnScheduleId?: string | null;
+  fareOverride?: number | null;
+  bookingCutoffHours?: number;
+  operationalModel?: "TURNAROUND" | "RELAY";
+  returnMode?: "SAME_DAY" | "NEXT_DAY" | null;
+}
+
+export type ServicePublicationState =
+  | "DRAFT"
+  | "PREPARING"
+  | "ACTIVE"
+  | "FAILED"
+  | "REQUIRES_ATTENTION";
+
+export interface ServicePublicationConfiguration {
+  availableElementIds: string[];
+  pricing: {
+    defaultFare: number;
+    overrides: Array<{ elementId: string; fare: number }>;
+  };
+}
+
+export interface ServicePublicationStatus {
+  state: ServicePublicationState;
+  requestId: string | null;
+  fingerprint: string | null;
+  lastError: string | null;
+  updatedAt: string | null;
+  configuration: ServicePublicationConfiguration | null;
 }
 
 export interface OperatorFleetSetupStatus {
@@ -150,10 +213,12 @@ export interface OperatorFleetSetupStatus {
   returnScheduleId?: string | null;
   assignedRoute?: AssignedRouteSummary | null;
   assignedCorridor?: unknown;
-  assignedRouteConfigs?: unknown[];
+  assignedRouteConfigs?: OperatorSetupRouteConfig[];
   assignedDriver?: unknown;
-  outboundScheduleData?: unknown;
-  returnScheduleData?: unknown;
+  assignedConductor?: unknown;
+  publication?: ServicePublicationStatus;
+  outboundScheduleData?: OperatorSetupSchedule | null;
+  returnScheduleData?: OperatorSetupSchedule | null;
 }
 
 export interface SetupEvidence {
