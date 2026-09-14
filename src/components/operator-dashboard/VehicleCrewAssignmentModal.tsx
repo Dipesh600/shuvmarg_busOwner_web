@@ -4,11 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
-  BadgeCheck,
   CheckCircle2,
   LoaderCircle,
   Plus,
-  RefreshCw,
   Search,
   UserRound,
   X,
@@ -85,7 +83,6 @@ export default function VehicleCrewAssignmentModal({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     listVehicleCrewOptions(fleetId, activeRole)
       .then((result) => {
         if (active) {

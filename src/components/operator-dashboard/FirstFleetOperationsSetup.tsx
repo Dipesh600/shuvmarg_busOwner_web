@@ -9,7 +9,6 @@ import {
   CalendarDays,
   Check,
   CircleDashed,
-  Copy,
   LockKeyhole,
   MapPinned,
   Radio,
@@ -143,10 +142,6 @@ export default function FirstFleetOperationsSetup({
 }: FirstFleetOperationsSetupProps) {
   const [setup, setSetup] = useState<OperatorFleetSetupStatus>(initialSetup);
 
-  useEffect(() => {
-    setSetup(initialSetup);
-  }, [initialSetup]);
-
   const refreshSetup = useCallback(async () => {
     try {
       const fresh = await fetchFleetSetupStatus(fleet.fleetId);
@@ -266,8 +261,10 @@ export default function FirstFleetOperationsSetup({
     if (typeof window !== "undefined") {
       const stored = window.sessionStorage.getItem("shuvmarg:copy-notice");
       if (stored) {
-        setCopyNotice(stored);
         window.sessionStorage.removeItem("shuvmarg:copy-notice");
+        window.requestAnimationFrame(() => {
+          if (active) setCopyNotice(stored);
+        });
       }
     }
     return () => { active = false; };
@@ -298,7 +295,14 @@ export default function FirstFleetOperationsSetup({
       document.getElementById(`setup-step-${next}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [continuationKey, setup.steps.conductorAssigned, setup.steps.driverAssigned, setup.steps.routeConfigured]);
+  }, [
+    continuationKey,
+    setup.steps.activated,
+    setup.steps.conductorAssigned,
+    setup.steps.driverAssigned,
+    setup.steps.routeConfigured,
+    setup.steps.scheduleCreated,
+  ]);
 
   return (
     <div className="p-5 sm:p-7">

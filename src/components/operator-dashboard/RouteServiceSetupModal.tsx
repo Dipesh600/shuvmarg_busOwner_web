@@ -251,15 +251,14 @@ export default function RouteServiceSetupModal({
   const fleetId = fleet.fleetId;
   const preferredCorridorId = setup.assignedRoute?.corridorId || null;
 
-  const [peers, setPeers] = useState<CopyablePeerBus[]>(copyablePeers || []);
+  const [fetchedPeers, setFetchedPeers] = useState<CopyablePeerBus[]>([]);
+  const peers = copyablePeers && copyablePeers.length > 0 ? copyablePeers : fetchedPeers;
   const [copyModalOpen, setCopyModalOpen] = useState(false);
 
   useEffect(() => {
-    if (copyablePeers && copyablePeers.length > 0) {
-      setPeers(copyablePeers);
-    } else if (fleetId) {
+    if ((!copyablePeers || copyablePeers.length === 0) && fleetId) {
       fetchCopyablePeers(fleetId).then((data) => {
-        if (data.length > 0) setPeers(data);
+        if (data.length > 0) setFetchedPeers(data);
       });
     }
   }, [copyablePeers, fleetId]);

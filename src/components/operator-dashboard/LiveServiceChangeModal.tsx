@@ -126,13 +126,18 @@ export default function LiveServiceChangeModal({ trip, control, onClose, onSaved
   const [preview, setPreview] = useState<OperationalChangePreview | null>(null);
   const [confirmResolution, setConfirmResolution] = useState(false);
   const [history, setHistory] = useState<Array<Record<string, unknown>>>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [loadError, setError] = useState("");
+  const contextError = !fleetId || !brandId
+    ? "This trip is missing its bus or operator information."
+    : "";
+  const error = contextError || loadError;
+  const loading = !contextError && isLoading;
 
   useEffect(() => {
     let active = true;
-    if (!fleetId || !brandId) { setError("This trip is missing its bus or operator information."); setLoading(false); return; }
+    if (!fleetId || !brandId) return;
     Promise.all([
       getAvailableOperatorVariants(brandId, fleetId), getOperatorRouteConfigs(brandId, fleetId),
       listVehicleCrewOptions(fleetId, "driver"), listVehicleCrewOptions(fleetId, "conductor"),

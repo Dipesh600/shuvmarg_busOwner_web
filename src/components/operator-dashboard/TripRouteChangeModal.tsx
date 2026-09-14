@@ -51,17 +51,18 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
   const [dateInput, setDateInput] = useState("");
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setError] = useState<string | null>(null);
+  const contextError = !fleetId || !brandId
+    ? "This trip is missing its bus or operator information."
+    : null;
+  const error = contextError || loadError;
+  const loading = !contextError && isLoading;
 
   useEffect(() => {
     let active = true;
-    if (!fleetId || !brandId) {
-      setError("This trip is missing its bus or operator information.");
-      setLoading(false);
-      return;
-    }
+    if (!fleetId || !brandId) return;
     Promise.all([
       getAvailableOperatorVariants(brandId, fleetId),
       getOperatorRouteConfigs(brandId, fleetId),
@@ -81,15 +82,14 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
 
   const selectedVariant = variants.find((variant) => variant._id === variantId) || null;
   const matchingConfigs = useMemo(() => configs.filter((config) => getRouteVariantId(config) === variantId), [configs, variantId]);
-
-  useEffect(() => {
-    setConfigId(matchingConfigs.find((config) => config.isDefault)?._id || matchingConfigs[0]?._id || "");
-  }, [matchingConfigs]);
+  const activeConfigId = matchingConfigs.some((config) => config._id === configId)
+    ? configId
+    : matchingConfigs.find((config) => config.isDefault)?._id || matchingConfigs[0]?._id || "";
 
   const canContinueDates = scope === "ONE_TRIP"
     || (scope === "SELECTED_DATES" ? selectedDates.length > 0
       : Boolean(fromDate && (scope !== "TEMPORARY" || untilDate)));
-  const canReview = Boolean(selectedVariant && selectedVariant.returnVariantId && configId && canContinueDates && reason.trim());
+  const canReview = Boolean(selectedVariant && selectedVariant.returnVariantId && activeConfigId && canContinueDates && reason.trim());
 
   function addDate() {
     if (!dateInput || selectedDates.includes(dateInput)) return;
@@ -98,7 +98,7 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
   }
 
   async function save() {
-    if (!selectedVariant?.returnVariantId || !configId || !fleetId) return;
+    if (!selectedVariant?.returnVariantId || !activeConfigId || !fleetId) return;
     setSaving(true);
     setError(null);
     const target = scope === "ONE_TRIP" ? `trip:${trip._id}` : `plan:${trip.scheduleId}`;
@@ -106,7 +106,7 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
       scope,
       variantId: selectedVariant._id,
       returnVariantId: selectedVariant.returnVariantId,
-      configId,
+      configId: activeConfigId,
       fromDate: scope === "SELECTED_DATES" || scope === "ONE_TRIP" ? null : fromDate,
       untilDate: scope === "TEMPORARY" ? untilDate : null,
       selectedDates: scope === "SELECTED_DATES" ? selectedDates : [],
@@ -116,8 +116,8 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
       requestId: persistentRouteChangeRequestId(fleetId, target, changeSignature),
       primaryVariantId: selectedVariant._id,
       returnVariantId: selectedVariant.returnVariantId,
-      primaryOperatorRouteConfigId: configId,
-      returnOperatorRouteConfigId: configId,
+      primaryOperatorRouteConfigId: activeConfigId,
+      returnOperatorRouteConfigId: activeConfigId,
       reason: reason.trim(),
     };
     try {
@@ -163,7 +163,7 @@ export default function TripRouteChangeModal({ trip, onClose, onSaved }: {
           <div className="mt-5 grid gap-3 sm:grid-cols-2">{OPTIONS.map((option) => <button type="button" key={option.scope} onClick={() => setScope(option.scope)} className={`rounded-2xl border p-4 text-left transition ${scope === option.scope ? "border-[#7A1D1B] bg-[#FFF3F0] ring-1 ring-[#7A1D1B]" : "border-[#E3DCD5] bg-white hover:border-[#C9B8AE]"}`}><div className="flex items-center gap-2"><span className={`flex size-5 items-center justify-center rounded-full border ${scope === option.scope ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#B8AEA6]"}`}>{scope === option.scope && <Check className="size-3" />}</span><span className="text-sm font-black text-[#211D1A]">{option.title}</span></div><p className="ml-7 mt-2 text-xs leading-5 text-[#746E69]">{option.body}</p></button>)}</div>
         </div> : step === 2 ? <div className="space-y-5">
           <div><label className="text-sm font-black text-[#211D1A]">Which road should the bus use?</label><select value={variantId} onChange={(event) => setVariantId(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold outline-none focus:border-[#7A1D1B]"><option value="">Choose a saved road</option>{variants.map((variant) => <option key={variant._id} value={variant._id}>{variant.name || variant.code} {variant.revisionNumber ? `· version ${variant.revisionNumber}` : ""}</option>)}</select></div>
-          <div><label className="text-sm font-black text-[#211D1A]">Stops and timings</label><select value={configId} onChange={(event) => setConfigId(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold outline-none focus:border-[#7A1D1B]"><option value="">Choose saved stops and timings</option>{matchingConfigs.map((config) => <option key={config._id} value={config._id}>{config.patternName || "Standard timetable"}</option>)}</select>{variantId && matchingConfigs.length === 0 && <p className="mt-2 text-xs font-bold text-amber-800">This road needs its two-way stops and timings saved before it can be used.</p>}</div>
+          <div><label className="text-sm font-black text-[#211D1A]">Stops and timings</label><select value={activeConfigId} onChange={(event) => setConfigId(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold outline-none focus:border-[#7A1D1B]"><option value="">Choose saved stops and timings</option>{matchingConfigs.map((config) => <option key={config._id} value={config._id}>{config.patternName || "Standard timetable"}</option>)}</select>{variantId && matchingConfigs.length === 0 && <p className="mt-2 text-xs font-bold text-amber-800">This road needs its two-way stops and timings saved before it can be used.</p>}</div>
           {scope === "ONE_TRIP" ? <div className="rounded-2xl border border-[#E3DCD5] bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-[#8B8179]">Only this departure</p><p className="mt-1 text-sm font-black text-[#211D1A]">{new Date(trip.tripDate).toLocaleDateString()} · {trip.departureTime}</p></div> : scope === "SELECTED_DATES" ? <div><label className="text-sm font-black text-[#211D1A]">Which dates?</label><div className="mt-2 flex gap-2"><input type="date" min={new Date().toISOString().slice(0, 10)} value={dateInput} onChange={(event) => setDateInput(event.target.value)} className="h-12 min-w-0 flex-1 rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold" /><button type="button" onClick={addDate} className="rounded-xl bg-[#211D1A] px-4 text-xs font-black text-white">Add date</button></div><div className="mt-2 flex flex-wrap gap-2">{selectedDates.map((date) => <button type="button" key={date} onClick={() => setSelectedDates((current) => current.filter((item) => item !== date))} className="rounded-full bg-[#F5E8E6] px-3 py-1.5 text-xs font-bold text-[#7A1D1B]">{formatDate(date)} ×</button>)}</div></div> : <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-black text-[#211D1A]">Starts on<input type="date" min={new Date().toISOString().slice(0, 10)} value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold" /></label>{scope === "TEMPORARY" && <label className="text-sm font-black text-[#211D1A]">Returns to normal after<input type="date" min={fromDate} value={untilDate} onChange={(event) => setUntilDate(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#DCD4CD] bg-white px-3 text-sm font-bold" /></label>}</div>}
           <div><label className="text-sm font-black text-[#211D1A]">Why is the road changing?</label><textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={500} rows={3} placeholder="Example: Landslide near Sindhuli; using Hetauda road" className="mt-2 w-full resize-none rounded-xl border border-[#DCD4CD] bg-white p-3 text-sm outline-none focus:border-[#7A1D1B]" /></div>
         </div> : <div>

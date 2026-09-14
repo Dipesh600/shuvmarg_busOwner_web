@@ -45,26 +45,26 @@ export default function CopyFleetConfigurationModal({
   onClose,
   onCopied,
 }: CopyFleetConfigurationModalProps) {
-  const [peers, setPeers] = useState<CopyablePeerBus[]>(initialPeers);
+  const [fetchedPeers, setFetchedPeers] = useState<CopyablePeerBus[]>([]);
+  const peers = initialPeers.length > 0 ? initialPeers : fetchedPeers;
   const [selectedSourceId, setSelectedSourceId] = useState<string>(
     initialPeers[0]?.fleetId || "",
   );
 
   useEffect(() => {
-    if (initialPeers && initialPeers.length > 0) {
-      setPeers(initialPeers);
-      setSelectedSourceId((curr) => curr || initialPeers[0].fleetId);
-    } else {
-      fetchCopyablePeers(targetFleetId).then((data) => {
-        if (data.length > 0) {
-          setPeers(data);
-          setSelectedSourceId((curr) => curr || data[0].fleetId);
-        }
-      });
-    }
-  }, [initialPeers, targetFleetId]);
+    if (initialPeers.length > 0) return;
+    let active = true;
+    fetchCopyablePeers(targetFleetId).then((data) => {
+      if (active) setFetchedPeers(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [initialPeers.length, targetFleetId]);
 
-  const activeSourceId = selectedSourceId || peers[0]?.fleetId || initialPeers[0]?.fleetId || "";
+  const activeSourceId = peers.some((peer) => peer.fleetId === selectedSourceId)
+    ? selectedSourceId
+    : peers[0]?.fleetId || "";
 
   const [preview, setPreview] = useState<FleetConfigurationPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -76,30 +76,37 @@ export default function CopyFleetConfigurationModal({
   useEffect(() => {
     if (!activeSourceId) return;
     let active = true;
-    setLoadingPreview(true);
-    setPreviewError(null);
-    setApplyError(null);
+    const loadPreview = async () => {
+      await Promise.resolve();
+      if (!active) return;
+      setLoadingPreview(true);
+      setPreviewError(null);
+      setApplyError(null);
 
-    const selected = peers.find((peer) => peer.fleetId === activeSourceId);
-    if (!selected?.configurationId) {
-      setLoadingPreview(false);
-      setPreview(null);
-      setPreviewError("This vehicle has no compatible two-way stops and timings setup.");
-      return;
-    }
-    fetchConfigurationPreview(targetFleetId, activeSourceId, selected.configurationId)
-      .then((data) => {
+      const selected = peers.find((peer) => peer.fleetId === activeSourceId);
+      if (!selected?.configurationId) {
+        setLoadingPreview(false);
+        setPreview(null);
+        setPreviewError("This vehicle has no compatible two-way stops and timings setup.");
+        return;
+      }
+      try {
+        const data = await fetchConfigurationPreview(
+          targetFleetId,
+          activeSourceId,
+          selected.configurationId,
+        );
         if (active) setPreview(data);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (active) {
           setPreviewError(err instanceof Error ? err.message : "Failed to load configuration preview.");
           setPreview(null);
         }
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoadingPreview(false);
-      });
+      }
+    };
+    void loadPreview();
 
     return () => {
       active = false;
