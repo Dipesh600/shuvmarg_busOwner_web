@@ -42,9 +42,10 @@ export async function listAgentAssignments(filters: { brandId?: string; status?:
   );
 }
 
-export async function lookupAgent(code: string): Promise<AgentPreview> {
+export async function lookupAgent(identifier: string): Promise<AgentPreview> {
+  const query = new URLSearchParams({ identifier: identifier.trim() });
   const payload = await read<Envelope<AgentPreview>>(
-    await authFetch(`/busowner/agents/lookup/${encodeURIComponent(code.trim())}`),
+    await authFetch(`/busowner/agents/lookup?${query.toString()}`),
     "Agent not found",
   );
   return payload.data;

@@ -52,6 +52,8 @@ export interface AvailableOperatorVariant {
   code?: string;
   name?: string;
   direction?: string;
+  returnVariantId?: string;
+  revisionNumber?: number;
   stopCount?: number;
   patternCount?: number;
   configuredPatterns?: Array<{ id?: string; _id?: string; name?: string; isDefault?: boolean }>;

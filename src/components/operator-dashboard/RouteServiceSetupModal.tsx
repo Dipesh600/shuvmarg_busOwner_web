@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  ArrowLeftRight,
   ArrowRight,
   Check,
   ChevronDown,
   Clock3,
   Coffee,
+  Copy,
   Loader2,
   MapPin,
   Route,
@@ -20,9 +22,15 @@ import type {
   OperatorFleetSetupStatus,
 } from "@/features/operator-dashboard/operator-dashboard-contract";
 import {
+  fetchCopyablePeers,
+  type CopyablePeerBus,
+} from "@/features/operator-dashboard/fleet-copy-api";
+import CopyFleetConfigurationModal from "./CopyFleetConfigurationModal";
+import {
   getAvailableOperatorVariants,
   getBoardingPointId,
   getOperatorRouteConfigs,
+  getReturnVariantStops,
   getRouteVariantId,
   getVariantCorridorId,
   getVariantStopsWithConfig,
@@ -45,6 +53,7 @@ import {
 interface RouteServiceSetupModalProps {
   fleet: OperatorFleetListItem;
   setup: OperatorFleetSetupStatus;
+  copyablePeers?: CopyablePeerBus[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -234,12 +243,26 @@ function ShuvmargTimePicker({
 export default function RouteServiceSetupModal({
   fleet,
   setup,
+  copyablePeers,
   onClose,
   onSaved,
 }: RouteServiceSetupModalProps) {
   const brandId = fleet.brandId || setup.brandId || null;
   const fleetId = fleet.fleetId;
   const preferredCorridorId = setup.assignedRoute?.corridorId || null;
+
+  const [peers, setPeers] = useState<CopyablePeerBus[]>(copyablePeers || []);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (copyablePeers && copyablePeers.length > 0) {
+      setPeers(copyablePeers);
+    } else if (fleetId) {
+      fetchCopyablePeers(fleetId).then((data) => {
+        if (data.length > 0) setPeers(data);
+      });
+    }
+  }, [copyablePeers, fleetId]);
 
   const [variants, setVariants] = useState<AvailableOperatorVariant[]>([]);
   const [configs, setConfigs] = useState<OperatorRouteConfig[]>([]);
@@ -249,6 +272,12 @@ export default function RouteServiceSetupModal({
   const [stops, setStops] = useState<OperatorRouteStop[]>([]);
   const [activeStops, setActiveStops] = useState<string[]>([]);
   const [timingConfig, setTimingConfig] = useState<OperatorRouteTiming[]>([]);
+  const [direction, setDirection] = useState<"outbound" | "return">("outbound");
+  const [returnStops, setReturnStops] = useState<OperatorRouteStop[]>([]);
+  const [returnActiveStops, setReturnActiveStops] = useState<string[]>([]);
+  const [returnTimingConfig, setReturnTimingConfig] = useState<OperatorRouteTiming[]>([]);
+  const [hasReturnVariant, setHasReturnVariant] = useState(false);
+  const [loadingReturnStops, setLoadingReturnStops] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingStops, setLoadingStops] = useState(false);
   const [savingMode, setSavingMode] = useState<"draft" | "complete" | null>(null);
@@ -309,6 +338,8 @@ export default function RouteServiceSetupModal({
     async function loadStops() {
       if (!brandId || !selectedVariantId) {
         setStops([]);
+        setReturnStops([]);
+        setHasReturnVariant(false);
         return;
       }
       setLoadingStops(true);
@@ -316,23 +347,30 @@ export default function RouteServiceSetupModal({
       try {
         const selectedConfig = findPreferredConfig(configs, selectedVariantId);
         const nextConfigId = selectedConfig?._id || null;
-        const stopItems = await getVariantStopsWithConfig(
-          brandId,
-          selectedVariantId,
-          nextConfigId,
-          fleetId,
-        );
+        setLoadingReturnStops(true);
+        const [stopItems, returnResult] = await Promise.all([
+          getVariantStopsWithConfig(brandId, selectedVariantId, nextConfigId, fleetId),
+          getReturnVariantStops(brandId, selectedVariantId, nextConfigId, fleetId),
+        ]);
         if (!alive) return;
         setConfigId(nextConfigId);
         setPatternName(normalizeServiceType(selectedConfig?.patternName));
         setStops(stopItems);
         setActiveStops(getInitialActiveStopIds(stopItems));
         setTimingConfig(buildInitialTiming(stopItems));
+        setHasReturnVariant(returnResult.hasReturnVariant);
+        setReturnStops(returnResult.stops);
+        setReturnActiveStops(getInitialActiveStopIds(returnResult.stops));
+        setReturnTimingConfig(buildInitialTiming(returnResult.stops));
+        setDirection("outbound");
         setHasUnsavedChanges(false);
       } catch (err) {
         if (alive) setError(displayError(err, "Unable to load stops for this route."));
       } finally {
-        if (alive) setLoadingStops(false);
+        if (alive) {
+          setLoadingStops(false);
+          setLoadingReturnStops(false);
+        }
       }
     }
     void loadStops();
@@ -345,24 +383,31 @@ export default function RouteServiceSetupModal({
     () => variants.find((variant) => variant._id === selectedVariantId) || null,
     [selectedVariantId, variants],
   );
-  const firstStopId = stops[0] ? getStopId(stops[0]) : null;
-  const lastStopId = stops.length ? getStopId(stops[stops.length - 1]) : null;
+  const originName = selectedVariant?.corridorId?.originId?.name || "Origin";
+  const destinationName = selectedVariant?.corridorId?.destinationId?.name || "Destination";
+  const journeyFrom = direction === "outbound" ? originName : destinationName;
+  const journeyTo = direction === "outbound" ? destinationName : originName;
+  const journeyStops = direction === "outbound" ? stops : returnStops;
+  const journeyActiveStops = direction === "outbound" ? activeStops : returnActiveStops;
+  const journeyTimingConfig = direction === "outbound" ? timingConfig : returnTimingConfig;
+  const firstStopId = journeyStops[0] ? getStopId(journeyStops[0]) : null;
+  const lastStopId = journeyStops.length ? getStopId(journeyStops[journeyStops.length - 1]) : null;
   const selectedConfig = useMemo(
     () => findPreferredConfig(configs, selectedVariantId),
     [configs, selectedVariantId],
   );
   const servedStopItems = useMemo(
-    () => stops.filter((stop) => activeStops.includes(getStopId(stop))),
-    [activeStops, stops],
+    () => journeyStops.filter((stop) => journeyActiveStops.includes(getStopId(stop))),
+    [journeyActiveStops, journeyStops],
   );
   const firstServedStop = servedStopItems[0] || null;
   const lastServedStop = servedStopItems.length ? servedStopItems[servedStopItems.length - 1] : null;
 
   const firstDeparture = firstServedStop
-    ? timingConfig.find((item) => item.stopId === getStopId(firstServedStop))?.estimatedDeparture || ""
+    ? journeyTimingConfig.find((item) => item.stopId === getStopId(firstServedStop))?.estimatedDeparture || ""
     : "";
   const finalArrival = lastServedStop
-    ? timingConfig.find((item) => item.stopId === getStopId(lastServedStop))?.estimatedArrival || ""
+    ? journeyTimingConfig.find((item) => item.stopId === getStopId(lastServedStop))?.estimatedArrival || ""
     : "";
 
   const totalDurationMinutes = useMemo(() => {
@@ -383,22 +428,24 @@ export default function RouteServiceSetupModal({
     for (const stop of servedStopItems) {
       const stopId = getStopId(stop);
       if (stopId === firstStopId) continue;
-      const timing = timingConfig.find((item) => item.stopId === stopId);
+      const timing = journeyTimingConfig.find((item) => item.stopId === stopId);
       if (!timing?.estimatedArrival) count++;
     }
     return count;
-  }, [firstDeparture, firstStopId, servedStopItems, timingConfig]);
+  }, [firstDeparture, firstStopId, journeyTimingConfig, servedStopItems]);
 
   function updateTiming(stopId: string, patch: Partial<OperatorRouteTiming>) {
     setHasUnsavedChanges(true);
     setAutoSaveState("idle");
-    setTimingConfig((current) =>
-      current.map((timing) => (timing.stopId === stopId ? { ...timing, ...patch } : timing)),
+    const apply = (current: OperatorRouteTiming[]) => current.map(
+      (timing) => (timing.stopId === stopId ? { ...timing, ...patch } : timing),
     );
+    if (direction === "return") setReturnTimingConfig(apply);
+    else setTimingConfig(apply);
   }
 
   function handleArrivalChange(stopId: string, newArrival12h: string) {
-    const timing = timingConfig.find((item) => item.stopId === stopId);
+    const timing = journeyTimingConfig.find((item) => item.stopId === stopId);
     const halt = timing?.haltDuration ?? 5;
     const isLast = stopId === lastStopId;
     const computedDep = isLast ? "" : calculateDeparture(newArrival12h, halt);
@@ -410,7 +457,7 @@ export default function RouteServiceSetupModal({
   }
 
   function handleHaltChange(stopId: string, haltMinutes: number) {
-    const timing = timingConfig.find((item) => item.stopId === stopId);
+    const timing = journeyTimingConfig.find((item) => item.stopId === stopId);
     const arrival = timing?.estimatedArrival || "";
     const isLast = stopId === lastStopId;
     const computedDep = isLast || !arrival ? "" : calculateDeparture(arrival, haltMinutes);
@@ -425,28 +472,34 @@ export default function RouteServiceSetupModal({
     if (stopId === firstStopId || stopId === lastStopId) return;
     setHasUnsavedChanges(true);
     setAutoSaveState("idle");
-    setActiveStops((current) =>
-      checked ? [...new Set([...current, stopId])] : current.filter((id) => id !== stopId),
-    );
+    const apply = (current: string[]) => checked
+      ? [...new Set([...current, stopId])]
+      : current.filter((id) => id !== stopId);
+    if (direction === "return") setReturnActiveStops(apply);
+    else setActiveStops(apply);
   }
 
   const buildPayload = useCallback(() => {
-    const activeStopSet = new Set(activeStops);
-    const activeStopItems = stops.filter((stop) => activeStopSet.has(getStopId(stop)));
-    const realFirst = activeStopItems[0] ? getStopId(activeStopItems[0]) : null;
-    const realLast = activeStopItems.length ? getStopId(activeStopItems[activeStopItems.length - 1]) : null;
-
-    return {
-      activeStops: activeStopItems.map(getStopId),
-      boardingConfig: activeStopItems.map((stop) => ({
-        stopId: getStopId(stop),
-        boardingPointIds: (stop.boardingPoints || [])
-          .map(getBoardingPointId)
-          .filter((pointId): pointId is string => Boolean(pointId)),
-      })),
-      timingConfig: activeStopItems.map((stop) => {
+    const buildJourney = (
+      allStops: OperatorRouteStop[],
+      selectedStops: string[],
+      timings: OperatorRouteTiming[],
+    ) => {
+      const activeStopSet = new Set(selectedStops);
+      const activeStopItems = allStops.filter((stop) => activeStopSet.has(getStopId(stop)));
+      const realFirst = activeStopItems[0] ? getStopId(activeStopItems[0]) : null;
+      const realLast = activeStopItems.length ? getStopId(activeStopItems[activeStopItems.length - 1]) : null;
+      return {
+        activeStops: activeStopItems.map(getStopId),
+        boardingConfig: activeStopItems.map((stop) => ({
+          stopId: getStopId(stop),
+          boardingPointIds: (stop.boardingPoints || [])
+            .map(getBoardingPointId)
+            .filter((pointId): pointId is string => Boolean(pointId)),
+        })),
+        timingConfig: activeStopItems.map((stop) => {
         const stopId = getStopId(stop);
-        const timing = timingConfig.find((item) => item.stopId === stopId) || {
+        const timing = timings.find((item) => item.stopId === stopId) || {
           stopId,
           estimatedArrival: "",
           estimatedDeparture: "",
@@ -457,28 +510,42 @@ export default function RouteServiceSetupModal({
         const isFirst = stopId === realFirst;
         const isLast = stopId === realLast;
         const haltDuration = timing.haltDuration ?? 5;
-        return {
-          ...timing,
-          haltDuration,
-          estimatedArrival: isFirst ? "" : timing.estimatedArrival,
-          estimatedDeparture: isLast
-            ? ""
-            : isFirst
-              ? timing.estimatedDeparture
-              : calculateDeparture(timing.estimatedArrival, haltDuration),
-          stopBehavior: isFirst
-            ? "BOARDING_ONLY"
-            : isLast
-              ? "DROPPING_ONLY"
-              : timing.stopBehavior,
-        };
-      }),
+          return {
+            ...timing,
+            haltDuration,
+            estimatedArrival: isFirst ? "" : timing.estimatedArrival,
+            estimatedDeparture: isLast
+              ? ""
+              : isFirst
+                ? timing.estimatedDeparture
+                : calculateDeparture(timing.estimatedArrival, haltDuration),
+            stopBehavior: isFirst
+              ? "BOARDING_ONLY"
+              : isLast
+                ? "DROPPING_ONLY"
+                : timing.stopBehavior,
+          };
+        }),
+      };
     };
-  }, [activeStops, stops, timingConfig]);
+
+    const outbound = buildJourney(stops, activeStops, timingConfig);
+    const returning = buildJourney(returnStops, returnActiveStops, returnTimingConfig);
+    return {
+      ...outbound,
+      ...(hasReturnVariant ? {
+        returnActiveStops: returning.activeStops,
+        returnBoardingConfig: returning.boardingConfig,
+        returnTimingConfig: returning.timingConfig,
+        returnOverridden: true,
+      } : {}),
+    };
+  }, [activeStops, hasReturnVariant, returnActiveStops, returnStops, returnTimingConfig, stops, timingConfig]);
 
   // Automatic background draft saver (runs 1.5s after user stops editing)
   useEffect(() => {
-    if (!hasUnsavedChanges || isCompletedSetup || !brandId || !selectedVariantId || stops.length === 0) {
+    if (!hasUnsavedChanges || isCompletedSetup || !brandId || !selectedVariantId || stops.length === 0
+      || loadingReturnStops || (hasReturnVariant && returnStops.length === 0)) {
       return;
     }
     const timer = setTimeout(() => {
@@ -528,24 +595,48 @@ export default function RouteServiceSetupModal({
     fleetId,
     activeStops,
     timingConfig,
+    hasReturnVariant,
+    loadingReturnStops,
+    returnStops,
     buildPayload,
   ]);
 
   function getCompletionError(): string | null {
-    if (activeStops.length < 2 || !firstStopId || !lastStopId) {
-      return "Please keep at least the starting and destination stops in your schedule.";
-    }
-    if (!activeStops.includes(firstStopId)) return `Please keep ${getStopName(stops[0])} as the starting stop.`;
-    if (!activeStops.includes(lastStopId)) return `Please keep ${getStopName(stops[stops.length - 1])} as the final stop.`;
-    const firstTiming = timingConfig.find((item) => item.stopId === firstStopId);
-    if (!firstTiming?.estimatedDeparture) return `Please enter the departure time from ${getStopName(stops[0])}.`;
-    for (const stop of servedStopItems) {
-      const stopId = getStopId(stop);
-      if (stopId === firstStopId) continue;
-      const timing = timingConfig.find((item) => item.stopId === stopId);
-      if (!timing?.estimatedArrival) return `Please set the arrival time for ${getStopName(stop)}.`;
-    }
-    return null;
+    const validateJourney = (
+      label: string,
+      allStops: OperatorRouteStop[],
+      selectedStops: string[],
+      timings: OperatorRouteTiming[],
+    ) => {
+      const served = allStops.filter((stop) => selectedStops.includes(getStopId(stop)));
+      const first = served[0];
+      const last = served[served.length - 1];
+      if (served.length < 2 || !first || !last) {
+        return `${label}: keep at least the starting and destination stops.`;
+      }
+      if (getStopId(first) !== getStopId(allStops[0])) {
+        return `${label}: keep ${getStopName(allStops[0])} as the starting stop.`;
+      }
+      if (getStopId(last) !== getStopId(allStops[allStops.length - 1])) {
+        return `${label}: keep ${getStopName(allStops[allStops.length - 1])} as the final stop.`;
+      }
+      const firstTiming = timings.find((item) => item.stopId === getStopId(first));
+      if (!firstTiming?.estimatedDeparture) {
+        return `${label}: enter the departure time from ${getStopName(first)}.`;
+      }
+      for (const stop of served.slice(1)) {
+        const timing = timings.find((item) => item.stopId === getStopId(stop));
+        if (!timing?.estimatedArrival) {
+          return `${label}: set the arrival time for ${getStopName(stop)}.`;
+        }
+      }
+      return null;
+    };
+
+    const outboundError = validateJourney("Outbound journey", stops, activeStops, timingConfig);
+    if (outboundError) return outboundError;
+    if (!hasReturnVariant) return "A paired return route is required before completing two-way timings.";
+    return validateJourney("Return journey", returnStops, returnActiveStops, returnTimingConfig);
   }
 
   async function handleSave(mode: "draft" | "complete"): Promise<boolean> {
@@ -621,10 +712,10 @@ export default function RouteServiceSetupModal({
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#7A1D1B]">
               <span>Bus Route Setup</span>
               <span className="text-[#CCCCCC]">·</span>
-              <span className="text-[#666666]">Daily Timetable</span>
+              <span className="text-[#666666]">Two-way timetable</span>
             </div>
             <h2 id="route-service-setup-title" className="text-lg font-bold text-[#111111] sm:text-xl">
-              Set Stops & Daily Timings
+              Set Stops & Two-way Timings
             </h2>
             <p className="text-xs text-[#666666]">
               {fleet.busName} · <span className="font-mono text-[#333333] font-semibold">{fleet.busNumber}</span>
@@ -641,6 +732,35 @@ export default function RouteServiceSetupModal({
             <X className="h-4 w-4" />
           </button>
         </header>
+
+        {/* Copy Configuration Banner at Top */}
+        {peers.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E8E0D4] bg-[#FDF8F5] px-5 py-2.5 sm:px-6">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-[#F5E8E6] text-[#7A1D1B]">
+                <Copy className="size-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[#211D1A]">
+                  {peers.length === 1
+                    ? `Copy stops & timings from ${peers[0].busName} (${peers[0].busNumber})`
+                    : `Copy stops & timings from ${peers.length} active buses`}
+                </p>
+                <p className="text-[11px] text-[#655E58]">
+                  Import verified intermediate stops, arrival & departure timings, and halt durations.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCopyModalOpen(true)}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#7A1D1B]/30 bg-white px-3 text-xs font-bold text-[#7A1D1B] shadow-2xs transition hover:bg-[#7A1D1B] hover:text-white active:scale-95"
+            >
+              <Copy className="size-3" />
+              <span>Copy configuration</span>
+            </button>
+          </div>
+        )}
 
         {/* Responsive Content Area: Left Settings Rail + Right Stops List */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -740,21 +860,40 @@ export default function RouteServiceSetupModal({
 
           {/* Right Main Canvas: Daily Stops & Timetable */}
           <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-white p-4 sm:p-6 lg:p-7">
+            <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-[#E8E0D4] bg-[#FAF8F5] p-1">
+              <button
+                type="button"
+                onClick={() => setDirection("outbound")}
+                className={`min-w-0 rounded-lg px-3 py-2.5 text-left transition ${direction === "outbound" ? "bg-white text-[#7A1D1B] shadow-sm" : "text-[#666666]"}`}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-bold"><ArrowLeftRight className="size-3.5 shrink-0" />Outbound</span>
+                <span className="mt-0.5 block truncate text-[10px] font-semibold">{originName} → {destinationName}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDirection("return")}
+                className={`min-w-0 rounded-lg px-3 py-2.5 text-left transition ${direction === "return" ? "bg-white text-[#7A1D1B] shadow-sm" : "text-[#666666]"}`}
+              >
+                <span className="flex items-center gap-1.5 text-xs font-bold"><ArrowLeftRight className="size-3.5 shrink-0 rotate-180" />Return</span>
+                <span className="mt-0.5 block truncate text-[10px] font-semibold">{destinationName} → {originName}</span>
+              </button>
+            </div>
+
             {/* Top Journey Summary Ribbon */}
             <div className="border-b border-[#E8E0D4] pb-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-base font-bold text-[#111111]">
-                    Passenger Stops & Timetable
+                    {direction === "outbound" ? "Outbound" : "Return"} Stops & Timetable
                   </h3>
                   <p className="text-xs text-[#666666]">
-                    Set what time the bus reaches and departs from each stop along the trip.
+                    Set this journey independently: {journeyFrom} to {journeyTo}.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span className="rounded-full border border-[#E8E0D4] bg-[#FAF8F5] px-3 py-1 text-xs font-semibold text-[#444444]">
-                    {servedStopItems.length} of {stops.length || selectedVariant?.stopCount || 0} stops active
+                    {servedStopItems.length} of {journeyStops.length || (direction === "outbound" ? selectedVariant?.stopCount : 0) || 0} stops active
                   </span>
                   {missingTimingCount === 0 && servedStopItems.length >= 2 ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
@@ -823,14 +962,19 @@ export default function RouteServiceSetupModal({
             )}
 
             {/* Stops Timeline */}
-            {loading || loadingStops ? (
+            {loading || loadingStops || (direction === "return" && loadingReturnStops) ? (
               <div className="my-8 flex min-h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-[#E8E0D4] bg-[#FAF8F5] text-[#666666]">
                 <Loader2 className="size-7 animate-spin text-[#7A1D1B]" />
                 <p className="mt-3 text-xs font-bold uppercase tracking-wider text-[#888888]">
                   Loading route stops...
                 </p>
               </div>
-            ) : stops.length === 0 ? (
+            ) : direction === "return" && !hasReturnVariant ? (
+              <div className="my-8 rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
+                <p className="text-sm font-bold text-amber-900">Return route is not ready</p>
+                <p className="mt-1 text-xs text-amber-800">Ask Shuvmarg admin to pair the approved return route before completing this bus.</p>
+              </div>
+            ) : journeyStops.length === 0 ? (
               <div className="my-8 rounded-xl border border-dashed border-[#E8E0D4] bg-[#FAF8F5] p-8 text-center">
                 <p className="text-sm font-bold text-[#111111]">{emptyRouteState.title}</p>
                 <p className="mt-1 text-xs text-[#666666]">{emptyRouteState.body}</p>
@@ -843,13 +987,13 @@ export default function RouteServiceSetupModal({
                   aria-hidden="true"
                 />
 
-                {stops.map((stop, index) => {
+                {journeyStops.map((stop, index) => {
                   const stopId = getStopId(stop);
                   const isFirst = stopId === firstStopId;
                   const isLast = stopId === lastStopId;
                   const isEndpoint = isFirst || isLast;
-                  const isActive = activeStops.includes(stopId);
-                  const timing = timingConfig.find((item) => item.stopId === stopId);
+                  const isActive = journeyActiveStops.includes(stopId);
+                  const timing = journeyTimingConfig.find((item) => item.stopId === stopId);
                   const isRestStop = timing?.stopBehavior === "REST_STOP";
                   const haltDuration = timing?.haltDuration ?? 5;
                   const computedDep = isFirst
@@ -1119,9 +1263,12 @@ export default function RouteServiceSetupModal({
               !brandId ||
               !selectedVariantId ||
               stops.length === 0 ||
+              !hasReturnVariant ||
+              returnStops.length === 0 ||
               Boolean(savingMode) ||
               loading ||
               loadingStops ||
+              loadingReturnStops ||
               autoSaveState === "saving"
             }
             className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] px-6 text-xs font-bold text-white shadow-sm transition hover:bg-[#5C1414] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
@@ -1131,10 +1278,30 @@ export default function RouteServiceSetupModal({
             ) : (
               <Check className="size-4" />
             )}
-            {isCompletedSetup ? "Save Changes" : "Complete Stops & Timings"}
+            {isCompletedSetup ? "Save Two-way Changes" : "Complete Two-way Timings"}
           </button>
         </footer>
       </div>
+
+      {copyModalOpen && (
+        <CopyFleetConfigurationModal
+          targetFleetId={fleetId}
+          targetBusName={fleet.busName || setup.busName || "Approved vehicle"}
+          targetBusNumber={fleet.busNumber || setup.busNumber || ""}
+          initialPeers={peers}
+          title="Copy Stops & Timings from Live Bus"
+          subtitle={`Preview and copy verified stops, timings, and route pattern to ${fleet.busName} (${fleet.busNumber})`}
+          confirmLabel="Apply Stops & Timings"
+          onClose={() => setCopyModalOpen(false)}
+          onCopied={(msg) => {
+            setCopyModalOpen(false);
+            if (typeof window !== "undefined") {
+              window.sessionStorage.setItem("shuvmarg:copy-notice", msg || "Stops & timings successfully copied from live bus.");
+            }
+            onSaved();
+          }}
+        />
+      )}
     </div>
   );
 }

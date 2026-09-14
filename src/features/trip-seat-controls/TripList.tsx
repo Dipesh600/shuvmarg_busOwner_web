@@ -1,6 +1,7 @@
 import type { OwnerTrip } from "./types";
 
-const routeName = (trip: OwnerTrip) => trip.routeId?.routeName
+const routeName = (trip: OwnerTrip) => trip.routeSnapshot?.routeVersion?.name
+  || trip.routeId?.routeName
   || [trip.routeId?.fromCity, trip.routeId?.toCity].filter(Boolean).join(" → ")
   || "Scheduled route";
 

@@ -12,6 +12,9 @@ import {
   FleetOperationsStepKey,
   OperatorFleetListItem,
   OperatorFleetSetupStatus,
+  OperatorSetupSchedule,
+  ServicePublicationConfiguration,
+  ServicePublicationState,
   OperatorDashboardState,
   normalizeVerificationStatus,
   deriveCapabilities,
@@ -37,6 +40,7 @@ const OPERATIONS_STEP_KEYS: FleetOperationsStepKey[] = [
   "routeAssigned",
   "routeConfigured",
   "driverAssigned",
+  "conductorAssigned",
   "scheduleCreated",
   "activated",
 ];
@@ -44,6 +48,7 @@ const OPERATIONS_STEP_LABELS: Record<FleetOperationsStepKey, string> = {
   routeAssigned: "Route approved",
   routeConfigured: "Stops & timings",
   driverAssigned: "Driver",
+  conductorAssigned: "Conductor",
   scheduleCreated: "Trip schedule",
   activated: "Start selling tickets",
 };
@@ -58,6 +63,47 @@ function safeString(value: unknown): string | null {
 
 function safeNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeSetupSchedule(value: unknown): OperatorSetupSchedule | null {
+  if (!isRecord(value)) return null;
+  const recurrence = ["DAILY", "WEEKLY", "CUSTOM"].includes(String(value.recurrence))
+    ? value.recurrence as OperatorSetupSchedule["recurrence"] : undefined;
+  return {
+    _id: safeString(value._id) || undefined,
+    status: safeString(value.status) || undefined,
+    departureTime: safeString(value.departureTime) || undefined,
+    arrivalTime: safeString(value.arrivalTime) || undefined,
+    arrivalDayOffset: typeof value.arrivalDayOffset === "number" ? value.arrivalDayOffset : undefined,
+    recurrence,
+    daysOfWeek: Array.isArray(value.daysOfWeek)
+      ? value.daysOfWeek.filter((day): day is number => Number.isInteger(day)) : undefined,
+    effectiveFrom: safeString(value.effectiveFrom) || undefined,
+    fareOverride: typeof value.fareOverride === "number" ? value.fareOverride : null,
+    bookingCutoffHours: typeof value.bookingCutoffHours === "number" ? value.bookingCutoffHours : undefined,
+    returnScheduleId: safeString(value.returnScheduleId),
+    operationalModel: ["TURNAROUND", "RELAY"].includes(String(value.operationalModel))
+      ? value.operationalModel as OperatorSetupSchedule["operationalModel"] : undefined,
+    returnMode: ["SAME_DAY", "NEXT_DAY"].includes(String(value.returnMode))
+      ? value.returnMode as OperatorSetupSchedule["returnMode"] : null,
+  };
+}
+
+function normalizePublicationConfiguration(value: unknown): ServicePublicationConfiguration | null {
+  if (!isRecord(value) || !isRecord(value.pricing)) return null;
+  const availableElementIds = Array.isArray(value.availableElementIds)
+    ? value.availableElementIds.filter((item): item is string => typeof item === "string")
+    : [];
+  const defaultFare = value.pricing.defaultFare;
+  if (!availableElementIds.length || typeof defaultFare !== "number" || defaultFare <= 0) return null;
+  const overrides = Array.isArray(value.pricing.overrides)
+    ? value.pricing.overrides.flatMap((item) => {
+        if (!isRecord(item) || typeof item.elementId !== "string"
+          || typeof item.fare !== "number" || item.fare <= 0) return [];
+        return [{ elementId: item.elementId, fare: item.fare }];
+      })
+    : [];
+  return { availableElementIds, pricing: { defaultFare, overrides } };
 }
 
 function normalizeFleetSetupStatusPayload(
@@ -98,6 +144,11 @@ function normalizeFleetSetupStatusPayload(
   const nextStep = OPERATIONS_STEP_KEYS.includes(envelope.nextStep as FleetOperationsStepKey)
     ? envelope.nextStep as FleetOperationsStepKey
     : "complete";
+  const rawPublication = isRecord(envelope.publication) ? envelope.publication : {};
+  const publicationState = ["DRAFT", "PREPARING", "ACTIVE", "FAILED", "REQUIRES_ATTENTION"]
+    .includes(String(rawPublication.state))
+    ? rawPublication.state as ServicePublicationState
+    : envelope.isFullyOperational === true ? "ACTIVE" : "DRAFT";
 
   return {
     fleetId,
@@ -126,12 +177,21 @@ function normalizeFleetSetupStatusPayload(
     assignedCorridor: envelope.assignedCorridor,
     assignedRouteConfigs: Array.isArray(envelope.assignedRouteConfigs) ? envelope.assignedRouteConfigs : [],
     assignedDriver: envelope.assignedDriver,
-    outboundScheduleData: envelope.outboundScheduleData,
-    returnScheduleData: envelope.returnScheduleData,
+    assignedConductor: envelope.assignedConductor,
+    publication: {
+      state: publicationState,
+      requestId: safeString(rawPublication.requestId),
+      fingerprint: safeString(rawPublication.fingerprint),
+      lastError: safeString(rawPublication.lastError),
+      updatedAt: safeString(rawPublication.updatedAt),
+      configuration: normalizePublicationConfiguration(rawPublication.configuration),
+    },
+    outboundScheduleData: normalizeSetupSchedule(envelope.outboundScheduleData),
+    returnScheduleData: normalizeSetupSchedule(envelope.returnScheduleData),
   };
 }
 
-async function fetchFleetSetupStatus(fleetId: string): Promise<OperatorFleetSetupStatus> {
+export async function fetchFleetSetupStatus(fleetId: string): Promise<OperatorFleetSetupStatus> {
   const setupRes = await authFetch(`/busowner/fleets/${encodeURIComponent(fleetId)}/setup-status`);
   if (!setupRes.ok) {
     if (setupRes.status === 401) throw new Error("UNAUTHORIZED");

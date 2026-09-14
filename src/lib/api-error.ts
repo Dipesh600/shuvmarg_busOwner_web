@@ -70,7 +70,8 @@ export class ApiResponseError extends Error {
     this.payload = payload;
 
     const error = isRecord(payload) && isRecord(payload.error) ? payload.error : null;
-    this.code = typeof error?.code === "string" ? error.code : null;
+    const topLevelCode = isRecord(payload) && typeof payload.errorCode === "string" ? payload.errorCode : null;
+    this.code = typeof error?.code === "string" ? error.code : topLevelCode;
     this.details = error?.details ?? (isRecord(payload) ? payload.details : null);
   }
 }
