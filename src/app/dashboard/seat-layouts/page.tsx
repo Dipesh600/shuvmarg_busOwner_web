@@ -107,12 +107,9 @@ export default function SeatLayoutsPage() {
         <button
           type="button"
           onClick={() => setMessage(null)}
-          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl bg-[#191512] px-5 py-4 text-left text-sm font-semibold text-white shadow-2xl transition hover:bg-[#2A2520] cursor-pointer"
+          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl bg-[#191512] px-5 py-3.5 text-left text-xs font-semibold text-white shadow-2xl transition hover:bg-[#2A2520] cursor-pointer"
         >
           {message}
-          <span className="mt-1 block text-[10px] font-normal text-white/60">
-            Click to dismiss
-          </span>
         </button>
       )}
     </div>

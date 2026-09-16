@@ -312,9 +312,7 @@ export default function SeatLayoutBuilder({
               </button>
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-[#E8E1DB] bg-[#FAF8F5] p-3 text-xs leading-5 text-[#817A74]">
-              Select a seat or sleeper to rename or reposition. Drag or click an empty space to move.
-            </div>
+            <p className="py-1 text-xs text-[#938A82]">Select a seat to edit.</p>
           )}
 
           {/* Deck Dimensions / Row Controls for all decks */}

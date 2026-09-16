@@ -39,7 +39,7 @@ export function SeatLayoutMetaForm({
             onChange={(e) => onNameChange(e.target.value)}
             disabled={isOperator}
             className="mt-1.5 h-11 w-full rounded-xl border border-[#EDE7E0] bg-white px-3.5 text-sm font-semibold text-[#191512] outline-none focus:border-[#7A1D1B] transition disabled:bg-[#FAF8F5] disabled:text-[#44403C]"
-            placeholder="e.g. Deluxe standard 2x2"
+            placeholder="Layout name"
           />
         </label>
 
@@ -51,7 +51,7 @@ export function SeatLayoutMetaForm({
             onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
             disabled={isOperator}
             className="mt-1.5 h-11 w-full rounded-xl border border-[#EDE7E0] bg-white px-3.5 text-sm font-mono font-semibold text-[#191512] outline-none focus:border-[#7A1D1B] transition disabled:bg-[#FAF8F5] disabled:text-[#44403C]"
-            placeholder="FLT-XXXX"
+            placeholder="Code"
           />
         </label>
 
@@ -84,7 +84,7 @@ export function SeatLayoutMetaForm({
             value={summary}
             onChange={(e) => onSummaryChange(e.target.value)}
             className="mt-1.5 h-11 w-full rounded-xl border border-[#EDE7E0] bg-white px-3.5 text-sm font-semibold text-[#191512] outline-none focus:border-[#7A1D1B] transition"
-            placeholder="Describe physical changes (e.g. Removed back seat, widened aisle)"
+            placeholder="Notes on what changed"
           />
         </label>
       )}

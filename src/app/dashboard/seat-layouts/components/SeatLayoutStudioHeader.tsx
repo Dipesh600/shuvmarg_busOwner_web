@@ -1,5 +1,4 @@
 import React from "react";
-import { ShieldCheck } from "lucide-react";
 
 export function SeatLayoutStudioHeader() {
   return (
@@ -9,7 +8,7 @@ export function SeatLayoutStudioHeader() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/my_buses.webp"
-          alt="Seat layout studio background"
+          alt=""
           className="size-full object-cover object-[80%_center] sm:object-[86%_center] md:object-right"
         />
         {/* Soft fade overlay on the left for crisp text contrast */}
@@ -17,7 +16,7 @@ export function SeatLayoutStudioHeader() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between p-6 sm:p-8 md:p-9 min-h-[160px] sm:min-h-[185px] gap-4">
+      <div className="relative z-10 flex flex-col justify-between p-6 sm:p-8 md:p-9 min-h-[140px] sm:min-h-[160px]">
         <div className="max-w-xl space-y-1">
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#7A1D1B]">
             Seat layouts
@@ -26,14 +25,8 @@ export function SeatLayoutStudioHeader() {
             Seat layout studio
           </h1>
           <p className="text-xs sm:text-sm text-[#554E48] leading-relaxed pt-0.5">
-            Start from a Shuvmarg template, keep your own private copy, and submit only physical changes for review.
+            Configure and customize seating arrangements across your fleet.
           </p>
-        </div>
-
-        {/* Running trips badge */}
-        <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#7A1D1B] shrink-0 self-start sm:self-start">
-          <ShieldCheck className="size-4 shrink-0 text-[#7A1D1B]" />
-          <span>Running trips keep their captured layout</span>
         </div>
       </div>
     </div>

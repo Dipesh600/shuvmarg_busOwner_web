@@ -26,11 +26,8 @@ export function SeatLayoutTemplateSidebar({
       <div className="lg:hidden rounded-2xl border border-[#EDE7E0] bg-white p-4 shadow-xs">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#938A82]">
-              Active layout
-            </p>
-            <p className="text-sm font-bold text-[#191512] truncate mt-0.5">
-              {activeTemplate ? activeTemplate.name : "Choose layout"}
+            <p className="text-sm font-bold text-[#191512] truncate">
+              {activeTemplate ? activeTemplate.name : "Select layout"}
             </p>
           </div>
           <button
@@ -39,7 +36,7 @@ export function SeatLayoutTemplateSidebar({
             className="inline-flex items-center gap-1.5 rounded-xl border border-[#EDE7E0] bg-[#FAF8F5] px-3 py-2 text-xs font-bold text-[#191512] transition hover:bg-white"
           >
             <LayoutTemplate className="size-3.5 text-[#7A1D1B]" />
-            <span>Templates</span>
+            <span>All layouts</span>
             <ChevronDown
               className={`size-3.5 text-[#938A82] transition-transform ${
                 mobileExpanded ? "rotate-180" : ""
@@ -156,9 +153,7 @@ export function SeatLayoutTemplateSidebar({
                 })}
               </div>
             ) : (
-              <p className="text-xs text-[#938A82] leading-5">
-                No private layouts saved yet.
-              </p>
+              <p className="text-xs text-[#938A82]">No layouts yet.</p>
             )}
           </div>
         </div>

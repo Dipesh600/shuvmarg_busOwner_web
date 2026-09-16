@@ -38,7 +38,7 @@ export function SeatLayoutOperations({
         <div className="mt-4 space-y-2.5">
           {selected.revisions.length === 0 && (
             <p className="py-4 text-center text-xs text-[#938A82]">
-              No revisions recorded yet.
+              No revisions yet.
             </p>
           )}
 
@@ -77,19 +77,16 @@ export function SeatLayoutOperations({
       {/* ── Right Card: Use on a Fleet ── */}
       <div className="rounded-3xl border border-[#EDE7E0] bg-white p-6 shadow-xs flex flex-col justify-between">
         <div>
-          <h2 className="text-sm font-bold text-[#191512]">Use on a fleet</h2>
-          <p className="mt-1 text-xs text-[#746E69] leading-relaxed">
-            Only published revisions can be assigned. Changing an existing fleet creates a review request.
-          </p>
+          <h2 className="text-sm font-bold text-[#191512]">Assign to fleet</h2>
 
           <label className="mt-4 block text-[10px] font-bold uppercase tracking-widest text-[#938A82]">
-            Choose fleet
+            Choose bus
             <select
               value={fleetId}
               onChange={(e) => onFleetChange(e.target.value)}
               className="mt-1.5 h-11 w-full rounded-xl border border-[#EDE7E0] bg-[#FAF8F5] px-3.5 text-sm font-semibold text-[#191512] outline-none focus:border-[#7A1D1B] focus:bg-white transition"
             >
-              <option value="">Select a bus from your fleet…</option>
+              <option value="">Select a bus…</option>
               {fleets.map((fleet) => (
                 <option key={fleet.fleetId} value={fleet.fleetId}>
                   {fleet.busName} · {fleet.busNumber}
@@ -105,7 +102,7 @@ export function SeatLayoutOperations({
           disabled={!canAssign}
           className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#7A1D1B] text-xs font-bold text-white shadow-xs transition hover:bg-[#641715] disabled:opacity-40 disabled:hover:bg-[#7A1D1B] cursor-pointer"
         >
-          <span>Assign published revision</span>
+          <span>Assign revision</span>
           <ArrowRight className="size-3.5" />
         </button>
       </div>

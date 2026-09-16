@@ -26,7 +26,7 @@ export function useSeatLayoutStudio() {
   const [layout, setLayout] = useState<SeatLayoutV3 | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [summary, setSummary] = useState("Updated physical seat arrangement");
+  const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [fleets, setFleets] = useState<
@@ -98,7 +98,7 @@ export function useSeatLayoutStudio() {
         code.trim()
       );
       await reload(result.template.id);
-      setMessage("Template copied into your private operator library.");
+      setMessage("Template copied to library.");
     } catch (err) {
       setMessage(
         err instanceof Error ? err.message : "Unable to adopt template."
@@ -112,11 +112,13 @@ export function useSeatLayoutStudio() {
     if (!selected || selected.template.scope !== "OPERATOR") return;
     setBusy(true);
     try {
-      await createRevision(selected.template.id, value, summary.trim());
-      await choose(selected.template.id);
-      setMessage(
-        "New immutable draft created. Existing fleet layouts are unchanged."
+      await createRevision(
+        selected.template.id,
+        value,
+        summary.trim() || "Layout update"
       );
+      await choose(selected.template.id);
+      setMessage("New draft saved.");
     } catch (err) {
       setMessage(
         err instanceof Error ? err.message : "Unable to save revision."
@@ -133,7 +135,7 @@ export function useSeatLayoutStudio() {
     try {
       await submitRevision(selected.template.id, draft.id);
       await choose(selected.template.id);
-      setMessage("Revision submitted for Shuvmarg review.");
+      setMessage("Revision submitted for review.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Unable to submit.");
     } finally {
@@ -154,8 +156,8 @@ export function useSeatLayoutStudio() {
       }
       setMessage(
         current.assignment
-          ? "Fleet layout change sent for review. Current trips remain unchanged."
-          : "Published layout assigned to the fleet."
+          ? "Layout change submitted for review."
+          : "Layout assigned to fleet."
       );
     } catch (err) {
       setMessage(
