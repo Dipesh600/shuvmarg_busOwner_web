@@ -11,6 +11,7 @@ import {
   findApprovedFleetAwaitingOperationsById,
   findFirstApprovedFleetAwaitingOperations,
   hasOperationalApprovedFleet,
+  isOperationalFleet,
   isFirstLoginOverview,
   hasKycSubmissionEvidence,
   normalizeAssignedRouteSummary,
@@ -60,11 +61,42 @@ test("dashboard-contract normalization & evidence rules (Operator Dashboard)", a
       assert.equal(unapprovedCaps.canManageRoutes, false);
       assert.equal(unapprovedCaps.canManageTrips, false);
       assert.equal(unapprovedCaps.canViewBookings, false);
+      assert.equal(unapprovedCaps.canViewFinance, false);
 
       const approvedCaps = deriveCapabilities("approved");
       assert.equal(approvedCaps.canManageRoutes, true);
       assert.equal(approvedCaps.canManageTrips, false);
       assert.equal(approvedCaps.canViewBookings, false);
+      assert.equal(approvedCaps.canViewFinance, false);
+
+      const liveCaps = deriveCapabilities("approved", true);
+      assert.equal(liveCaps.canManageRoutes, true);
+      assert.equal(liveCaps.canManageTrips, true);
+      assert.equal(liveCaps.canViewBookings, true);
+      assert.equal(liveCaps.canViewFinance, true);
+      assert.equal(liveCaps.canViewReports, true);
+    }
+  );
+
+  await t.test(
+    "isOperationalFleet strictly requires approval and setupComplete true",
+    () => {
+      assert.equal(
+        isOperationalFleet({ approvalStatus: "APPROVED", setupComplete: true }),
+        true
+      );
+      assert.equal(
+        isOperationalFleet({ approvalStatus: "APPROVED", setupComplete: false }),
+        false
+      );
+      assert.equal(
+        isOperationalFleet({ approvalStatus: "DRAFT", setupComplete: true }),
+        false
+      );
+      assert.equal(
+        isOperationalFleet({ approvalStatus: "PENDING", setupComplete: true }),
+        false
+      );
     }
   );
 

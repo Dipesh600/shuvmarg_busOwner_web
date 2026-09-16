@@ -14,10 +14,12 @@ import {
   findApprovedFleetAwaitingOperationsById,
   findFirstApprovedFleetAwaitingOperations,
   isFirstLoginOverview,
+  hasOperationalApprovedFleet,
   OperatorDashboardState,
 } from "@/features/operator-dashboard/operator-dashboard-contract";
-import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import { fetchOperatorDashboardState, subscribeToOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import OperatingOverview from "@/features/owner-workspace/OperatingOverview";
 import FirstFleetOperationsSetup from "@/components/operator-dashboard/FirstFleetOperationsSetup";
 
 function getErrorMessage(error: unknown): string {
@@ -39,7 +41,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const state = await fetchOperatorDashboardState();
+      const state = await fetchOperatorDashboardState({ force: true });
       setData(state);
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -62,7 +64,11 @@ export default function DashboardPage() {
         if (isMounted) setLoading(false);
       });
 
+    const unsubscribe = subscribeToOperatorDashboardState(state => {
+      if (isMounted) setData(state);
+    });
     return () => {
+      unsubscribe();
       isMounted = false;
     };
   }, []);
@@ -118,6 +124,8 @@ export default function DashboardPage() {
   const approvedFleetSetup = approvedFleetAwaitingOperations
     ? data.fleetSetupStatusesByFleetId[approvedFleetAwaitingOperations.fleetId] || null
     : null;
+
+  if (hasOperationalApprovedFleet(data)) return <OperatingOverview state={data} />;
 
   if (isFirstLoginOverview(data)) {
     return <FirstLoginOverview state={data} initialOperationsFleetId={requestedSetupFleetId} />;

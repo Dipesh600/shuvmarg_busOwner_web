@@ -6,6 +6,17 @@
  * All auth state goes through these functions.
  */
 
+import { RateLimitCooldown } from "./rate-limit-cooldown.ts";
+import { SessionReadCache } from "./session-read-cache.ts";
+
+const readCache = new SessionReadCache();
+const rateLimitCooldown = new RateLimitCooldown();
+export function isApiRateLimited(): boolean { return rateLimitCooldown.active; }
+export function invalidateReadCache(): void { readCache.clear(); }
+export function getReadCacheVersion(): string {
+  return `${getAccessToken() || ""}:${readCache.version}`;
+}
+
 const ACCESS_TOKEN_KEY = "busowner_access_token";
 
 import { API_URL as API } from "./config.ts";
@@ -13,6 +24,7 @@ import { API_URL as API } from "./config.ts";
 // ── Token storage ────────────────────────────────────────────────────────────
 
 export function saveTokens(accessToken: string): void {
+  if (getAccessToken() !== accessToken) invalidateReadCache();
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("auth-change"));
@@ -24,6 +36,7 @@ export function getAccessToken(): string | null {
 }
 
 export function clearTokens(): void {
+  invalidateReadCache();
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("auth-change"));
@@ -84,6 +97,7 @@ async function isTerminalAuthResponse(response: Response): Promise<boolean> {
  * Multiple concurrent callers share the same in-flight request (de-duplication).
  */
 export async function refreshAccessToken(): Promise<boolean> {
+  if (rateLimitCooldown.active) return false;
   // De-duplicate concurrent refresh attempts
   if (_refreshPromise) return _refreshPromise;
 
@@ -95,6 +109,10 @@ export async function refreshAccessToken(): Promise<boolean> {
         credentials: "include", // Send HttpOnly cookie
       });
 
+      if (res.status === 429) {
+        rateLimitCooldown.record(res);
+        return false;
+      }
       if (!res.ok) {
         // Refresh token expired or revoked — clear everything
         clearTokens();
@@ -124,23 +142,27 @@ export async function refreshAccessToken(): Promise<boolean> {
  *
  * Usage: const res = await authFetch("/api/busowner/myFleets")
  */
-export async function authFetch(
+async function uncachedAuthFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const makeRequest = () => {
+  const makeRequest = async () => {
+    const limited = rateLimitCooldown.response();
+    if (limited) return limited;
     const authHeaders = getAuthHeaders();
     if (typeof FormData !== "undefined" && options.body instanceof FormData) {
       delete authHeaders["Content-Type"];
     }
 
-    return fetch(url.startsWith("http") ? url : `${API}${url}`, {
+    const response = await fetch(url.startsWith("http") ? url : `${API}${url}`, {
       ...options,
       headers: {
         ...authHeaders,
         ...(options.headers as Record<string, string>),
       },
     });
+    rateLimitCooldown.record(response);
+    return response;
   };
 
   const res = await makeRequest();
@@ -161,7 +183,7 @@ export async function authFetch(
     // Refresh failed — session truly expired, caller handles redirect
   }
 
-  return res;
+  return rateLimitCooldown.response() || res;
 }
 
 // ── Logout ───────────────────────────────────────────────────────────────────
@@ -182,4 +204,23 @@ export async function logout(): Promise<void> {
   });
 
   clearTokens();
+}
+
+// Cache only shared operator reads. Responses are cloned for independent consumers.
+export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const method = (options.method || "GET").toUpperCase();
+  const path = url.startsWith(API) ? url.slice(API.length) : url;
+  const sessionRead = path === "/busowner/profile" || path === "/busowner/kyc-status";
+  const sharedRead = sessionRead || path.startsWith("/busowner/fleets?")
+    || path === "/busowner/fleets" || /^\/busowner\/getMyTrips(?:\?|$)/.test(path)
+    || /^\/busowner\/fleets\/[^/]+(?:\/setup-status)?$/.test(path)
+    || /^\/busowner\/(overview|bookings|trip-manifest|finance|brands|crew|agents)(?:[/?]|$)/.test(path);
+  if (method === "GET" && sharedRead && !options.signal && !options.headers
+    && options.cache !== "no-store" && options.cache !== "reload") {
+    return readCache.get(`${getAccessToken() || ""}:${url}`,
+      sessionRead ? 5 * 60_000 : 60_000, () => uncachedAuthFetch(url, options));
+  }
+  const response = await uncachedAuthFetch(url, options);
+  if (method !== "GET" && method !== "HEAD" && response.ok) invalidateReadCache();
+  return response;
 }

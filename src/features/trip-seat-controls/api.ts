@@ -1,3 +1,4 @@
+import { ownerTripsPath } from "./owner-trip-range";
 import { authFetch } from "@/lib/auth";
 import type { OwnerTrip, TripSeatControl } from "./types";
 
@@ -8,7 +9,7 @@ async function payload<T>(response: Response): Promise<T> {
 }
 
 export async function listOwnerTrips(): Promise<OwnerTrip[]> {
-  return payload<OwnerTrip[]>(await authFetch("/busowner/getMyTrips"));
+  return payload<OwnerTrip[]>(await authFetch(ownerTripsPath()));
 }
 
 export async function getTripSeatControl(tripId: string): Promise<TripSeatControl> {

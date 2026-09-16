@@ -73,3 +73,41 @@ test("terminal role 403 logs out, business 403 does not", async () => {
   await auth.authFetch("/brands");
   assert.equal(auth.getAccessToken(), "valid-again");
 });
+
+
+test("shared operator reads survive navigation and invalidate after writes and logout", async () => {
+  auth.saveTokens("owner-one");
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return Response.json({ calls }); };
+  await Promise.all(Array.from({ length: 10 }, () => auth.authFetch("/busowner/profile")));
+  await auth.authFetch("/busowner/profile");
+  assert.equal(calls, 1);
+  await auth.authFetch("/busowner/fleets?limit=50");
+  await auth.authFetch("/busowner/fleets?limit=50");
+  assert.equal(calls, 2);
+  await auth.authFetch("/busowner/fleets/bus", { method: "PATCH", body: "{}" });
+  await auth.authFetch("/busowner/profile");
+  await auth.authFetch("/busowner/fleets?limit=50");
+  assert.equal(calls, 5);
+  auth.clearTokens();
+  auth.saveTokens("owner-two");
+  await auth.authFetch("/busowner/profile");
+  assert.equal(calls, 6);
+});
+
+
+test("throttled token refresh preserves login and further requests honor the cooldown", async () => {
+  auth.saveTokens("expired-but-valid-session");
+  let calls = 0;
+  globalThis.fetch = async input => {
+    calls++;
+    return String(input).includes("/auth/busowner/refresh")
+      ? Response.json({ message: "Wait" }, { status: 429, headers: { "Retry-After": "900" } })
+      : Response.json({}, { status: 401 });
+  };
+  assert.equal((await auth.authFetch("/busowner/profile")).status, 429);
+  assert.equal(auth.getAccessToken(), "expired-but-valid-session");
+  await Promise.all(Array.from({ length: 20 }, () => auth.authFetch("/busowner/fleets?limit=50")));
+  assert.equal(calls, 2);
+  assert.equal(auth.isApiRateLimited(), true);
+});

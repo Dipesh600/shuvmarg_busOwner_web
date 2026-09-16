@@ -65,10 +65,10 @@ export default function DashboardShell({
 
         {/* Workspace Canvas */}
         <main
-          className="flex-1 overflow-y-auto overflow-x-hidden px-6 lg:px-10 pt-4 sm:pt-6 lg:pt-8"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 sm:px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-8"
           data-lenis-prevent="true"
         >
-          <div className="max-w-7xl mx-auto space-y-8 pb-12">{children}</div>
+          <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 pb-12">{children}</div>
         </main>
       </div>
     </div>

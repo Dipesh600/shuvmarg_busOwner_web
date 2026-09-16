@@ -97,7 +97,7 @@ export default function OperatorTopBar({
   };
 
   return (
-    <header className="h-24 bg-transparent px-6 lg:px-10 flex items-center justify-between sticky top-0 z-20 gap-4 sm:gap-6">
+    <header className="h-20 sm:h-24 bg-transparent px-3.5 sm:px-6 lg:px-10 flex items-center justify-between sticky top-0 z-20 gap-3 sm:gap-6">
       {/* Left Column: Mobile Menu Toggle + Left-Aligned Dynamic Search Bar */}
       <div className="flex-1 flex items-center justify-start gap-3 lg:gap-4 min-w-0">
         <button

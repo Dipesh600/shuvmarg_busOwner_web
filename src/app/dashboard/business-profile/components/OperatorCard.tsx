@@ -4,9 +4,10 @@ import { ArrowRight } from "lucide-react";
 
 interface OperatorCardProps {
   companyName: string;
+  status?: string;
 }
 
-export function OperatorCard({ companyName }: OperatorCardProps) {
+export function OperatorCard({ companyName, status = "Status unavailable" }: OperatorCardProps) {
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center p-5 bg-white border border-[#E8E1DB] rounded-[16px] shadow-sm gap-6 transition hover:shadow-md">
       {/* Square Logo */}
@@ -27,7 +28,7 @@ export function OperatorCard({ companyName }: OperatorCardProps) {
             {companyName}
           </h3>
           <span className="inline-flex items-center rounded-full bg-[#E8F5E9] px-2.5 py-0.5 text-xs font-semibold text-[#2E7D32]">
-            Active
+            {status}
           </span>
         </div>
 
@@ -62,7 +63,7 @@ export function OperatorCard({ companyName }: OperatorCardProps) {
             <ArrowRight className="w-3.5 h-3.5 opacity-0 -ml-2 transition-all group-hover:opacity-100 group-hover:ml-0" />
           </Link>
           <Link
-            href="/dashboard/financials"
+            href="/dashboard/finance"
             className="text-sm font-semibold text-neutral-600 hover:text-[#7A1D1B] transition-colors flex items-center gap-1 group"
           >
             Financials{" "}

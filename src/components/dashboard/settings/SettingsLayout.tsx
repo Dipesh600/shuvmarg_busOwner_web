@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
-import { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
+import { useOperatorSession } from "@/features/operator-dashboard/SessionContext";
 import SettingsTabSidebar, { SettingsTabId } from "./SettingsTabSidebar";
 import OperatorProfileTab from "./profile/OperatorProfileTab";
 import OperatorPayoutTab from "./payout/OperatorPayoutTab";
@@ -17,26 +16,7 @@ export default function SettingsLayout() {
   const activeTab: SettingsTabId =
     tabQuery === "payout" ? "payout" : tabQuery === "security" ? "security" : "profile";
 
-  const [dashboardData, setDashboardData] = useState<OperatorDashboardState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    fetchOperatorDashboardState()
-      .then((data) => {
-        if (isMounted) setDashboardData(data);
-      })
-      .catch((err) => {
-        console.error("Failed to load operator dashboard state in settings:", err);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { dashboardState: dashboardData, loading: isLoading } = useOperatorSession();
 
   const handleTabChange = (tabId: SettingsTabId) => {
     router.replace(`/dashboard/settings${tabId === "profile" ? "" : `?tab=${tabId}`}`);

@@ -7,6 +7,7 @@ import { adoptTemplate, correctRejectedFleetLayout, createInitialCustomFleetLayo
 import { saveFleetRouteSetup } from "./api-route-setup";
 
 export interface FleetListItem {
+  frontImage?: { imageId: string | null; index: number } | null;
   fleetId: string;
   fleetCode: string | null;
   brandId?: string | null;

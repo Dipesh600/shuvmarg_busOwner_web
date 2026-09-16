@@ -79,6 +79,7 @@ export interface BusOwnerKycStatus {
 }
 
 export interface OperatorFleetListItem {
+  frontImage?: { imageId: string | null; index: number } | null;
   fleetId: string;
   fleetCode: string | null;
   brandId?: string | null;
@@ -426,20 +427,24 @@ export function getVerificationStatusLabel(status: VerificationStatus): string {
 }
 
 /**
- * Derives operational capabilities based on evidence.
+ * Derives operational capabilities based on business verification and fleet readiness.
+ * When an approved operator has at least one live/operational bus, trips, bookings,
+ * finance, and reports navigation items unlock.
  */
 export function deriveCapabilities(
-  verificationStatus: VerificationStatus
+  verificationStatus: VerificationStatus,
+  hasLiveBus: boolean = false
 ): OperatorCapabilities {
   const isApproved = verificationStatus === "approved";
+  const operationalLive = isApproved && hasLiveBus;
   return {
     canManageBusiness: true,
     canPrepareFleet: true,
     canManageRoutes: isApproved,
-    canManageTrips: false,
-    canViewBookings: false,
-    canViewFinance: false,
-    canViewReports: false,
+    canManageTrips: operationalLive,
+    canViewBookings: operationalLive,
+    canViewFinance: operationalLive,
+    canViewReports: operationalLive,
   };
 }
 

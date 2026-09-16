@@ -57,16 +57,16 @@ export function BusinessProfileHero({
             {isKyced ? (
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 sm:flex-row sm:gap-5">
                 <Link
-                  href="/dashboard/operators/new"
+                  href="/dashboard/settings"
                   className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#D96861] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md transition hover:bg-[#C25852] hover:shadow-lg active:scale-95"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Operator
+                  Business Details
                 </Link>
               </div>
             ) : (
               <Link
-                href="/dashboard/settings"
+                href="/dashboard"
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-black uppercase tracking-wider text-[#7A1D1B] shadow-md transition hover:bg-[#FAF8F5] hover:shadow-lg active:scale-95 border border-neutral-200 mt-2"
               >
                 <ShieldAlert className="h-4 w-4 text-[#7A1D1B]" />

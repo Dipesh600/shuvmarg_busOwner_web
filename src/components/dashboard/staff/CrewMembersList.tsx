@@ -1,9 +1,20 @@
 "use client";
 
+import { isApiRateLimited } from "@/lib/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, BadgeCheck, BusFront, CheckCircle2, Clock, LoaderCircle, Plus, RefreshCw,
-  Search, ShieldAlert, UserRoundCheck, UsersRound,
+  BadgeCheck,
+  BusFront,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  UserRoundCheck,
 } from "lucide-react";
 import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/api-brands";
 import { listCrew, removeCrew, resendCrewInvitation, updateCrewStatus, type CrewAssignmentResult } from "@/features/crew-management/api";
@@ -13,15 +24,20 @@ import StaffStatusBadge from "./StaffStatusBadge";
 import CrewAssignmentDialog from "./CrewAssignmentDialog";
 import ConductorTripsDialog from "./ConductorTripsDialog";
 import CrewVehicleAccessDialog from "./CrewVehicleAccessDialog";
+import CrewProfileScreen from "./profile/CrewProfileScreen";
 
 const STATUS_OPTIONS: Array<{ value: "" | StaffOperationalStatus; label: string }> = [
-  { value: "", label: "All statuses" }, { value: "AVAILABLE", label: "Available" },
-  { value: "ON_DUTY", label: "On duty" }, { value: "OFF_DUTY", label: "Off duty" },
-  { value: "INACTIVE", label: "Removed" }, { value: "SUSPENDED", label: "Suspended" },
+  { value: "", label: "All statuses" },
+  { value: "AVAILABLE", label: "Available" },
+  { value: "ON_DUTY", label: "On duty" },
+  { value: "OFF_DUTY", label: "Off duty" },
+  { value: "INACTIVE", label: "Removed" },
+  { value: "SUSPENDED", label: "Suspended" },
 ];
-const inputClass = "h-11 rounded-xl border border-neutral-200 bg-white px-3 text-sm font-semibold outline-none focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10";
+
+const inputClass = "h-10 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold outline-none focus:border-[#7A1D1B] focus:ring-2 focus:ring-[#7A1D1B]/10";
 const activeStatus = (value: StaffOperationalStatus) => !["INACTIVE", "SUSPENDED"].includes(value);
-const formatExpiry = (value?: string | null) => value ? new Date(value).toLocaleDateString() : "Not supplied";
+const formatExpiry = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : "Not supplied");
 
 export default function CrewMembersList() {
   const [role, setRole] = useState<StaffRole>("driver");
@@ -41,145 +57,599 @@ export default function CrewMembersList() {
   const [dialog, setDialog] = useState<{ existing?: StaffMember } | null>(null);
   const [tripTarget, setTripTarget] = useState<StaffMember | null>(null);
   const [vehicleTarget, setVehicleTarget] = useState<StaffMember | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+
   const [renderedAt] = useState(() => Date.now());
   const requestRef = useRef(0);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search), 300);
-    return () => window.clearTimeout(timeout);
+    const timeout = window.clearTimeout;
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => timeout(timer);
   }, [search]);
+
   useEffect(() => {
-    listMyBrands().then(setBrands).catch(failure => setError((failure as Error).message));
+    listMyBrands().then(setBrands).catch((failure) => setError((failure as Error).message));
   }, []);
-  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
-    const requestId = ++requestRef.current;
-    if (!silent) setLoading(true);
-    setError("");
-    try {
-      const result = await listCrew({ role, brandId: brandId || undefined, status: status || undefined,
-        search: debouncedSearch || undefined, page });
-      if (requestId !== requestRef.current) return;
-      setCrew(result.data); setTotal(result.pagination.total);
-      const pages = Math.max(1, result.pagination.totalPages);
-      setTotalPages(pages);
-      if (page > pages) setPage(pages);
-    } catch (failure) {
-      if (requestId !== requestRef.current) return;
-      if (!silent) setCrew([]);
-      setError(silent ? "Could not refresh crew. Showing the last loaded list." : (failure as Error).message);
-    } finally { if (!silent && requestId === requestRef.current) setLoading(false); }
-  }, [brandId, debouncedSearch, page, role, status]);
+
+  const load = useCallback(
+    async ({ silent = false }: { silent?: boolean } = {}) => {
+      const requestId = ++requestRef.current;
+      if (!silent) setLoading(true);
+      setError("");
+      try {
+        const result = await listCrew({
+          role,
+          brandId: brandId || undefined,
+          status: status || undefined,
+          search: debouncedSearch || undefined,
+          page,
+        });
+        if (requestId !== requestRef.current) return;
+        setCrew(result.data);
+        setTotal(result.pagination.total);
+        const pages = Math.max(1, result.pagination.totalPages);
+        setTotalPages(pages);
+        if (page > pages) setPage(pages);
+      } catch (failure) {
+        if (requestId !== requestRef.current) return;
+        if (!silent) setCrew([]);
+        setError(silent ? "Could not refresh crew. Showing the last loaded list." : (failure as Error).message);
+      } finally {
+        if (!silent && requestId === requestRef.current) setLoading(false);
+      }
+    },
+    [brandId, debouncedSearch, page, role, status]
+  );
+
   useEffect(() => {
-    // Crew records are remote state and must be loaded whenever the active query changes.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
-  useEffect(() => {
-    const refresh = () => { if (document.visibilityState === "visible") void load({ silent: true }); };
-    window.addEventListener("focus", refresh);
-    const interval = window.setInterval(refresh, 30_000);
-    return () => { window.removeEventListener("focus", refresh); window.clearInterval(interval); };
+    let active = true;
+    void Promise.resolve().then(() => { if (active) void load(); });
+    return () => { active = false; };
   }, [load]);
 
-  const changeRole = (value: StaffRole) => { setRole(value); setPage(1); setStatus(""); setSearch(""); };
-  const mutate = async (staff: StaffMember, action: () => Promise<void>, success: string) => {
-    setWorkingId(staff.id); setError(""); setNotice(null);
-    try { await action(); setNotice({ text: success }); await load(); }
-    catch (failure) { setError((failure as Error).message); }
-    finally { setWorkingId(""); }
+  useEffect(() => {
+    let lastRefresh = Date.now();
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || isApiRateLimited() || Date.now() - lastRefresh < 60_000) return;
+      lastRefresh = Date.now();
+      if (document.visibilityState === "visible") void load({ silent: true });
+    };
+    window.addEventListener("focus", refresh);
+    const interval = window.setInterval(refresh, 60_000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(interval);
+    };
+  }, [load]);
+
+  const changeRole = (value: StaffRole) => {
+    setRole(value);
+    setPage(1);
+    setStatus("");
+    setSearch("");
   };
+
+  const mutate = async (staff: StaffMember, action: () => Promise<void>, success: string) => {
+    setWorkingId(staff.id);
+    setError("");
+    setNotice(null);
+    try {
+      await action();
+      setNotice({ text: success });
+      await load();
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setWorkingId("");
+    }
+  };
+
   const remove = (staff: StaffMember) => {
-    if (!window.confirm("Remove " + staff.fullName + " from your crew? Their passenger and other account access will remain unchanged.")) return;
+    if (!window.confirm("Remove " + staff.fullName + " from your crew? Their passenger and other account access will remain unchanged."))
+      return;
     void mutate(staff, () => removeCrew(staff), "Crew access removed. Other account roles were not changed.");
   };
+
   const updateStatus = (staff: StaffMember, next: StaffOperationalStatus) => {
     if (next !== "AVAILABLE" && next !== "OFF_DUTY") return;
     void mutate(staff, () => updateCrewStatus(staff, next), next === "AVAILABLE" ? "Crew member is available." : "Crew member is off duty.");
   };
+
   const resendInvitation = async (staff: StaffMember) => {
-    setWorkingId(staff.id); setError(""); setNotice(null);
+    setWorkingId(staff.id);
+    setError("");
+    setNotice(null);
     try {
       const result = await resendCrewInvitation(staff);
       setNotice({ text: result.message, warning: result.data.notificationStatus !== "QUEUED" });
       await load();
-    } catch (failure) { setError((failure as Error).message); }
-    finally { setWorkingId(""); }
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setWorkingId("");
+    }
   };
+
   const saved = (message: string, warning = false, result?: CrewAssignmentResult) => {
-    if (result?.profileId) setCrew(current => current.map(staff => staff.id === result.profileId
-      ? { ...staff, status: result.profileStatus || staff.status,
-          approvalStatus: result.approvalStatus || staff.approvalStatus,
-          accessStatus: result.accessStatus,
-          invitationDeliveryStatus: result.invitationDeliveryStatus }
-      : staff));
-    setDialog(null); setNotice({ text: message, warning }); void load();
+    if (result?.profileId)
+      setCrew((current) =>
+        current.map((staff) =>
+          staff.id === result.profileId
+            ? {
+                ...staff,
+                status: result.profileStatus || staff.status,
+                approvalStatus: result.approvalStatus || staff.approvalStatus,
+                accessStatus: result.accessStatus,
+                invitationDeliveryStatus: result.invitationDeliveryStatus,
+              }
+            : staff
+        )
+      );
+    setDialog(null);
+    setNotice({ text: message, warning });
+    void load();
   };
-  const brandName = (id: string) => brands.find(brand => brand.id === id)?.brandName || "Operator brand";
+
+  const brandName = (id: string) => brands.find((brand) => brand.id === id)?.brandName || "Operator brand";
   const vehicleScopeLabel = (staff: StaffMember) => switchVehicleScope(staff.vehicleScope, staff.allowedVehicleIds?.length || 0);
 
-  return <section className="space-y-5">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div><h2 className="text-xl font-bold text-neutral-900">Onboard crew</h2><p className="mt-1 text-sm text-neutral-500">Manage driver readiness, conductor access and trip assignments.</p></div>
-      <div className="flex gap-2"><button type="button" onClick={() => void load()} disabled={loading} aria-label="Refresh crew" className="flex h-11 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-sm font-bold text-neutral-700 disabled:opacity-50"><RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} />Refresh</button>
-        <button type="button" onClick={() => setDialog({})} className="flex h-11 items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-sm font-bold capitalize text-white"><Plus className="h-4 w-4" />Add {role}</button></div>
-    </div>
+  if (selectedStaff) {
+    return (
+      <CrewProfileScreen
+        staff={selectedStaff}
+        brandName={brandName(selectedStaff.brandId)}
+        onBack={() => setSelectedStaff(null)}
+      />
+    );
+  }
 
-    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div role="tablist" aria-label="Crew role" className="mb-4 grid grid-cols-2 gap-2 sm:max-w-md">
-        {(["driver", "conductor"] as StaffRole[]).map(value => <button key={value} type="button" role="tab" aria-selected={role === value} onClick={() => changeRole(value)} className={"rounded-xl px-4 py-2.5 text-sm font-bold capitalize transition " + (role === value ? "bg-[#7A1D1B] text-white" : "bg-[#F7F3F1] text-[#635B55] hover:bg-[#EFE7E3]")}>{value}s</button>)}
+  return (
+    <section className="space-y-5">
+      {/* ── Page Header (Matching Reference Mockup) ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-neutral-900">Onboard crew</h2>
+          <p className="mt-1 text-xs sm:text-sm text-neutral-500">
+            Manage driver readiness, conductor access and trip assignments.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            aria-label="Refresh crew"
+            className="flex h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 text-xs sm:text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-colors shadow-xs disabled:opacity-50"
+          >
+            <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} />
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={() => setDialog({})}
+            className="flex h-10 items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 text-xs sm:text-sm font-bold capitalize text-white hover:bg-[#631715] transition-colors shadow-xs"
+          >
+            <Plus className="h-4 w-4" />
+            Add {role}
+          </button>
+        </div>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[1fr_240px_210px]">
-        <label className="text-xs font-bold text-neutral-700">Search your crew<div className="relative mt-1.5"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" /><input type="search" value={search} maxLength={100} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder={role === "driver" ? "Name, phone or license" : "Name or phone"} className={inputClass + " w-full pl-10"} /></div></label>
-        <label className="text-xs font-bold text-neutral-700">Brand<select value={brandId} onChange={event => { setBrandId(event.target.value); setPage(1); }} className={inputClass + " mt-1.5 w-full"}><option value="">All brands</option>{brands.map(brand => <option key={brand.id} value={brand.id}>{brand.brandName}</option>)}</select></label>
-        <label className="text-xs font-bold text-neutral-700">Status<select value={status} onChange={event => { setStatus(event.target.value as typeof status); setPage(1); }} className={inputClass + " mt-1.5 w-full"}>{STATUS_OPTIONS.map(option => <option key={option.value || "all"} value={option.value}>{option.label}</option>)}</select></label>
-      </div>
-      <p className="mt-3 text-xs text-neutral-500">{total} {role}{total === 1 ? "" : "s"} found</p>
-    </div>
 
-    {notice && <div role="status" className={"rounded-2xl border p-4 text-sm font-semibold " + (notice.warning ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800")}>{notice.text}</div>}
-    {error && <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><ShieldAlert className="h-5 w-5 shrink-0" />{error}</div>}
+      {notice && (
+        <div
+          role="status"
+          className={
+            "rounded-2xl border p-4 text-sm font-semibold " +
+            (notice.warning ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-800")
+          }
+        >
+          {notice.text}
+        </div>
+      )}
+      {error && (
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          {error}
+        </div>
+      )}
 
-    {loading && crew.length === 0 ? <div className="flex justify-center rounded-3xl border border-neutral-200 bg-white p-16"><LoaderCircle className="h-7 w-7 animate-spin text-[#7A1D1B]" /></div>
-      : crew.length === 0 ? <div className="rounded-3xl border border-neutral-200 bg-white px-6 py-16 text-center shadow-sm"><UsersRound className="mx-auto h-10 w-10 text-neutral-400" /><h3 className="mt-4 text-lg font-bold text-neutral-900">No {role}s match this view</h3><p className="mx-auto mt-2 max-w-md text-sm text-neutral-500">{brandId || status || search ? "Try clearing a filter." : "Add your first crew member to connect their Partner app access."}</p>{!brandId && !status && !search && <button type="button" onClick={() => setDialog({})} className="mt-5 rounded-xl border border-[#7A1D1B] px-4 py-2.5 text-sm font-bold text-[#7A1D1B]">Add {role}</button>}</div>
-      : <div className="grid gap-4 lg:grid-cols-2">{crew.map(staff => {
-        const expired = staff.licenseExpiry && new Date(staff.licenseExpiry).getTime() < renderedAt;
-        const accessActive = staff.accessStatus === "ACTIVE";
-        const securityUpdateRequired = staff.role === "driver" && staff.approvalStatus === "PENDING";
-        const driverRejected = staff.role === "driver" && staff.approvalStatus === "REJECTED";
-        return <article key={staff.id} className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FFF1EE] text-[#7A1D1B]">{staff.role === "driver" ? <BusFront className="h-5 w-5" /> : <UserRoundCheck className="h-5 w-5" />}</span><div className="min-w-0"><h3 className="truncate font-bold text-neutral-900">{staff.fullName}</h3>{staff.staffCode && <p className="mt-0.5 font-mono text-xs font-bold text-[#7A1D1B]">{staff.staffCode}</p>}<p className="mt-0.5 text-xs text-neutral-500">{staff.phone} · {brandName(staff.brandId)}</p></div></div>
-            {activeStatus(staff.status) && staff.userId && <StaffCardActionsMenu staff={staff} canChangeStatus={accessActive && (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY")} onStatusChange={next => updateStatus(staff, next)} onRemove={() => remove(staff)} />}</div>
-          <div className="mt-4 flex flex-wrap gap-2">{accessActive && <StaffStatusBadge status={staff.status} />}
-            {staff.accessStatus === "INVITED" && <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700"><Clock className="h-3 w-3" />{staff.accountStatus === "active" ? "Acceptance pending" : "Account setup pending"}</span>}
-            {accessActive && <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase text-blue-700"><CheckCircle2 className="h-3 w-3" />Crew access active</span>}
-            {staff.accessStatus === "NOT_LINKED" && <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Registry only</span>}
-            {staff.accessStatus === "SUSPENDED" && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">Account access suspended</span>}
-            {staff.accessStatus === "DECLINED" && <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Invitation declined</span>}
-            {staff.accessStatus === "LEFT" && <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-600">Left operator</span>}
-            {staff.accessStatus === "REMOVED" && <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-1 text-[11px] font-bold uppercase text-neutral-700">Crew access removed</span>}
-            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "PENDING" && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">SMS waiting for delivery</span>}
-            {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "FAILED" && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">SMS delivery failed</span>}
-            {securityUpdateRequired && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold uppercase text-amber-700">Security update required</span>}
-            {driverRejected && <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold uppercase text-red-700">Driver blocked</span>}</div>
-          {staff.role === "driver" ? <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-neutral-50 p-3 text-sm"><div><dt className="text-xs text-neutral-500">License</dt><dd className="font-semibold text-neutral-800">{staff.licenseNumber || "Missing"} · {staff.licenseType || "—"}</dd></div><div><dt className="text-xs text-neutral-500">Valid until</dt><dd className={"font-semibold " + (expired ? "text-red-700" : "text-neutral-800")}>{formatExpiry(staff.licenseExpiry)}</dd></div></dl>
-            : <div className="mt-4 rounded-xl bg-neutral-50 p-3"><p className="text-xs text-neutral-500">Assigned trips</p><p className="mt-1 font-semibold text-neutral-800">{staff.assignedTrips?.length || 0} trip{staff.assignedTrips?.length === 1 ? "" : "s"}</p></div>}
-          {["INVITED", "ACTIVE"].includes(staff.accessStatus) && <div className="mt-3 flex items-center justify-between rounded-xl border border-neutral-100 px-3 py-2.5"><div><p className="text-xs text-neutral-500">Vehicle access</p><p className="mt-0.5 text-sm font-bold text-neutral-800">{vehicleScopeLabel(staff)}</p></div><button type="button" onClick={() => setVehicleTarget(staff)} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700">Edit</button></div>}
-          {(expired || securityUpdateRequired || driverRejected || staff.status === "SUSPENDED") && <div className="mt-3 flex gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800"><AlertTriangle className="h-4 w-4 shrink-0" /><span>{staff.status === "SUSPENDED" || driverRejected ? "This driver is blocked. Contact Shuvmarg support before restoring access." : expired ? "The licence has expired. Upload a valid replacement before assignment." : "Upload the licence once to complete the automated security checks."}</span></div>}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {staff.role === "conductor" && staff.accessStatus === "ACTIVE" && activeStatus(staff.status) && <button type="button" onClick={() => setTripTarget(staff)} className="flex items-center gap-2 rounded-lg border border-[#7A1D1B]/30 px-3 py-2 text-xs font-bold text-[#7A1D1B]"><BadgeCheck className="h-3.5 w-3.5" />Manage trips</button>}
-            {staff.accessStatus === "INVITED" && ["PENDING", "FAILED"].includes(staff.invitationDeliveryStatus) && activeStatus(staff.status) && <button type="button" disabled={workingId === staff.id} onClick={() => void resendInvitation(staff)} className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800 disabled:opacity-50">Resend invitation SMS</button>}
-            {securityUpdateRequired && activeStatus(staff.status) && <button type="button" onClick={() => setDialog({ existing: staff })} className="rounded-lg border border-amber-300 px-3 py-2 text-xs font-bold text-amber-800">Complete security check</button>}
-            {staff.status === "INACTIVE" && !driverRejected && <button type="button" onClick={() => setDialog({ existing: staff })} className="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800">Rehire crew member</button>}
-            {accessActive && (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY") && staff.userId && <button type="button" disabled={workingId === staff.id} onClick={() => updateStatus(staff, staff.status === "OFF_DUTY" ? "AVAILABLE" : "OFF_DUTY")} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700 disabled:opacity-50">{staff.status === "OFF_DUTY" ? "Mark available" : "Mark off duty"}</button>}
+      {/* ── Table Workspace Card Container ── */}
+      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-xs overflow-hidden">
+        {/* Toolbar: Role Pills on Left, Filters on Right */}
+        <div className="p-4 sm:p-5 border-b border-neutral-100 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div role="tablist" aria-label="Crew role" className="flex items-center gap-2">
+            {(["driver", "conductor"] as StaffRole[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={role === value}
+                onClick={() => changeRole(value)}
+                className={
+                  "whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold capitalize transition-colors " +
+                  (role === value ? "bg-[#7A1D1B] text-white shadow-xs" : "bg-[#F7F3F1] text-[#635B55] hover:bg-[#EFE7E3]")
+                }
+              >
+                {value}s
+              </button>
+            ))}
           </div>
-        </article>;
-      })}</div>}
 
-    {totalPages > 1 && <nav aria-label="Crew pages" className="flex items-center justify-center gap-3"><button type="button" disabled={page <= 1 || loading} onClick={() => setPage(value => value - 1)} className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-bold disabled:opacity-40">Previous</button><span className="text-sm text-neutral-500">Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages || loading} onClick={() => setPage(value => value + 1)} className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-bold disabled:opacity-40">Next</button></nav>}
-    {dialog && <CrewAssignmentDialog brands={brands} initialRole={role} initialBrandId={brandId || undefined} existing={dialog.existing} onClose={() => setDialog(null)} onSaved={saved} />}
-    {tripTarget && <ConductorTripsDialog conductor={tripTarget} onClose={() => { setTripTarget(null); void load(); }} onSaved={message => setNotice({ text: message })} />}
-    {vehicleTarget && <CrewVehicleAccessDialog staff={vehicleTarget} onClose={() => setVehicleTarget(null)} onSaved={message => { setVehicleTarget(null); setNotice({ text: message }); void load(); }} />}
-  </section>;
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative min-w-[200px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <input
+                type="search"
+                value={search}
+                maxLength={100}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder={role === "driver" ? "Name, phone or license" : "Name or phone"}
+                className={inputClass + " w-full pl-9"}
+              />
+            </div>
+            <select
+              value={brandId}
+              onChange={(event) => {
+                setBrandId(event.target.value);
+                setPage(1);
+              }}
+              className={inputClass + " min-w-[150px]"}
+            >
+              <option value="">All brands</option>
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>
+                  {brand.brandName}
+                </option>
+              ))}
+            </select>
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as typeof status);
+                setPage(1);
+              }}
+              className={inputClass + " min-w-[130px]"}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value || "all"} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* ── Table Content ("Format in line rather than that card") ── */}
+        {loading && crew.length === 0 ? (
+          <div className="flex justify-center p-16">
+            <LoaderCircle className="h-7 w-7 animate-spin text-[#7A1D1B]" />
+          </div>
+        ) : crew.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            {role === "driver" ? (
+              <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-[#FAF8F5] border border-neutral-200/80 shadow-xs">
+                <BusFront className="h-7 w-7 text-[#7A1D1B]" />
+              </div>
+            ) : (
+              <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-[#FAF8F5] border border-neutral-200/80 shadow-xs">
+                <UserRoundCheck className="h-7 w-7 text-[#7A1D1B]" />
+              </div>
+            )}
+            <h3 className="mt-4 text-base font-bold text-neutral-900">
+              {brandId || status || search
+                ? `No ${role}s match these filters`
+                : role === "driver"
+                ? "No drivers added yet"
+                : "No conductors added yet"}
+            </h3>
+            <p className="mx-auto mt-1.5 max-w-md text-xs text-neutral-500 leading-relaxed">
+              {brandId || status || search
+                ? "Try clearing a filter or searching a different name."
+                : role === "driver"
+                ? "Add your drivers to assign them to bus departures and monitor driving license readiness."
+                : "Add your conductors to manage passenger check-ins and onboard ticket verification."}
+            </p>
+            {!brandId && !status && !search && (
+              <button
+                type="button"
+                onClick={() => setDialog({})}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#7A1D1B] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#631715] transition-colors shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add {role}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[860px]">
+              <thead>
+                <tr className="border-b border-neutral-100 bg-[#FAF9F7]/60 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                  <th className="px-4 py-3.5">{role === "driver" ? "Driver" : "Conductor"}</th>
+                  <th className="px-4 py-3.5">Brand</th>
+                  {role === "driver" ? (
+                    <>
+                      <th className="px-4 py-3.5">License</th>
+                      <th className="px-4 py-3.5">Valid until</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="px-4 py-3.5">Assigned trips</th>
+                      <th className="px-4 py-3.5">Phone</th>
+                    </>
+                  )}
+                  <th className="px-4 py-3.5">Status</th>
+                  <th className="px-4 py-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 text-xs">
+                {crew.map((staff) => {
+                  const expired = staff.licenseExpiry && new Date(staff.licenseExpiry).getTime() < renderedAt;
+                  const accessActive = staff.accessStatus === "ACTIVE";
+                  const securityUpdateRequired = staff.role === "driver" && staff.approvalStatus === "PENDING";
+                  const driverRejected = staff.role === "driver" && staff.approvalStatus === "REJECTED";
+                  const initials = staff.fullName
+                    .split(" ")
+                    .map((w) => w[0])
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase();
+                  return (
+                    <tr
+                      key={staff.id}
+                      onClick={() => setSelectedStaff(staff)}
+                      className="hover:bg-[#FAF8F5]/80 transition-colors cursor-pointer group"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FFF0ED] text-[#7A1D1B] font-bold text-xs border border-[#FAD8D3]">
+                            {initials || (staff.role === "driver" ? <BusFront className="h-4 w-4" /> : <UserRoundCheck className="h-4 w-4" />)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-neutral-900 truncate group-hover:text-[#7A1D1B] transition-colors">
+                              {staff.fullName}
+                            </p>
+                            <p className="font-mono text-[11px] text-neutral-400">
+                              {staff.staffCode || staff.phone}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-neutral-700 font-medium">
+                        {brandName(staff.brandId)}
+                      </td>
+                      {role === "driver" ? (
+                        <>
+                          <td className="px-4 py-3 text-neutral-700 font-medium" title="Vehicle access">
+                            {staff.licenseNumber || "Missing"} · {staff.licenseType || "—"}
+                          </td>
+                          <td className={`px-4 py-3 font-medium ${expired ? "text-red-700" : "text-neutral-700"}`}>
+                            {formatExpiry(staff.licenseExpiry)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 text-neutral-700 font-medium">
+                            {staff.assignedTrips?.length || 0} trip{staff.assignedTrips?.length === 1 ? "" : "s"}
+                          </td>
+                          <td className="px-4 py-3 text-neutral-700 font-mono">
+                            {staff.phone}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {accessActive && <StaffStatusBadge status={staff.status} />}
+                          {staff.accessStatus === "INVITED" && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-amber-700">
+                              <Clock className="h-3 w-3" />
+                              {staff.accountStatus === "active" ? "Acceptance pending" : "Account setup pending"}
+                            </span>
+                          )}
+                          {accessActive && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-blue-700">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Crew access active
+                            </span>
+                          )}
+                          {staff.accessStatus === "NOT_LINKED" && (
+                            <span className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-[11px] font-bold uppercase text-neutral-600">
+                              Registry only
+                            </span>
+                          )}
+                          {staff.accessStatus === "SUSPENDED" && (
+                            <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-red-700">
+                              Account access suspended
+                            </span>
+                          )}
+                          {staff.accessStatus === "DECLINED" && (
+                            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-neutral-600">
+                              Invitation declined
+                            </span>
+                          )}
+                          {staff.accessStatus === "LEFT" && (
+                            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-neutral-600">
+                              Left operator
+                            </span>
+                          )}
+                          {staff.accessStatus === "REMOVED" && (
+                            <span className="rounded-full border border-neutral-300 bg-neutral-100 px-2.5 py-0.5 text-[11px] font-bold uppercase text-neutral-700">
+                              Crew access removed
+                            </span>
+                          )}
+                          {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "PENDING" && (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-amber-700">
+                              SMS waiting for delivery
+                            </span>
+                          )}
+                          {staff.accessStatus === "INVITED" && staff.invitationDeliveryStatus === "FAILED" && (
+                            <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-red-700">
+                              SMS delivery failed
+                            </span>
+                          )}
+                          {securityUpdateRequired && (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-amber-700">
+                              Security update required
+                            </span>
+                          )}
+                          {driverRejected && (
+                            <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[11px] font-bold uppercase text-red-700">
+                              Driver blocked
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {staff.role === "conductor" && staff.accessStatus === "ACTIVE" && activeStatus(staff.status) && (
+                            <button
+                              type="button"
+                              onClick={() => setTripTarget(staff)}
+                              className="flex items-center gap-1 rounded-lg border border-[#7A1D1B]/30 px-2.5 py-1.5 text-[11px] font-bold text-[#7A1D1B] hover:bg-[#FAF0ED]"
+                            >
+                              <BadgeCheck className="h-3 w-3" />
+                              Manage trips
+                            </button>
+                          )}
+                          {staff.accessStatus === "INVITED" &&
+                            ["PENDING", "FAILED"].includes(staff.invitationDeliveryStatus) &&
+                            activeStatus(staff.status) && (
+                              <button
+                                type="button"
+                                disabled={workingId === staff.id}
+                                onClick={() => void resendInvitation(staff)}
+                                className="rounded-lg border border-amber-300 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-50 disabled:opacity-50"
+                              >
+                                Resend invitation SMS
+                              </button>
+                            )}
+                          {securityUpdateRequired && activeStatus(staff.status) && (
+                            <button
+                              type="button"
+                              onClick={() => setDialog({ existing: staff })}
+                              className="rounded-lg border border-amber-300 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-50"
+                            >
+                              Complete security check
+                            </button>
+                          )}
+                          {staff.status === "INACTIVE" && !driverRejected && (
+                            <button
+                              type="button"
+                              onClick={() => setDialog({ existing: staff })}
+                              className="rounded-lg border border-emerald-300 px-2.5 py-1.5 text-[11px] font-bold text-emerald-800 hover:bg-emerald-50"
+                            >
+                              Rehire crew member
+                            </button>
+                          )}
+                          {accessActive &&
+                            (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY") &&
+                            staff.userId && (
+                              <button
+                                type="button"
+                                disabled={workingId === staff.id}
+                                onClick={() =>
+                                  updateStatus(staff, staff.status === "OFF_DUTY" ? "AVAILABLE" : "OFF_DUTY")
+                                }
+                                className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-[11px] font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                              >
+                                {staff.status === "OFF_DUTY" ? "Mark available" : "Mark off duty"}
+                              </button>
+                            )}
+
+                          {activeStatus(staff.status) && staff.userId && (
+                            <StaffCardActionsMenu
+                              staff={staff}
+                              canChangeStatus={accessActive && (staff.status === "AVAILABLE" || staff.status === "OFF_DUTY")}
+                              onStatusChange={(next) => updateStatus(staff, next)}
+                              onRemove={() => remove(staff)}
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ── Table Footer: Count & Pagination (Matching Reference Mockup) ── */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-neutral-100 text-xs text-neutral-500 bg-white">
+          <span>{total} {role}{total === 1 ? "" : "s"} found</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((value) => value - 1)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-neutral-100 disabled:opacity-30 text-neutral-600 transition-colors"
+              title="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                  p === page ? "bg-[#FFF0ED] text-[#7A1D1B]" : "text-neutral-600 hover:bg-neutral-100"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((value) => value + 1)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-neutral-100 disabled:opacity-30 text-neutral-600 transition-colors"
+              title="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {dialog && (
+        <CrewAssignmentDialog
+          brands={brands}
+          initialRole={role}
+          initialBrandId={brandId || undefined}
+          existing={dialog.existing}
+          onClose={() => setDialog(null)}
+          onSaved={saved}
+        />
+      )}
+      {tripTarget && (
+        <ConductorTripsDialog
+          conductor={tripTarget}
+          onClose={() => {
+            setTripTarget(null);
+            void load();
+          }}
+          onSaved={(message) => setNotice({ text: message })}
+        />
+      )}
+      {vehicleTarget && (
+        <CrewVehicleAccessDialog
+          staff={vehicleTarget}
+          onClose={() => setVehicleTarget(null)}
+          onSaved={(message) => {
+            setVehicleTarget(null);
+            setNotice({ text: message });
+            void load();
+          }}
+        />
+      )}
+    </section>
+  );
 }
 
 function switchVehicleScope(scope: StaffMember["vehicleScope"], count: number) {

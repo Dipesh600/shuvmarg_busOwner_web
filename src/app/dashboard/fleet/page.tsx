@@ -6,8 +6,9 @@ import { AlertCircle, BusFront, Loader2, RefreshCw } from "lucide-react";
 import FleetSetupResumeBar from "@/components/dashboard/fleet/FleetSetupResumeBar";
 import FleetRegistrationFlow from "@/features/fleet-registration/FleetRegistrationFlow";
 import { getFleetDetail, getFleetSubmissionFileUrls, type FleetListItem, type FleetReviewRequirement, type FleetReviewRequirementKey } from "@/features/fleet-registration/api";
-import { fetchOperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-api";
+import { readFleetWorkspace } from "@/features/operator-dashboard/fleet-workspace-api";
 import type { OperatorDashboardState } from "@/features/operator-dashboard/operator-dashboard-contract";
+import { nepalToday } from "@/features/owner-workspace/api";
 import { subscribeToDataRefresh } from "@/lib/data-refresh";
 import {
   cleanupLockedServerFleetDrafts,
@@ -27,10 +28,16 @@ import { FleetPageHeader } from "./components/FleetPageHeader";
 import { FleetSearch } from "./components/FleetSearch";
 import { FleetCard } from "./components/FleetCard";
 import SubmittedFleetPreviewModal from "./components/SubmittedFleetPreviewModal";
+import { FleetSeatMapModal } from "./components/FleetSeatMapModal";
+import type { OwnerTrip } from "@/features/trip-seat-controls/types";
+import { findActiveTripForFleet, dailyFleetSales } from "@/features/operator-dashboard/fleet-operational-context";
 
 export default function FleetPage() {
   const router = useRouter();
+  const [salesDate, setSalesDate] = useState(nepalToday);
   const [items, setItems] = useState<FleetListItem[]>([]);
+  const [trips, setTrips] = useState<OwnerTrip[]>([]);
+  const [tripsLoaded, setTripsLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [readOnlyMode, setReadOnlyMode] = useState(false);
@@ -39,12 +46,14 @@ export default function FleetPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
   const [previewFleetId, setPreviewFleetId] = useState<string | null>(null);
+  const [seatMapFleet, setSeatMapFleet] = useState<FleetListItem | null>(null);
   const [dashboardState, setDashboardState] = useState<OperatorDashboardState | null>(null);
   const [correctionReason, setCorrectionReason] = useState<string | null>(null);
   const [correctionRequirements, setCorrectionRequirements] = useState<Partial<Record<FleetReviewRequirementKey, FleetReviewRequirement>>>({});
   const [activeView, setActiveView] = useState<"ALL" | "DRAFT" | "PENDING" | "REJECTED" | "APPROVED">("ALL");
 
   const applyDashboard = useCallback((dashboard: OperatorDashboardState) => {
+    setSalesDate(nepalToday());
     const fleets: FleetListItem[] = dashboard.fleet.items.map((fleet) => ({
       ...fleet,
       busType: fleet.busType || "Bus",
@@ -61,8 +70,11 @@ export default function FleetPage() {
     if (!silent) setLoading(true);
     if (!silent) setError(null);
     try {
-      const dashboard = await fetchOperatorDashboardState({ force: true });
+      const { dashboard, ownerTrips } = await readFleetWorkspace(!silent);
       applyDashboard(dashboard);
+      setTripsLoaded(Array.isArray(ownerTrips));
+      if (Array.isArray(ownerTrips)) setTrips(ownerTrips);
+
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to load buses."
@@ -74,10 +86,13 @@ export default function FleetPage() {
 
   useEffect(() => {
     let active = true;
-    fetchOperatorDashboardState()
-      .then((dashboard) => {
+    readFleetWorkspace()
+      .then(({ dashboard, ownerTrips }) => {
         if (!active) return;
         applyDashboard(dashboard);
+        setTripsLoaded(Array.isArray(ownerTrips));
+      if (Array.isArray(ownerTrips)) setTrips(ownerTrips);
+
       })
       .catch((cause) => {
         if (active)
@@ -242,8 +257,7 @@ export default function FleetPage() {
   }, {}), [items]);
 
   return (
-    <div className="min-h-full bg-[#FAF8F5] p-5 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="w-full space-y-5 sm:space-y-6">
         <FleetPageHeader
           hasLocalDraft={hasLocalDraft}
           onStartFresh={handleStartFresh}
@@ -262,28 +276,11 @@ export default function FleetPage() {
         <FleetSearch
           query={query}
           onQueryChange={setQuery}
-          count={items.length}
+          activeView={activeView}
+          onViewChange={setActiveView}
+          viewCounts={viewCounts}
+          totalCount={items.length}
         />
-
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Bus status">
-          {([
-            ["ALL", "All", items.length],
-            ["DRAFT", "Drafts", viewCounts.DRAFT || 0],
-            ["PENDING", "In review", viewCounts.PENDING || 0],
-            ["REJECTED", "Needs changes", viewCounts.REJECTED || 0],
-            ["APPROVED", "Approved", viewCounts.APPROVED || 0],
-          ] as const).map(([value, label, count]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveView(value)}
-              aria-pressed={activeView === value}
-              className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-black transition ${activeView === value ? "border-[#7A1D1B] bg-[#7A1D1B] text-white" : "border-[#E0D8D1] bg-white text-[#655E58] hover:border-[#BDAFA6]"}`}
-            >
-              {label} <span className="ml-1 opacity-70">{count}</span>
-            </button>
-          ))}
-        </div>
 
         {loading ? (
           <div className="flex h-56 items-center justify-center rounded-3xl border border-[#E8E1DB] bg-white text-sm text-[#746E69]">
@@ -303,12 +300,13 @@ export default function FleetPage() {
             </button>
           </div>
         ) : visible.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="flex flex-col gap-3.5">
             {visible.map((fleet) => {
               const localDraftId = getDraftForServerFleet(
                 fleet.fleetId,
                 fleet.busNumber
               );
+              const activeTrip = findActiveTripForFleet(trips, fleet.fleetId);
 
               return (
                 <FleetCard
@@ -317,11 +315,15 @@ export default function FleetPage() {
                   businessApproved={businessApproved}
                   localDraftId={localDraftId}
                   setupStatus={dashboardState?.fleetSetupStatusesByFleetId[fleet.fleetId] || null}
+                  activeTrip={activeTrip}
                   onOpenFleet={handleOpenFleet}
                   onPreviewFleet={setPreviewFleetId}
                   onOpenServerDraft={(fleetId) => void openServerFleet(fleetId, false)}
                   onCorrectRejectedFleet={correctRejectedFleet}
-                  onOpenOperations={(fleetId) => router.push(`/dashboard?setupFleet=${encodeURIComponent(fleetId)}`)}
+                  dailySales={dailyFleetSales(tripsLoaded ? trips : null, fleet.fleetId, salesDate)}
+                  onOpenOperations={(fleetId) => router.push(`/dashboard/fleet/${encodeURIComponent(fleetId)}`)}
+                  onViewBus={(fleetId) => router.push(`/dashboard/fleet/${encodeURIComponent(fleetId)}`)}
+                  onViewSeatLayout={(f) => setSeatMapFleet(f)}
                 />
               );
             })}
@@ -367,7 +369,16 @@ export default function FleetPage() {
             onClose={() => setPreviewFleetId(null)}
           />
         )}
+
+        {seatMapFleet && (
+          <FleetSeatMapModal
+            fleet={seatMapFleet}
+            onClose={() => setSeatMapFleet(null)}
+            onOpenStudio={(fleetId) =>
+              router.push(`/dashboard/seat-layouts?fleetId=${encodeURIComponent(fleetId)}`)
+            }
+          />
+        )}
       </div>
-    </div>
-  );
+    );
 }

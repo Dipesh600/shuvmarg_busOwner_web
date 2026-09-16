@@ -131,12 +131,16 @@ export default function OperatorSidebar({
         const isUnlocked = item.isAllowed(capabilities);
 
         if (!isUnlocked) {
+          const lockReason =
+            verificationStatus !== "approved"
+              ? "Complete business verification first."
+              : "Activate at least one bus to unlock.";
           return (
             <div
               key={item.id}
               className="group relative flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-medium text-[#FFF9F5]/70 opacity-80 cursor-not-allowed hover:bg-white/5 transition-all"
               tabIndex={0}
-              aria-label={`${item.label} (Locked: complete business verification first)`}
+              aria-label={`${item.label} (Locked: ${lockReason})`}
             >
               <div className="flex items-center gap-3.5">
                 <span className="w-5 h-5 flex items-center justify-center">
@@ -154,7 +158,7 @@ export default function OperatorSidebar({
 
               {/* Accessible Tooltip */}
               <div className="absolute left-full ml-3 z-50 hidden group-hover:block group-focus:block px-3 py-1.5 rounded-xl bg-neutral-900 text-[11px] font-medium text-white shadow-xl border border-neutral-800 whitespace-nowrap">
-                Complete business verification first.
+                {lockReason}
               </div>
             </div>
           );

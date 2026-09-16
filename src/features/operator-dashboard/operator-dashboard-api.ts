@@ -5,7 +5,7 @@
  * Uses authFetch() to fetch profile and KYC status in parallel with explicit 404 handling.
  */
 
-import { authFetch } from "@/lib/auth";
+import { authFetch, getReadCacheVersion, invalidateReadCache, getAccessToken } from "@/lib/auth";
 import {
   BusOwnerProfile,
   BusOwnerKycStatus,
@@ -20,14 +20,13 @@ import {
   deriveCapabilities,
   deriveSetupEvidence,
   hasKycSubmissionEvidence,
+  isApprovedFleet,
   findFirstApprovedFleetAwaitingOperations,
   hasOperationalApprovedFleet,
-  isApprovedFleet,
   applyFleetSetupStatusToFleetItems,
   normalizeAssignedRouteSummary,
 } from "./operator-dashboard-contract";
 import { normalizeKycStatusPayload } from "./operator-dashboard-kyc-normalizer";
-import { collectFleetSetupResults } from "./fleet-setup-results";
 
 /**
  * Fetches profile and KYC status to construct the unified OperatorDashboardState.
@@ -35,7 +34,14 @@ import { collectFleetSetupResults } from "./fleet-setup-results";
  */
 let dashboardRequest: Promise<OperatorDashboardState> | null = null;
 let dashboardSnapshot: { value: OperatorDashboardState; loadedAt: number } | null = null;
-const DASHBOARD_CACHE_MS = 5_000;
+const DASHBOARD_CACHE_MS = 60_000;
+let dashboardCacheVersion = "";
+let dashboardRequestForced = false;
+const dashboardListeners = new Set<(state: OperatorDashboardState) => void>();
+export function subscribeToOperatorDashboardState(listener: (state: OperatorDashboardState) => void) {
+  dashboardListeners.add(listener);
+  return () => { dashboardListeners.delete(listener); };
+}
 const OPERATIONS_STEP_KEYS: FleetOperationsStepKey[] = [
   "routeAssigned",
   "routeConfigured",
@@ -257,12 +263,11 @@ async function loadOperatorDashboardState(): Promise<OperatorDashboardState> {
   const rawFleetItems: OperatorFleetListItem[] = Array.isArray(fleetData?.items) ? fleetData.items : [];
   const fleetTotalItems = typeof fleetData?.pagination?.totalItems === "number"
     ? fleetData.pagination.totalItems : rawFleetItems.length;
-  const setupResults = await Promise.allSettled(
-    rawFleetItems
-      .filter(isApprovedFleet)
-      .map((fleet) => fetchFleetSetupStatus(fleet.fleetId)),
-  );
-  const approvedFleetSetupStatuses = collectFleetSetupResults(setupResults);
+
+  const approvedFleetSetupStatuses = rawFleetItems.flatMap((fleet) => {
+    const setup = (fleet as OperatorFleetListItem & { setupStatus?: unknown }).setupStatus;
+    return setup ? [normalizeFleetSetupStatusPayload(setup, fleet.fleetId)] : [];
+  });
   const setupStatusByFleetId = new Map(
     approvedFleetSetupStatuses.map((setup) => [setup.fleetId, setup]),
   );
@@ -277,14 +282,16 @@ async function loadOperatorDashboardState(): Promise<OperatorDashboardState> {
     items: fleetItems,
     totalItems: fleetTotalItems,
   };
-  const firstFleetSetup = !hasOperationalApprovedFleet({ fleet: fleetOverview })
+
+  const hasLiveBus = hasOperationalApprovedFleet({ fleet: fleetOverview });
+  const firstFleetSetup = !hasLiveBus
     ? setupStatusByFleetId.get(
         findFirstApprovedFleetAwaitingOperations({ fleet: fleetOverview })?.fleetId || "",
       ) || null
     : null;
 
   const evidence = deriveSetupEvidence(profile, kycStatus, verificationStatus);
-  const capabilities = deriveCapabilities(verificationStatus);
+  const capabilities = deriveCapabilities(verificationStatus, hasLiveBus);
 
   return {
     isLoading: false,
@@ -303,14 +310,31 @@ async function loadOperatorDashboardState(): Promise<OperatorDashboardState> {
 export function fetchOperatorDashboardState(
   options: { force?: boolean } = {},
 ): Promise<OperatorDashboardState> {
+  if (dashboardRequest && dashboardCacheVersion === getReadCacheVersion()
+    && (!options.force || dashboardRequestForced)) return dashboardRequest;
+  if (options.force) invalidateReadCache();
+  const cacheVersion = getReadCacheVersion();
+  if (cacheVersion !== dashboardCacheVersion) {
+    dashboardSnapshot = null;
+    dashboardRequest = null;
+    dashboardCacheVersion = cacheVersion;
+  }
   if (!options.force && dashboardSnapshot && Date.now() - dashboardSnapshot.loadedAt < DASHBOARD_CACHE_MS) {
     return Promise.resolve(dashboardSnapshot.value);
   }
-  if (!options.force && dashboardRequest) return dashboardRequest;
+  if (dashboardRequest) return dashboardRequest;
 
+  dashboardRequestForced = options.force === true;
   const request = loadOperatorDashboardState()
-    .then((value) => {
-      dashboardSnapshot = { value, loadedAt: Date.now() };
+    .then((value): OperatorDashboardState | Promise<OperatorDashboardState> => {
+      if (getReadCacheVersion() !== cacheVersion) {
+        if (!getAccessToken()) throw new Error("UNAUTHORIZED");
+        return fetchOperatorDashboardState();
+      }
+      if (getReadCacheVersion() === cacheVersion) {
+        dashboardSnapshot = { value, loadedAt: Date.now() };
+        dashboardListeners.forEach(listener => listener(value));
+      }
       return value;
     })
     .finally(() => {

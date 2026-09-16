@@ -274,10 +274,10 @@ export default function SubmittedFleetPreviewModal({ fleetId, ownerId, onClose }
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-[#E6DED8] bg-white p-2 text-[#6D655F] transition hover:bg-[#F8F5F2]"
+            className="flex size-9 items-center justify-center rounded-full border border-[#D8D0C5] bg-white text-[#554E48] shadow-2xs transition hover:border-[#7A1D1B] hover:bg-[#FAF7F2] hover:text-[#7A1D1B] active:scale-[0.97]"
             aria-label="Close submitted application"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </header>
 
@@ -335,7 +335,7 @@ export default function SubmittedFleetPreviewModal({ fleetId, ownerId, onClose }
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-[#7A1D1B] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#5C1414]"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-[#7A1D1B] px-8 text-xs font-black text-white shadow-sm transition hover:bg-[#641715] active:scale-[0.97]"
           >
             Done
           </button>
