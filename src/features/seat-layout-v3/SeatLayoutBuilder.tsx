@@ -172,7 +172,7 @@ export default function SeatLayoutBuilder({
   return (
     <div className="space-y-4">
       {/* Top Toolbar Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8E1DB] bg-white p-2.5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#E8E1DB] bg-white px-3 py-2.5 shadow-xs">
         {/* Tool Segmented Switch */}
         <div className="flex flex-wrap items-center gap-1.5">
           {visibleTools.map(({ id, label, icon: Icon }) => (
@@ -258,7 +258,7 @@ export default function SeatLayoutBuilder({
       </div>
 
       {/* Main Builder Grid */}
-      <div className="grid gap-5 md:grid-cols-[1fr_260px] items-start">
+      <div className="grid gap-5 xl:grid-cols-[1fr_268px] items-start">
         {/* Center: Canvas Area with ample breathing room */}
         <div className="min-w-0 rounded-[26px] border border-[#E8E1DB] bg-white p-4 sm:p-6 shadow-sm">
           <SeatLayoutCanvas
@@ -272,11 +272,11 @@ export default function SeatLayoutBuilder({
         </div>
 
         {/* Right Sidebar: Selected Place & Action */}
-        <aside className="space-y-4 rounded-[26px] border border-[#E8E1DB] bg-white p-5 shadow-sm">
+        <aside className="space-y-4 rounded-2xl border border-[#E8E1DB] bg-white p-5 shadow-xs xl:sticky xl:top-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#938A82]">Summary</p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-[#191512]">{passengerPlaces(layout).length}</span>
+            <div className="mt-1.5 flex items-baseline gap-1.5">
+              <span className="text-3xl font-black text-[#191512]">{passengerPlaces(layout).length}</span>
               <span className="text-xs font-bold text-[#746E69]">places</span>
             </div>
           </div>
@@ -318,8 +318,8 @@ export default function SeatLayoutBuilder({
           )}
 
           {/* Deck Dimensions / Row Controls for all decks */}
-          <div className="space-y-3 border-t border-[#EEE8E2] pt-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#938A82]">Add & Remove Rows</p>
+          <div className="space-y-3 border-t border-[#EEE8E2] pt-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#938A82]">Add &amp; Remove Rows</p>
             {layout.sections.map((section) => (
               <div key={section.sectionId} className="space-y-2 rounded-xl bg-[#FAF8F5] p-2.5 border border-[#E8E1DB]">
                 <div className="flex items-center justify-between text-xs font-bold text-[#44403C]">
