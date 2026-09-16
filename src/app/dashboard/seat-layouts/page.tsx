@@ -34,13 +34,13 @@ export default function SeatLayoutsPage() {
   } = useSeatLayoutStudio();
 
   return (
-    <div className="min-h-full bg-[#FAF8F5] p-5 lg:p-8">
-      <div className="mx-auto max-w-[1540px] space-y-6">
+    <div className="min-h-full bg-[#FAF8F5] p-3 sm:p-5 lg:p-8">
+      <div className="mx-auto max-w-[1540px] space-y-4 sm:space-y-6">
         {/* ── Top Framed Hero Header Card matching reference screenshot ── */}
         <SeatLayoutStudioHeader />
 
         {/* ── 2-Column Main Studio Workspace Grid ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-4 sm:gap-6 items-start">
           {/* Left Column: Template Library */}
           <SeatLayoutTemplateSidebar
             catalog={catalog}
@@ -50,11 +50,11 @@ export default function SeatLayoutsPage() {
           />
 
           {/* Right Column: Main Studio Container + Operations */}
-          <main className="min-w-0 space-y-6">
+          <main className="min-w-0 space-y-4 sm:space-y-6">
             {selected ? (
               <>
                 {/* Unified Studio Container Card matching reference */}
-                <section className="rounded-3xl border border-[#EDE7E0] bg-white p-6 sm:p-7 shadow-xs space-y-6">
+                <section className="rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-3.5 sm:p-6 lg:p-7 shadow-xs space-y-4 sm:space-y-6">
                   {/* Metadata Fields Form */}
                   <SeatLayoutMetaForm
                     selected={selected}
@@ -91,7 +91,7 @@ export default function SeatLayoutsPage() {
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[#DCD4CD] bg-white p-16 text-center shadow-xs">
+              <div className="flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border border-dashed border-[#DCD4CD] bg-white p-8 sm:p-16 text-center shadow-xs">
                 <p className="font-bold text-[#191512]">Choose a layout to begin</p>
                 <p className="mt-1 text-xs text-[#938A82]">
                   Select a template from the list to preview or customize.

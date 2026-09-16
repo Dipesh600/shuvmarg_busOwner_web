@@ -25,9 +25,9 @@ export function SeatLayoutOperations({
   const canAssign = hasPublished && Boolean(fleetId) && !busy;
 
   return (
-    <section className="grid gap-6 lg:grid-cols-2 mt-6">
+    <section className="grid gap-4 sm:gap-6 lg:grid-cols-2 mt-4 sm:mt-6">
       {/* ── Left Card: Revision History ── */}
-      <div className="rounded-3xl border border-[#EDE7E0] bg-white p-6 shadow-xs">
+      <div className="rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-4 sm:p-6 shadow-xs">
         <div className="flex items-center gap-2.5">
           <div className="flex size-7 items-center justify-center rounded-lg bg-[#FFF1EE] text-[#7A1D1B]">
             <RefreshCw className="size-3.5" />
@@ -45,7 +45,7 @@ export function SeatLayoutOperations({
           {selected.revisions.map((revision) => (
             <div
               key={revision.id}
-              className="flex items-center justify-between rounded-2xl bg-[#FAF8F5] border border-[#EDE7E0] p-4 transition"
+              className="flex items-center justify-between rounded-xl sm:rounded-2xl bg-[#FAF8F5] border border-[#EDE7E0] p-3 sm:p-4 transition"
             >
               <div>
                 <p className="text-sm font-bold text-[#191512]">
@@ -75,7 +75,7 @@ export function SeatLayoutOperations({
       </div>
 
       {/* ── Right Card: Use on a Fleet ── */}
-      <div className="rounded-3xl border border-[#EDE7E0] bg-white p-6 shadow-xs flex flex-col justify-between">
+      <div className="rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-4 sm:p-6 shadow-xs flex flex-col justify-between">
         <div>
           <h2 className="text-sm font-bold text-[#191512]">Assign to fleet</h2>
 

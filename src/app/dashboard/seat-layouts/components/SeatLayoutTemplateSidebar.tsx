@@ -21,19 +21,19 @@ export function SeatLayoutTemplateSidebar({
     [...catalog, ...mine].find((t) => t.id === activeId) || catalog[0] || mine[0];
 
   return (
-    <aside className="w-full lg:w-[280px] xl:w-[300px] shrink-0 space-y-6">
+    <aside className="w-full lg:w-[280px] xl:w-[300px] shrink-0 space-y-4 sm:space-y-6">
       {/* ── Mobile/Tablet Quick Bar (< lg) ── */}
-      <div className="lg:hidden rounded-2xl border border-[#EDE7E0] bg-white p-4 shadow-xs">
-        <div className="flex items-center justify-between gap-3">
+      <div className="lg:hidden rounded-2xl border border-[#EDE7E0] bg-white p-3 sm:p-4 shadow-xs">
+        <div className="flex items-center justify-between gap-2.5">
           <div className="min-w-0">
-            <p className="text-sm font-bold text-[#191512] truncate">
+            <p className="text-xs sm:text-sm font-bold text-[#191512] truncate">
               {activeTemplate ? activeTemplate.name : "Select layout"}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setMobileExpanded((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-[#EDE7E0] bg-[#FAF8F5] px-3 py-2 text-xs font-bold text-[#191512] transition hover:bg-white"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#EDE7E0] bg-[#FAF8F5] px-3 text-xs font-bold text-[#191512] transition hover:bg-white shrink-0 cursor-pointer"
           >
             <LayoutTemplate className="size-3.5 text-[#7A1D1B]" />
             <span>All layouts</span>
@@ -46,15 +46,15 @@ export function SeatLayoutTemplateSidebar({
         </div>
 
         {/* Horizontal quick pills for mobile */}
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {catalog.slice(0, 4).map((item) => (
+        <div className="mt-2.5 flex gap-2 overflow-x-auto pb-1 no-scrollbar -mx-0.5 px-0.5">
+          {[...mine, ...catalog].slice(0, 5).map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => void onChoose(item.id)}
-              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                 activeId === item.id
-                  ? "bg-[#7A1D1B] text-white"
+                  ? "bg-[#7A1D1B] text-white shadow-2xs"
                   : "bg-[#FAF8F5] text-[#655E58] border border-[#EDE7E0] hover:bg-white"
               }`}
             >

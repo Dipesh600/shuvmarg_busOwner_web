@@ -279,19 +279,19 @@ function Deck({
   }
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-full">
       {/* Deck Title and Counter */}
-      <div className="mb-2.5 flex w-full max-w-[340px] sm:max-w-[380px] items-center justify-between px-1">
+      <div className="mb-2 flex w-full max-w-[320px] sm:max-w-[380px] items-center justify-between px-1">
         <span className="text-xs font-semibold text-[#44403C]">{section.name}</span>
         <span className="text-xs text-[#78716C]">{places.length} places</span>
       </div>
 
       {/* Bus Shell Container */}
-      <div className="w-full max-w-[340px] sm:max-w-[380px] rounded-[26px] border border-[#E5DFD9] bg-white shadow-sm overflow-hidden select-none">
+      <div className="w-full max-w-[320px] sm:max-w-[380px] rounded-[22px] sm:rounded-[26px] border border-[#E5DFD9] bg-white shadow-xs overflow-hidden select-none">
         <FrontCabin section={section} />
 
         {/* Interior Floor */}
-        <div className="p-3.5 sm:p-5 bg-[#FAF8F5]">
+        <div className="p-2.5 sm:p-5 bg-[#FAF8F5]">
           <div
             ref={gridRef}
             onPointerMove={(event) => {

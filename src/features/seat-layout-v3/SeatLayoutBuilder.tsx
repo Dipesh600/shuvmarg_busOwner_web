@@ -172,9 +172,9 @@ export default function SeatLayoutBuilder({
   return (
     <div className="space-y-4">
       {/* Top Toolbar Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-[#E8E1DB] bg-white px-3 py-2.5 shadow-xs">
-        {/* Tool Segmented Switch */}
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-[#E8E1DB] bg-white p-2 sm:px-3 sm:py-2.5 shadow-xs">
+        {/* Tool Segmented Switch: swipeable horizontal track on small screens */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
           {visibleTools.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -184,7 +184,7 @@ export default function SeatLayoutBuilder({
                 if (id !== "SELECT") clearSelection();
               }}
               className={cn(
-                "flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition",
+                "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap",
                 tool === id
                   ? "bg-[#7A1D1B] text-white shadow-sm"
                   : "bg-transparent text-[#655E58] hover:bg-[#FAF8F5] hover:text-[#191512]"
@@ -197,8 +197,7 @@ export default function SeatLayoutBuilder({
         </div>
 
         {/* Action Controls: Undo, Redo, Auto-renumber */}
-        <div className="flex flex-wrap items-center gap-2">
-
+        <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-[#F0EBE5]">
           {/* Undo / Redo */}
           <div className="flex items-center rounded-xl border border-[#E8E1DB] bg-[#FAF8F5] p-0.5">
             <button
@@ -258,9 +257,9 @@ export default function SeatLayoutBuilder({
       </div>
 
       {/* Main Builder Grid */}
-      <div className="grid gap-5 xl:grid-cols-[1fr_268px] items-start">
+      <div className="grid gap-4 sm:gap-5 xl:grid-cols-[1fr_268px] items-start">
         {/* Center: Canvas Area with ample breathing room */}
-        <div className="min-w-0 rounded-[26px] border border-[#E8E1DB] bg-white p-4 sm:p-6 shadow-sm">
+        <div className="min-w-0 rounded-2xl sm:rounded-[26px] border border-[#E8E1DB] bg-white p-2.5 sm:p-6 shadow-xs overflow-x-auto">
           <SeatLayoutCanvas
             layout={layout}
             tool={tool}
@@ -272,7 +271,7 @@ export default function SeatLayoutBuilder({
         </div>
 
         {/* Right Sidebar: Selected Place & Action */}
-        <aside className="space-y-4 rounded-2xl border border-[#E8E1DB] bg-white p-5 shadow-xs xl:sticky xl:top-6">
+        <aside className="space-y-4 rounded-2xl border border-[#E8E1DB] bg-white p-4 sm:p-5 shadow-xs xl:sticky xl:top-6">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#938A82]">Summary</p>
             <div className="mt-1.5 flex items-baseline gap-1.5">
@@ -305,7 +304,7 @@ export default function SeatLayoutBuilder({
                   applyChange(removeElements(layout, [selected.elementId]));
                   clearSelection();
                 }}
-                className="flex w-full items-center justify-center rounded-xl border border-red-200 bg-red-50/40 py-2 text-xs font-bold text-red-700 hover:bg-red-100/50 transition"
+                className="flex h-10 w-full items-center justify-center rounded-xl border border-red-200 bg-red-50/40 py-2 text-xs font-bold text-red-700 hover:bg-red-100/50 transition"
               >
                 <Trash2 className="mr-1.5 size-3.5" />
                 Remove this place
@@ -319,7 +318,7 @@ export default function SeatLayoutBuilder({
           <div className="space-y-3 border-t border-[#EEE8E2] pt-4">
             <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#938A82]">Add &amp; Remove Rows</p>
             {layout.sections.map((section) => (
-              <div key={section.sectionId} className="space-y-2 rounded-xl bg-[#FAF8F5] p-2.5 border border-[#E8E1DB]">
+              <div key={section.sectionId} className="space-y-2 rounded-xl bg-[#FAF8F5] p-2.5 sm:p-3 border border-[#E8E1DB]">
                 <div className="flex items-center justify-between text-xs font-bold text-[#44403C]">
                   <span>{section.name}</span>
                   <span className="text-[11px] text-[#78716C]">{section.heightUnits} rows</span>
@@ -330,9 +329,9 @@ export default function SeatLayoutBuilder({
                       type="button"
                       onClick={() => addSeatRow(section.sectionId)}
                       disabled={section.heightUnits >= 40}
-                      className="flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs"
+                      className="flex h-10 items-center justify-center gap-1 rounded-xl border border-[#DCD4CD] bg-white text-xs font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs"
                     >
-                      <Plus className="size-3 text-[#7A1D1B]" />
+                      <Plus className="size-3.5 text-[#7A1D1B]" />
                       Seat row
                     </button>
                   )}
@@ -340,9 +339,9 @@ export default function SeatLayoutBuilder({
                     type="button"
                     onClick={() => addSleeperRow(section.sectionId)}
                     disabled={section.heightUnits + 2 > 40}
-                    className={cn("flex h-8 items-center justify-center gap-1 rounded-lg border border-[#DCD4CD] bg-white text-[11px] font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs", section.role.endsWith("BERTH_LEVEL") && "col-span-2")}
+                    className={cn("flex h-10 items-center justify-center gap-1 rounded-xl border border-[#DCD4CD] bg-white text-xs font-bold text-[#191512] transition hover:border-[#7A1D1B] hover:text-[#7A1D1B] disabled:opacity-40 shadow-2xs", section.role.endsWith("BERTH_LEVEL") && "col-span-2")}
                   >
-                    <Plus className="size-3 text-[#7A1D1B]" />
+                    <Plus className="size-3.5 text-[#7A1D1B]" />
                     Sleeper (1×2)
                   </button>
                 </div>
@@ -350,9 +349,9 @@ export default function SeatLayoutBuilder({
                   type="button"
                   onClick={() => removeRow(section.sectionId)}
                   disabled={section.heightUnits <= 2}
-                  className="flex h-7 w-full items-center justify-center gap-1 rounded-lg border border-transparent bg-stone-200/50 text-[11px] font-bold text-[#655E58] transition hover:bg-red-50 hover:text-red-700 disabled:opacity-30"
+                  className="flex h-9 w-full items-center justify-center gap-1 rounded-xl border border-transparent bg-stone-200/50 text-xs font-bold text-[#655E58] transition hover:bg-red-50 hover:text-red-700 disabled:opacity-30"
                 >
-                  <Minus className="size-3" />
+                  <Minus className="size-3.5" />
                   Remove back row
                 </button>
               </div>
@@ -362,7 +361,7 @@ export default function SeatLayoutBuilder({
           <button
             disabled={busy || passengerPlaces(layout).length === 0 || Boolean(labelError)}
             onClick={() => onSave(layout)}
-            className="flex h-11 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-bold text-white shadow-sm transition hover:bg-[#641715] disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-[#7A1D1B] text-xs font-bold text-white shadow-sm transition hover:bg-[#641715] disabled:opacity-50 cursor-pointer"
           >
             <Save className="mr-2 size-4" />
             {busy ? "Saving…" : saveLabel}
