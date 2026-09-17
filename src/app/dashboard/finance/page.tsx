@@ -1,40 +1,172 @@
 "use client";
-import { useState } from "react";
-import { ownerTripsPath, nepalServiceDate, shiftServiceDate } from "@/features/trip-seat-controls/owner-trip-range";
-import type { OwnerTrip } from "@/features/trip-seat-controls/types";
-import type { OperatorBrand } from "@/features/fleet-registration/api-brands";
-import { useOperatorSession } from "@/features/operator-dashboard/SessionContext";
-import { useOwnerResource } from "@/features/owner-workspace/use-owner-resource";
-import { writeOwnerData, type OwnerFinance } from "@/features/owner-workspace/api";
-import { WorkspaceHeader, Metric, ReadStatus, Pagination, panel, input, button, money } from "@/features/owner-workspace/WorkspaceUI";
-import { requestDataRefresh } from "@/lib/data-refresh";
+
+import React from "react";
+import { FinanceHeader } from "./components/FinanceHeader";
+import { FinanceMetricCards } from "./components/FinanceMetricCards";
+import { FinanceFilters } from "./components/FinanceFilters";
+import { FinanceSettlementsTable } from "./components/FinanceSettlementsTable";
+import { FinancePagination } from "./components/FinancePagination";
+import { RequestSettlementModal } from "./components/RequestSettlementModal";
+import { useFinanceData } from "./hooks/useFinanceData";
+import { ShieldAlert, Loader2 } from "lucide-react";
+import Link from "next/link";
+
 export default function FinancePage() {
-  const { dashboardState, loading: sessionLoading } = useOperatorSession();
-  const allowed = dashboardState?.verificationStatus === "approved";
-  const [page, setPage] = useState(1), [brandId, setBrandId] = useState("");
-  const [dates, setDates] = useState(() => ({ from: shiftServiceDate(nepalServiceDate(), -90), to: nepalServiceDate() }));
-  const [selected, setSelected] = useState<string[]>([]), [requesting, setRequesting] = useState(false);
-  const [busy, setBusy] = useState(false), [message, setMessage] = useState<string | null>(null);
-  const finance = useOwnerResource<OwnerFinance>(allowed ? `/busowner/finance?page=${page}` : null);
-  const brands = useOwnerResource<OperatorBrand[]>(allowed && requesting ? "/busowner/brands" : null);
-  const trips = useOwnerResource<OwnerTrip[]>(allowed && requesting ? ownerTripsPath(dates.from, dates.to) : null);
-  const eligible = (trips.data || []).filter(trip => trip.status === "completed" && trip.brandId === brandId);
-  const total = (statuses: string[]) => (finance.data?.totals || []).filter(row => statuses.includes(row.status)).reduce((sum, row) => sum + Math.round(row.netPayableAmount * 100), 0) / 100;
-  async function save(path: string, method: "POST" | "PATCH", body: unknown) {
-    if (busy) return;
-    setBusy(true); setMessage(null);
-    try { await writeOwnerData(path, method, body); setMessage("Saved successfully."); setSelected([]); requestDataRefresh(); }
-    catch (cause) { setMessage(cause instanceof Error ? cause.message : "Unable to save."); }
-    finally { setBusy(false); }
-  }
-  return <div className="space-y-6"><WorkspaceHeader title="Finance & settlements" description="Recorded settlement requests, commission and receipt confirmations." />
-    {!allowed ? <p className={panel}>{sessionLoading ? "Loading verification…" : "Business approval is required to view settlements."}</p> : <>
-      <ReadStatus {...finance} />{message && <p role="status" className={panel}>{message}</p>}
-      {finance.data && <><div className="grid gap-3 sm:grid-cols-3"><Metric label="Awaiting payout" value={money(total(["pending", "processing"]))} /><Metric label="Paid, awaiting your receipt" value={money(total(["paid"]))} /><Metric label="Received" value={money(total(["received"]))} /></div>
-      <p className="text-xs text-[#746E69]">Totals cover recorded settlements across all dates. These are net settlement amounts, separate from daily booking sales. Payouts require platform review; this page does not transfer money.</p>
-      <section className={`${panel} overflow-auto`}><table className="w-full text-left text-sm"><thead><tr><th className="py-3">Date / operator</th><th>Tickets</th><th>Gross</th><th>Commission</th><th>Net payable</th><th>Status</th><th /></tr></thead><tbody>{finance.data.items.map(row => <tr key={row._id} className="border-t border-[#EEE8E2]"><td className="py-3">{new Date(row.createdAt).toLocaleDateString("en-NP", { timeZone: "Asia/Kathmandu" })}<p className="text-xs">{row.brandId?.brandName || "Operator unavailable"}</p></td><td>{row.totalTicketsSold}</td><td>{money(row.grossAmount)}</td><td>{money(row.platformCommission)} ({row.commissionRate}%)</td><td>{money(row.netPayableAmount)}</td><td>{row.status}<p className="text-xs">{row.paymentReference}</p></td><td>{row.status === "paid" && <button className={button} disabled={busy} onClick={() => { if (window.confirm("Confirm only if you have received this payment.")) void save("/busowner/markSettlementReceived", "PATCH", { settlementId: row._id }); }}>Confirm receipt</button>}</td></tr>)}</tbody></table>{!finance.data.items.length && <p className="py-4 text-sm">No settlement requests recorded.</p>}</section><Pagination page={page} totalPages={finance.data.pagination.totalPages} onChange={setPage} /></>}
-      <section className={panel}><button className={button} onClick={() => setRequesting(!requesting)}>{requesting ? "Close request" : "Request settlement"}</button>
-      {requesting && <div className="mt-4 space-y-3"><p className="text-sm">Select completed departures for one operator. The server checks ownership, previous claims and the recorded commission rate before creating a request.</p><ReadStatus {...brands} /><ReadStatus {...trips} /><select aria-label="Settlement operator" className={input} value={brandId} onChange={event => { setBrandId(event.target.value); setSelected([]); }}><option value="">Select operator</option>{brands.data?.filter(brand => brand.status !== "SUSPENDED").map(brand => <option key={brand.id} value={brand.id}>{brand.brandName}</option>)}</select>
-      <div className="flex flex-wrap gap-3"><input aria-label="Settlement departure dates from" type="date" className={input} value={dates.from} onChange={event => { setDates({ ...dates, from: event.target.value }); setSelected([]); }} /><input aria-label="Settlement departure dates to" type="date" className={input} value={dates.to} onChange={event => { setDates({ ...dates, to: event.target.value }); setSelected([]); }} /><span className="self-center text-xs">Maximum 91 days</span></div><div className="max-h-64 overflow-auto space-y-2">{eligible.map(trip => <label key={trip._id} className="flex items-center gap-3 text-sm"><input type="checkbox" checked={selected.includes(trip._id)} disabled={busy || (!selected.includes(trip._id) && selected.length >= 100)} onChange={event => setSelected(event.target.checked ? [...selected, trip._id] : selected.filter(id => id !== trip._id))} />{trip.tripDate.slice(0, 10)} · {trip.departureTime} · {trip.busId?.busName || trip.tripId || "Departure"}</label>)}</div>{brandId && trips.data && !eligible.length && <p className="text-sm">No completed departures for this operator.</p>}<button className={button} disabled={busy || !brandId || !selected.length} onClick={() => void save("/busowner/raiseSettlement", "POST", { brandId, tripIds: selected })}>{busy ? "Saving…" : `Submit request (${selected.length} departures)`}</button></div>}</section>
-    </>}</div>;
+  const {
+    allowed,
+    sessionLoading,
+    page,
+    setPage,
+    limit,
+    setLimit,
+    totalPages,
+    totalItems,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    statusFilter,
+    setStatusFilter,
+    brandFilter,
+    setBrandFilter,
+    brands,
+    trips,
+    tripsLoading,
+    awaitingPayout,
+    paidAwaitingReceipt,
+    received,
+    filteredItems,
+    isRequestModalOpen,
+    setIsRequestModalOpen,
+    modalBrandId,
+    setModalBrandId,
+    modalDates,
+    setModalDates,
+    selectedTripIds,
+    toggleTripSelection,
+    selectAllTrips,
+    clearAllTrips,
+    busy,
+    message,
+    setMessage,
+    error,
+    isRefreshing,
+    handleRefresh,
+    handleConfirmReceipt,
+    handleSubmitSettlementRequest,
+  } = useFinanceData();
+
+  return (
+    <div className="w-full space-y-5 sm:space-y-6">
+      {/* ── Panoramic Framed Header Banner matching My Buses ── */}
+      <FinanceHeader
+        onRequestSettlement={allowed ? () => setIsRequestModalOpen(true) : undefined}
+      />
+
+      {sessionLoading ? (
+        <div className="flex items-center justify-center rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-12 text-xs text-[#746E69] gap-2 shadow-xs">
+          <Loader2 className="size-4 animate-spin text-[#7A1D1B]" />
+          <span>Verifying operator credentials…</span>
+        </div>
+      ) : !allowed ? (
+        <div className="rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="size-11 rounded-2xl bg-[#FFF4F3] flex items-center justify-center shrink-0">
+              <ShieldAlert className="size-5 text-[#7A1D1B]" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-[#111111]">
+                Business verification required
+              </h3>
+              <p className="text-xs text-[#746E69] mt-0.5">
+                Complete your business profile and KYC approval to review settlements and receive payouts.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/business-profile"
+            className="inline-flex h-9 items-center justify-center rounded-full bg-[#7A1D1B] px-5 text-xs font-bold text-white shadow-xs transition hover:bg-[#641715] active:scale-[0.98] shrink-0"
+          >
+            Review business profile
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* ── Metric / KPI Cards Row ── */}
+          <FinanceMetricCards
+            awaitingPayout={awaitingPayout}
+            paidAwaitingReceipt={paidAwaitingReceipt}
+            received={received}
+            onFilterClick={(status) => setStatusFilter(status)}
+          />
+
+          {/* ── Toolbar / Filter Controls ── */}
+          <FinanceFilters
+            fromDate={fromDate}
+            toDate={toDate}
+            onFromDateChange={setFromDate}
+            onToDateChange={setToDate}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            brandFilter={brandFilter}
+            onBrandFilterChange={setBrandFilter}
+            brands={brands}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+          />
+
+          {/* ── Settlements Table & Empty State ── */}
+          <FinanceSettlementsTable
+            items={filteredItems}
+            busy={busy}
+            onRequestSettlement={() => setIsRequestModalOpen(true)}
+            onConfirmReceipt={handleConfirmReceipt}
+            isFiltered={statusFilter !== "all" || brandFilter !== "all"}
+          />
+
+          {/* ── Pagination Controls ── */}
+          {totalItems > 0 && (
+            <FinancePagination
+              page={page}
+              totalPages={totalPages}
+              limit={limit}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
+          )}
+
+          {/* ── Request Settlement Modal ── */}
+          <RequestSettlementModal
+            isOpen={isRequestModalOpen}
+            onClose={() => setIsRequestModalOpen(false)}
+            brands={brands}
+            trips={trips}
+            tripsLoading={tripsLoading}
+            brandId={modalBrandId}
+            onBrandChange={setModalBrandId}
+            dates={modalDates}
+            onDatesChange={setModalDates}
+            selectedTripIds={selectedTripIds}
+            onToggleTrip={toggleTripSelection}
+            onSelectAll={selectAllTrips}
+            onClearAll={clearAllTrips}
+            onSubmit={handleSubmitSettlementRequest}
+            busy={busy}
+            error={error}
+          />
+        </>
+      )}
+
+      {/* ── Toast Feedback Notification ── */}
+      {message && (
+        <button
+          type="button"
+          onClick={() => setMessage(null)}
+          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl bg-[#191512] px-5 py-3.5 text-left text-xs font-semibold text-white shadow-2xl transition hover:bg-[#2A2520] cursor-pointer"
+        >
+          {message}
+        </button>
+      )}
+    </div>
+  );
 }
