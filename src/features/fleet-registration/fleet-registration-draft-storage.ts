@@ -161,7 +161,7 @@ export function listFleetDrafts(): DraftMetadata[] {
 
 export function hasMeaningfulFleetDraft(draft: FleetRegistrationDraft): boolean {
   const hasFiles = Object.values(draft.files.photos).some(Boolean)
-    || Boolean(draft.files.fitnessCert || draft.files.insurance || draft.files.bluebook || draft.files.routePermit);
+    || Boolean(draft.files.vehicleVideo || draft.files.fitnessCert || draft.files.insurance || draft.files.bluebook || draft.files.routePermit);
   return Boolean(
     draft.vehicle.brandId.trim()
     || draft.vehicle.busName.trim()
@@ -268,6 +268,7 @@ export async function saveFleetRegistrationDraft(
   if (!serverFleetId && !hasMeaningfulFleetDraft(draft)) return;
   const hasFiles = Boolean(
     Object.values(draft.files.photos).some(Boolean) ||
+      draft.files.vehicleVideo ||
       draft.files.fitnessCert ||
       draft.files.insurance ||
       draft.files.bluebook ||

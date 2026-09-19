@@ -398,6 +398,7 @@ export default function ReviewStep({ draft, onEditStep, readOnly = false }: Revi
           </div>
 
           <div className="mt-4 space-y-2.5">
+            <p className="text-xs text-neutral-600">Vehicle video: {draft.files.vehicleVideo ? `${draft.files.vehicleVideo.name} · ${(draft.files.vehicleVideo.size / 1_000_000).toFixed(1)} MB` : "Not added (optional)"}</p>
             <DocRow
               title="Route Permit"
               hasFile={Boolean(draft.files.routePermit)}

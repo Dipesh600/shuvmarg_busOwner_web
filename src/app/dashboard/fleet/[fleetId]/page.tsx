@@ -1,8 +1,9 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import FirstFleetOperationsSetup from "@/components/operator-dashboard/FirstFleetOperationsSetup";
+import { BusWorkstationScreen } from "@/components/dashboard/fleet/workstation/BusWorkstationScreen";
 import { useOperatorSession } from "@/features/operator-dashboard/SessionContext";
 import type {
   OperatorFleetListItem,
@@ -11,9 +12,12 @@ import type {
 import type { FleetDetailPayload } from "@/features/fleet-registration/api";
 import { useOwnerResource } from "@/features/owner-workspace/use-owner-resource";
 import { ReadStatus } from "@/features/owner-workspace/WorkspaceUI";
+import OwnerDocumentGallery from "@/features/vehicle-documents/OwnerDocumentGallery";
 
 export default function FleetDetailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
   const params = useParams<{ fleetId: string }>();
   const fleetId = params.fleetId;
   const { dashboardState } = useOperatorSession();
@@ -27,6 +31,15 @@ export default function FleetDetailPage() {
   );
   const setup = setupRead.data || dashboardState?.fleetSetupStatusesByFleetId[fleetId];
 
+  const isLive = Boolean(
+    approved &&
+    (setup?.setupComplete ||
+     setup?.isFullyOperational ||
+     fromList?.setupComplete ||
+     fromList?.status === "active" ||
+     (setup?.progress && setup.progress.percentage === 100))
+  );
+
   const fleet: OperatorFleetListItem | undefined =
     fromList ||
     (detail.data
@@ -37,7 +50,7 @@ export default function FleetDetailPage() {
           busNumber: detail.data.busNumber || "Unavailable",
           approvalStatus: detail.data.approvalStatus || "DRAFT",
           rejectionReason: null,
-          setupComplete: false,
+          setupComplete: isLive,
           createdAt: null,
           updatedAt: null,
         }
@@ -51,8 +64,24 @@ export default function FleetDetailPage() {
     );
   }
 
-  if (detail.error) return <div className="space-y-4"><Link href="/dashboard/fleet" className="text-sm font-bold text-[#7A1D1B]">← Back to buses</Link><ReadStatus {...detail} /></div>;
+  if (detail.error) {
+    return (
+      <div className="space-y-4">
+        <Link href="/dashboard/fleet" className="text-sm font-bold text-[#7A1D1B]">
+          ← Back to buses
+        </Link>
+        <ReadStatus {...detail} />
+      </div>
+    );
+  }
 
+  if (searchParams.get("tab") === "documents" && detail.data && !isLive) {
+    return <div className="w-full max-w-6xl mx-auto py-6 space-y-4">
+      <Link href="/dashboard/fleet" className="text-sm font-bold text-[#7A1D1B]">← Back to buses</Link>
+      <ReadStatus {...detail} />
+      <OwnerDocumentGallery fleetId={fleetId} manifest={detail.data.documents || {}} />
+    </div>;
+  }
   if (!approved && fleet) {
     return (
       <div className="w-full max-w-4xl mx-auto py-8 space-y-6">
@@ -81,9 +110,41 @@ export default function FleetDetailPage() {
     );
   }
 
+  // When bus is already live, render the dedicated Bus Workstation
+  if (fleet && setup && detail.data && isLive && view !== "setup") {
+    return (
+      <div className="w-full min-h-full pt-1 pb-4 sm:pt-2 sm:pb-5">
+        <ReadStatus {...detail} />
+        <ReadStatus {...setupRead} />
+        <BusWorkstationScreen
+          key={fleetId}
+          fleet={fleet}
+          setup={setup}
+          detail={detail.data}
+          onOpenSetup={() => router.push(`/dashboard/fleet/${encodeURIComponent(fleetId)}?view=setup`)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full min-h-full py-4 sm:py-6">
-      <ReadStatus {...detail} /><ReadStatus {...setupRead} />
+    <div className="w-full min-h-full py-4 sm:py-6 space-y-4">
+      <ReadStatus {...detail} />
+      <ReadStatus {...setupRead} />
+      {isLive && (
+        <div className="max-w-4xl mx-auto flex items-center justify-between bg-white border border-[#EDE7E0] px-4 py-2.5 rounded-2xl shadow-2xs">
+          <span className="text-xs font-semibold text-[#554E48]">
+            This bus is live in service.
+          </span>
+          <button
+            type="button"
+            onClick={() => router.push(`/dashboard/fleet/${encodeURIComponent(fleetId)}`)}
+            className="text-xs font-bold text-[#7A1D1B] hover:underline cursor-pointer"
+          >
+            ← Open Bus Workstation
+          </button>
+        </div>
+      )}
       {fleet && setup && detail.data && (
         <FirstFleetOperationsSetup
           key={fleetId}

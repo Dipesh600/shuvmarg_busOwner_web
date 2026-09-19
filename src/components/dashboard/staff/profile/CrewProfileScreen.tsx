@@ -1,174 +1,202 @@
 "use client";
 
-import React from "react";
-import { BusFront, UserRoundCheck, Route, AlertTriangle } from "lucide-react";
-import type { StaffMember } from "../staff-contract";
-import StaffStatusBadge from "../StaffStatusBadge";
-import ProfileHeader from "./ProfileHeader";
-import ProfileEmptySection from "./ProfileEmptySection";
+import React, { useState } from "react";
+import type { StaffMember, StaffOperationalStatus } from "../staff-contract";
+import { ProfileHeroCard } from "./ProfileHeroCard";
+import { CrewCurrentAssignmentCard } from "./CrewCurrentAssignmentCard";
+import { CrewUpcomingDeparturesCard } from "./CrewUpcomingDeparturesCard";
+import { CrewDetailsCard } from "./CrewDetailsCard";
+import CrewVehicleAccessDialog from "../CrewVehicleAccessDialog";
+import CrewAssignmentDialog from "../CrewAssignmentDialog";
+import { listMyBrands, type OperatorBrand } from "@/features/fleet-registration/api-brands";
+import { listOperatorFleets, type FleetListItem } from "@/features/fleet-registration/api";
+import { updateCrewStatus, removeCrew } from "@/features/crew-management/api";
+import { FileText, X } from "lucide-react";
 
 interface CrewProfileScreenProps {
   staff: StaffMember;
   brandName: string;
   onBack: () => void;
+  onStaffUpdated?: () => void;
 }
 
-export default function CrewProfileScreen({ staff, brandName, onBack }: CrewProfileScreenProps) {
-  const isDriver = staff.role === "driver";
+export default function CrewProfileScreen({
+  staff,
+  brandName,
+  onBack,
+  onStaffUpdated,
+}: CrewProfileScreenProps) {
+  const [currentStaff, setCurrentStaff] = useState<StaffMember>(staff);
+  const [isAssignBusOpen, setIsAssignBusOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
+  const [brands, setBrands] = useState<OperatorBrand[]>([]);
+  const [fleets, setFleets] = useState<FleetListItem[]>([]);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  const initials = staff.fullName
-    .split(" ")
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  React.useEffect(() => {
+    listMyBrands().then(setBrands).catch(() => {});
+    listOperatorFleets().then(setFleets).catch(() => {});
+  }, []);
 
-  const isExpired = Boolean(staff.licenseExpiry && new Date(staff.licenseExpiry).getTime() < Date.now());
+  const handleStatusChange = async (newStatus: StaffOperationalStatus) => {
+    if (newStatus !== "AVAILABLE" && newStatus !== "OFF_DUTY") return;
+    try {
+      await updateCrewStatus(currentStaff, newStatus);
+      setCurrentStaff((prev) => ({ ...prev, status: newStatus }));
+      setFeedback(`Status updated to ${newStatus.replace("_", " ")}`);
+      onStaffUpdated?.();
+    } catch {
+      setFeedback("Unable to update status.");
+    }
+  };
 
-  const dutyLabel =
-    staff.status === "AVAILABLE"
-      ? "Available for duty"
-      : staff.status === "ON_DUTY"
-      ? "Currently on duty"
-      : staff.status === "OFF_DUTY"
-      ? "Off duty"
-      : staff.status.toLowerCase().replace("_", " ");
+  const handleRemove = async () => {
+    if (!window.confirm(`Are you sure you want to remove ${currentStaff.fullName} from crew access?`)) return;
+    try {
+      await removeCrew(currentStaff);
+      onBack();
+      onStaffUpdated?.();
+    } catch {
+      setFeedback("Unable to remove crew member.");
+    }
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Profile Header */}
-      <ProfileHeader
-        name={staff.fullName}
-        roleLabel={isDriver ? "Driver" : "Conductor"}
-        statusBadge={<StaffStatusBadge status={staff.status} />}
-        code={staff.staffCode}
-        codeLabel="Staff ID"
-        brandName={brandName}
-        backLabel="Back to Onboard crew"
-        onBack={onBack}
-        avatarContent={
-          initials ? (
-            <span>{initials}</span>
-          ) : isDriver ? (
-            <BusFront className="h-7 w-7 text-[#7A1D1B]" />
-          ) : (
-            <UserRoundCheck className="h-7 w-7 text-[#7A1D1B]" />
-          )
+    <div className="w-full space-y-5 animate-in fade-in duration-200">
+      {/* ── Top Hero Profile Card with Back Link ── */}
+      <ProfileHeroCard
+        name={currentStaff.fullName}
+        roleLabel={currentStaff.role === "driver" ? "Driver" : "Conductor"}
+        status={currentStaff.status}
+        statusLabel={
+          currentStaff.status === "AVAILABLE"
+            ? "Available"
+            : currentStaff.status === "ON_DUTY"
+            ? "On Duty"
+            : currentStaff.status === "OFF_DUTY"
+            ? "Off Duty"
+            : currentStaff.status
         }
+        code={currentStaff.staffCode}
+        codeLabel="Staff ID"
+        phone={currentStaff.phone}
+        brandName={brandName}
+        onBack={onBack}
+        onEdit={() => setIsEditOpen(true)}
+        onStatusChange={handleStatusChange}
+        onRemove={handleRemove}
       />
 
-      {/* Quick Metrics — role-specific */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-        <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-xs">
-          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">Duty Status</span>
-          <span className="mt-1.5 text-base font-bold text-neutral-900 block capitalize">{dutyLabel}</span>
-        </div>
-        <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-xs">
-          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">App Access</span>
-          <span className="mt-1.5 text-base font-bold text-neutral-900 block">
-            {staff.accessStatus === "ACTIVE"
-              ? "Connected"
-              : staff.accessStatus === "INVITED"
-              ? "Invitation sent"
-              : "Not linked"}
-          </span>
-        </div>
-        <div className="rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-xs col-span-2 sm:col-span-1">
-          <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-            {isDriver ? "Experience" : "Assigned Trips"}
-          </span>
-          <span className="mt-1.5 text-base font-bold text-neutral-900 block">
-            {isDriver
-              ? `${staff.experienceYears || 0} year${staff.experienceYears === 1 ? "" : "s"}`
-              : `${staff.assignedTrips?.length || 0} trip${staff.assignedTrips?.length === 1 ? "" : "s"}`}
-          </span>
-        </div>
-      </div>
+      {/* ── Current Assignment Card ── */}
+      <CrewCurrentAssignmentCard
+        staff={currentStaff}
+        onAssignBus={() => setIsAssignBusOpen(true)}
+      />
 
-      {/* Identity & Contact */}
-      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-100">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-            {isDriver ? "License & Contact" : "Contact & Assignment"}
-          </h3>
-        </div>
-        <dl className="grid sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-neutral-100">
-          <div className="px-6 py-4">
-            <dt className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Phone</dt>
-            <dd className="mt-1 text-sm font-semibold text-neutral-800 font-mono">{staff.phone}</dd>
-          </div>
-          <div className="px-6 py-4">
-            <dt className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Operator Brand</dt>
-            <dd className="mt-1 text-sm font-semibold text-neutral-800">{brandName}</dd>
-          </div>
-          {isDriver && (
-            <>
-              <div className="px-6 py-4">
-                <dt className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Driving License</dt>
-                <dd className="mt-1 text-sm font-semibold text-neutral-800">
-                  {staff.licenseNumber || "Not supplied"} {staff.licenseType ? `· ${staff.licenseType}` : ""}
-                </dd>
+      {/* ── Upcoming Departures Card ── */}
+      <CrewUpcomingDeparturesCard staff={currentStaff} />
+
+      {/* ── Driver / Conductor Details Card ── */}
+      <CrewDetailsCard
+        staff={currentStaff}
+        brandName={brandName}
+        onEditDetails={() => setIsEditOpen(true)}
+        onViewDocuments={() => setIsDocumentsOpen(true)}
+      />
+
+      {/* ── Vehicle Access Assignment Dialog ── */}
+      {isAssignBusOpen && (
+        <CrewVehicleAccessDialog
+          staff={currentStaff}
+          onClose={() => setIsAssignBusOpen(false)}
+          onSaved={(msg) => {
+            setIsAssignBusOpen(false);
+            setFeedback(msg);
+            listOperatorFleets().then(setFleets).catch(() => {});
+            onStaffUpdated?.();
+          }}
+        />
+      )}
+
+      {/* ── Edit Staff Member Dialog ── */}
+      {isEditOpen && (
+        <CrewAssignmentDialog
+          brands={brands}
+          initialRole={currentStaff.role}
+          existing={currentStaff}
+          onClose={() => setIsEditOpen(false)}
+          onSaved={(msg, _warn, result) => {
+            setIsEditOpen(false);
+            setFeedback(msg);
+            if (result) {
+              setCurrentStaff((prev) => ({
+                ...prev,
+                fullName: result.name || prev.fullName,
+                phone: result.phone || prev.phone,
+                staffCode: result.staffCode || prev.staffCode,
+                status: result.profileStatus || prev.status,
+                approvalStatus: result.approvalStatus || prev.approvalStatus,
+                accessStatus: result.accessStatus || prev.accessStatus,
+                invitationDeliveryStatus: result.invitationDeliveryStatus || prev.invitationDeliveryStatus,
+              }));
+            }
+            onStaffUpdated?.();
+          }}
+        />
+      )}
+
+      {/* ── Documents Modal ── */}
+      {isDocumentsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl border border-[#EDE7E0] bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#EDE7E0] pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="size-4 text-[#7A1D1B]" />
+                <h3 className="font-bold text-[#111111] text-sm">Staff documents</h3>
               </div>
-              <div className="px-6 py-4">
-                <dt className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">License Valid Until</dt>
-                <dd className={`mt-1 text-sm font-semibold flex items-center gap-1.5 ${isExpired ? "text-red-700" : "text-neutral-800"}`}>
-                  {isExpired && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
-                  {staff.licenseExpiry ? new Date(staff.licenseExpiry).toLocaleDateString() : "Not supplied"}
-                  {isExpired && <span className="text-[11px]">(Expired)</span>}
-                </dd>
-              </div>
-            </>
-          )}
-          {!isDriver && staff.email && (
-            <div className="px-6 py-4">
-              <dt className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Email</dt>
-              <dd className="mt-1 text-sm font-semibold text-neutral-800">{staff.email}</dd>
+              <button
+                type="button"
+                onClick={() => setIsDocumentsOpen(false)}
+                className="size-7 rounded-full flex items-center justify-center text-[#746E69] hover:bg-[#FAF8F5]"
+              >
+                <X className="size-4" />
+              </button>
             </div>
-          )}
-        </dl>
-      </div>
-
-      {/* Assigned Trips / Manifests feed */}
-      <div className="rounded-2xl border border-neutral-200/80 bg-white shadow-xs overflow-hidden">
-        <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-            {isDriver ? "Assigned Departures" : "Scheduled Manifests"}
-          </h3>
-          {(staff.assignedTrips?.length ?? 0) > 0 && (
-            <span className="rounded-full bg-[#FAF0ED] px-2.5 py-0.5 text-xs font-bold text-[#7A1D1B]">
-              {staff.assignedTrips!.length} trip{staff.assignedTrips!.length === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
-        {staff.assignedTrips && staff.assignedTrips.length > 0 ? (
-          <div className="divide-y divide-neutral-100">
-            {staff.assignedTrips.map((trip) => (
-              <div key={trip.id} className="px-6 py-4 flex items-center justify-between gap-3">
+            <div className="space-y-2 text-xs">
+              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#EDE7E0] flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-neutral-900">{trip.route?.name || "Scheduled route"}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    {trip.tripDate} &middot; {trip.departureTime}
-                  </p>
+                  <p className="font-semibold text-[#111111]">Driving License</p>
+                  <p className="text-[11px] text-[#746E69]">{currentStaff.licenseNumber || "License record on file"}</p>
                 </div>
-                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-semibold text-neutral-700">
-                  {trip.status}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#065F46] bg-[#ECFDF5] border border-[#A7F3D0] px-2 py-0.5 rounded-md">
+                  Verified
                 </span>
               </div>
-            ))}
+            </div>
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDocumentsOpen(false)}
+                className="rounded-full border border-[#EDE7E0] bg-white px-4 py-1.5 text-xs font-semibold text-[#191512] shadow-2xs hover:bg-[#FAF8F5]"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        ) : (
-          <ProfileEmptySection
-            icon={Route}
-            title={isDriver ? "No departures assigned" : "No manifests scheduled"}
-            description={
-              isDriver
-                ? "When this driver is added to bus departures, their route schedule and trip history will appear here."
-                : "When this conductor is assigned to trips, passenger manifests and boarding runs will appear here."
-            }
-          />
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ── Toast Feedback ── */}
+      {feedback && (
+        <button
+          type="button"
+          onClick={() => setFeedback(null)}
+          className="fixed bottom-6 right-6 z-50 max-w-sm rounded-2xl bg-[#191512] px-5 py-3.5 text-left text-xs font-semibold text-white shadow-2xl transition hover:bg-[#2A2520] cursor-pointer"
+        >
+          {feedback}
+        </button>
+      )}
     </div>
   );
 }

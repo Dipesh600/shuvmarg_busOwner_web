@@ -4,11 +4,42 @@ import { useState } from "react";
 import { Store, Users } from "lucide-react";
 import AgentCountersList from "./AgentCountersList";
 import CrewMembersList from "./CrewMembersList";
+import CrewProfileScreen from "./profile/CrewProfileScreen";
+import AgentProfileScreen from "./profile/AgentProfileScreen";
+import type { StaffMember } from "./staff-contract";
+import type { AgentAssignment } from "@/features/agent-assignment/agent-assignment-contract";
 
 type ActiveTab = "crew" | "agents";
 
 export default function StaffManagementLayout() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("crew");
+  const [selectedCrew, setSelectedCrew] = useState<{ member: StaffMember; brandName: string } | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentAssignment | null>(null);
+
+  // Dedicated Standalone Crew Profile Screen (Driver / Conductor)
+  if (selectedCrew) {
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-6">
+        <CrewProfileScreen
+          staff={selectedCrew.member}
+          brandName={selectedCrew.brandName}
+          onBack={() => setSelectedCrew(null)}
+        />
+      </div>
+    );
+  }
+
+  // Dedicated Standalone Ticket Agent Profile Screen
+  if (selectedAgent) {
+    return (
+      <div className="mx-auto w-full max-w-6xl space-y-6">
+        <AgentProfileScreen
+          assignment={selectedAgent}
+          onBack={() => setSelectedAgent(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -126,7 +157,13 @@ export default function StaffManagementLayout() {
         </nav>
       </div>
 
-      {activeTab === "agents" ? <AgentCountersList /> : <CrewMembersList />}
+      {activeTab === "agents" ? (
+        <AgentCountersList onSelectAgent={setSelectedAgent} />
+      ) : (
+        <CrewMembersList
+          onSelectStaff={(member, brandName) => setSelectedCrew({ member, brandName })}
+        />
+      )}
     </div>
   );
 }

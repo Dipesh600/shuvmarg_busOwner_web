@@ -61,6 +61,43 @@ export interface DriverInput {
 }
 export type CrewInput = ConductorInput | DriverInput;
 
+export type CrewAssignmentStatus = "ASSIGNED" | "UNASSIGNED" | "REQUIRES_ATTENTION";
+
+export interface CanonicalCurrentCrew {
+  status: CrewAssignmentStatus;
+  role: StaffRole;
+  profileId: string | null;
+  profile: {
+    _id: string;
+    fullName: string;
+    phone?: string | null;
+    photo?: string | null;
+    staffCode?: string | null;
+    status?: string | null;
+    accessStatus?: string | null;
+    approvalStatus?: string | null;
+    licenseNumber?: string | null;
+    licenseType?: string | null;
+    licenseExpiry?: string | null;
+    medicalCertExpiry?: string | null;
+  } | null;
+  assignmentSource: "LEDGER" | "LEGACY_FLEET" | null;
+  effectiveFrom: string | null;
+  issueCode: string | null;
+  issueDetail: string | null;
+  driverDetails?: {
+    licenseNumber?: string | null;
+    licenseType?: string | null;
+    licenseExpiry?: string | null;
+    approvalStatus?: string | null;
+  } | null;
+  conductorDetails?: {
+    identityCode?: string | null;
+    accessStatus?: string | null;
+    phone?: string | null;
+  } | null;
+}
+
 export interface VehicleCrewOption {
   profileId: string;
   role: StaffRole;
@@ -70,6 +107,7 @@ export interface VehicleCrewOption {
   status: StaffOperationalStatus;
   accessStatus: StaffMember["accessStatus"];
   approvalStatus: string | null;
+  licenseNumber?: string | null;
   licenseType: string | null;
   licenseExpiry: string | null;
   eligible: boolean;
@@ -77,10 +115,12 @@ export interface VehicleCrewOption {
   isCurrent: boolean;
   currentVehicles: { id: string; busName: string; busNumber: string }[];
   assignedToOtherBus?: { id: string; busName: string; busNumber: string } | null;
+  assignmentEffectiveFrom?: string | null;
 }
 
 export interface VehicleCrewOptions {
   vehicle: { id: string; busName: string; busNumber: string };
+  currentAssignment?: CanonicalCurrentCrew | null;
   currentProfileId: string | null;
   options: VehicleCrewOption[];
 }
@@ -165,6 +205,29 @@ export async function setVehicleCurrentCrew(
     ), `Unable to update the current ${role}`);
     if (typeof window !== "undefined") window.localStorage.removeItem(storageKey);
     return result;
+  } catch (error) {
+    if (typeof window !== "undefined" && error instanceof ApiResponseError
+      && error.status < 500 && error.code !== "CREW_CHANGE_IN_PROGRESS") {
+      window.localStorage.removeItem(storageKey);
+    }
+    throw error;
+  }
+}
+export async function removeVehicleCurrentCrew(
+  fleetId: string,
+  role: StaffRole,
+): Promise<void> {
+  const storageKey = `shuvmarg:crew-change:${fleetId}:${role}:unassign`;
+  const requestId = typeof window === "undefined" ? crypto.randomUUID()
+    : window.localStorage.getItem(storageKey) || crypto.randomUUID();
+  if (typeof window !== "undefined") window.localStorage.setItem(storageKey, requestId);
+  try {
+    const response = await authFetch(
+      `/busowner/fleets/${encodeURIComponent(fleetId)}/current-crew/${role}`,
+      { method: "DELETE", body: JSON.stringify({ requestId }) },
+    );
+    await read<unknown>(response, `Unable to remove the current ${role}`);
+    if (typeof window !== "undefined") window.localStorage.removeItem(storageKey);
   } catch (error) {
     if (typeof window !== "undefined" && error instanceof ApiResponseError
       && error.status < 500 && error.code !== "CREW_CHANGE_IN_PROGRESS") {

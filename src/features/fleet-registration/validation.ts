@@ -1,3 +1,4 @@
+import { validateVideoFile } from "../vehicle-documents/video-policy.ts";
 import type { FleetRegistrationDraft, FleetStep } from "./types";
 import type { FleetReviewRequirementKey } from "./api";
 
@@ -13,6 +14,7 @@ export function validateFleetStep(step: FleetStep, draft: FleetRegistrationDraft
   if (step === "layout" && !draft.layout) return "Choose a published seat layout before continuing.";
   if (step === "photos" && Object.values(draft.files.photos).some((file) => !file)) return "Add front, rear, side and interior photos.";
   if (step === "documents") {
+    if (draft.files.vehicleVideo) { const issue = validateVideoFile(draft.files.vehicleVideo); if (issue) return issue; }
     if (!draft.files.fitnessCert || !draft.files.insurance || !draft.files.bluebook || !draft.files.routePermit) return "Upload all four required compliance documents.";
     if (!clean(draft.documents.insurancePolicyNumber)) return "Add the insurance policy number.";
     if (!clean(draft.documents.fitnessValidTill) || !clean(draft.documents.insuranceValidTill) || !clean(draft.documents.routePermitValidTill)) return "Choose the expiry date for the fitness certificate, insurance and route permit.";

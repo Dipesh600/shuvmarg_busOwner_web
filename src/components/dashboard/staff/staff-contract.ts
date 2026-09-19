@@ -58,6 +58,11 @@ export interface StaffMember {
   createdAt?: string;
   removedAt?: string | null;
   assignedBusId?: string | null;
+  assignedBusNumber?: string | null;
+  assignedBusName?: string | null;
+  emergencyContact?: string | null;
+  address?: string | null;
+  notes?: string | null;
   assignedTrips?: AssignedCrewTrip[];
   declinedAt?: string | null;
   leftAt?: string | null;

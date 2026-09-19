@@ -1,3 +1,4 @@
+import VideoUploadField from "../components/VideoUploadField";
 import UploadCard from "../components/UploadCard";
 import { inputClass } from "../components/FormField";
 import type { FleetRegistrationDraft } from "../types";
@@ -23,6 +24,7 @@ export default function DocumentsStep({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
+      <VideoUploadField file={draft.files.vehicleVideo || null} disabled={readOnly} onChange={value => update({ ...draft, files: { ...draft.files, vehicleVideo: value } })} />
       <UploadCard
         label="Fitness certificate"
         files={draft.files.fitnessCert ? [draft.files.fitnessCert] : []}

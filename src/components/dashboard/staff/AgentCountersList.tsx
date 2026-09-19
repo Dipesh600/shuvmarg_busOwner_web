@@ -67,7 +67,11 @@ const commissionLabel = (row: AgentAssignment) => {
   return `Rs. ${row.commission.value} ${unit}`;
 };
 
-export default function AgentCountersList() {
+interface AgentCountersListProps {
+  onSelectAgent?: (agent: AgentAssignment) => void;
+}
+
+export default function AgentCountersList({ onSelectAgent }: AgentCountersListProps = {}) {
   const [assignments, setAssignments] = useState<AgentAssignment[]>([]);
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [brandId, setBrandId] = useState("");
@@ -357,7 +361,13 @@ export default function AgentCountersList() {
                   return (
                     <tr
                       key={row.assignmentId}
-                      onClick={() => setSelectedAgent(row)}
+                      onClick={() => {
+                        if (onSelectAgent) {
+                          onSelectAgent(row);
+                        } else {
+                          setSelectedAgent(row);
+                        }
+                      }}
                       className="hover:bg-[#FAF8F5]/80 transition-colors cursor-pointer group"
                     >
                       <td className="px-4 py-3">
@@ -413,7 +423,11 @@ export default function AgentCountersList() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setSelectedAgent(row);
+                                  if (onSelectAgent) {
+                                    onSelectAgent(row);
+                                  } else {
+                                    setSelectedAgent(row);
+                                  }
                                   setOpenActionId(null);
                                 }}
                                 className="w-full px-3 py-2 text-left text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"

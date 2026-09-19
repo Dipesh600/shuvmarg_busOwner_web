@@ -6,6 +6,7 @@
  * All auth state goes through these functions.
  */
 
+import { documentBlobCache, accountScope } from "../features/vehicle-documents/blob-cache.ts";
 import { RateLimitCooldown } from "./rate-limit-cooldown.ts";
 import { SessionReadCache } from "./session-read-cache.ts";
 
@@ -24,6 +25,7 @@ import { API_URL as API } from "./config.ts";
 // ── Token storage ────────────────────────────────────────────────────────────
 
 export function saveTokens(accessToken: string): void {
+  if (accountScope(getAccessToken()) !== accountScope(accessToken)) documentBlobCache.clear();
   if (getAccessToken() !== accessToken) invalidateReadCache();
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   if (typeof window !== "undefined") {
@@ -36,6 +38,7 @@ export function getAccessToken(): string | null {
 }
 
 export function clearTokens(): void {
+  documentBlobCache.clear();
   invalidateReadCache();
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   if (typeof window !== "undefined") {
@@ -50,8 +53,16 @@ export function isLoggedIn(): boolean {
 }
 
 export function subscribeToAuthChanges(onStoreChange: () => void): () => void {
+  const changedInAnotherTab = (event: StorageEvent) => {
+    if (event.key === ACCESS_TOKEN_KEY || event.key === null) {
+      invalidateReadCache();
+      if (event.key === null || event.newValue === null || accountScope(event.oldValue) !== accountScope(event.newValue)) documentBlobCache.clear();
+      onStoreChange();
+    }
+  };
   window.addEventListener("auth-change", onStoreChange);
-  return () => window.removeEventListener("auth-change", onStoreChange);
+  window.addEventListener("storage", changedInAnotherTab);
+  return () => { window.removeEventListener("auth-change", onStoreChange); window.removeEventListener("storage", changedInAnotherTab); };
 }
 
 export function getServerAuthSnapshot(): boolean {

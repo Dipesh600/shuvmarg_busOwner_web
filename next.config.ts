@@ -17,6 +17,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data: https://fonts.gstatic.com https://shuvmarg.vercel.app",
   "img-src 'self' data: blob: https: https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com",
   "frame-src 'self' blob:",
+  "media-src 'self' blob:",
   `connect-src 'self' https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com${apiOrigin ? ` ${apiOrigin}` : ""}${isDevelopment ? " ws: wss:" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",

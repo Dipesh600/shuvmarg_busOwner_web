@@ -39,7 +39,11 @@ const inputClass = "h-10 rounded-xl border border-neutral-200 bg-white px-3 text
 const activeStatus = (value: StaffOperationalStatus) => !["INACTIVE", "SUSPENDED"].includes(value);
 const formatExpiry = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : "Not supplied");
 
-export default function CrewMembersList() {
+interface CrewMembersListProps {
+  onSelectStaff?: (staff: StaffMember, brandName: string) => void;
+}
+
+export default function CrewMembersList({ onSelectStaff }: CrewMembersListProps = {}) {
   const [role, setRole] = useState<StaffRole>("driver");
   const [brands, setBrands] = useState<OperatorBrand[]>([]);
   const [brandId, setBrandId] = useState("");
@@ -402,7 +406,13 @@ export default function CrewMembersList() {
                   return (
                     <tr
                       key={staff.id}
-                      onClick={() => setSelectedStaff(staff)}
+                      onClick={() => {
+                        if (onSelectStaff) {
+                          onSelectStaff(staff, brandName(staff.brandId));
+                        } else {
+                          setSelectedStaff(staff);
+                        }
+                      }}
                       className="hover:bg-[#FAF8F5]/80 transition-colors cursor-pointer group"
                     >
                       <td className="px-4 py-3">

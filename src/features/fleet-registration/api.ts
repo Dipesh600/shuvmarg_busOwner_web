@@ -1,3 +1,4 @@
+import { readVideoResponse } from "../vehicle-documents/video-response";
 import { authFetch } from "@/lib/auth";
 import type { FleetRouteDraft } from "./types";
 import type { SeatLayoutV3 } from "@/features/seat-layout-v3/types";
@@ -78,13 +79,16 @@ export async function listOperatorFleets(): Promise<FleetListItem[]> {
 }
 
 export interface FleetDetailDocument {
+  processingStatus?: string; processingError?: string | null; duration?: number | null; size?: number | null;
   present?: boolean;
   status?: string;
   reason?: string | null;
   validTill?: string;
   policyNumber?: string;
   count?: number;
-  images?: Array<{ imageId?: string | null; view?: string | null }>;
+  uploadedAt?: string | null;
+  fileVersion?: string | null;
+  images?: Array<{ imageId?: string | null; index?: number; view?: string | null; uploadedAt?: string | null; fileVersion?: string | null }>;
 }
 
 export interface FleetSubmissionFileUrls {
@@ -137,15 +141,7 @@ export interface FleetDetailPayload {
 }
 
 export async function getFleetDetail(fleetId: string): Promise<FleetDetailPayload> {
-  const payload = await read<{ data?: unknown }>(
-    await authFetch(`/busowner/fleets/${fleetId}`, {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Pragma": "no-cache",
-        "Expires": "0"
-      }
-    })
-  );
+  const payload = await read<{ data?: unknown }>(await authFetch(`/busowner/fleets/${fleetId}`));
   const raw = payload.data;
   if (!raw || typeof raw !== "object") return {};
   if ("fleet" in raw && raw.fleet && typeof raw.fleet === "object") {
@@ -414,6 +410,12 @@ export async function registerFleet(
   notify("Saving route and meeting places…");
   if (!options.correctionRequirements || options.correctionRequirements.includes("routeSetup")) {
     await saveFleetRouteSetup(fleetId, draft);
+  }
+
+  if (isLocalFile(draft.files.vehicleVideo || null)) {
+    notify("Uploading vehicle video for security scanning…");
+    const form = new FormData(); form.append("video", draft.files.vehicleVideo!);
+    await readVideoResponse(await authFetch(`/busowner/fleets/${encodeURIComponent(fleetId)}/video`, { method: "PUT", body: form }));
   }
 
   // Step 7: Submit for verification review if requested

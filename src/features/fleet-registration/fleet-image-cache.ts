@@ -4,8 +4,18 @@ import { loadDraftFiles } from "./draft-file-storage";
 
 const memoryCache = new Map<string, string>();
 const pendingFetches = new Map<string, Promise<string | null>>();
+const revisions = new Map<string, number>();
 
 const CACHE_PREFIX = "shuvmarg_bus_front_img_";
+
+export function invalidateFleetImageCache(fleetId: string, frontImage?: { imageId: string | null; index: number }) {
+  revisions.set(fleetId, (revisions.get(fleetId) || 0) + 1);
+  memoryCache.delete(fleetId); pendingFetches.delete(fleetId);
+  if (typeof window !== "undefined") {
+    try { window.localStorage.removeItem(`${CACHE_PREFIX}${fleetId}`); } catch { /* Storage can be unavailable. */ }
+    window.dispatchEvent(new CustomEvent("fleet-front-image-changed", { detail: { fleetId, frontImage } }));
+  }
+}
 
 function getLocalStorageImage(fleetId: string): string | null {
   if (typeof window === "undefined") return null;
@@ -111,6 +121,7 @@ export async function getBusFrontImageUrl(
   if (!fleetId && !localDraftId) return null;
 
   const cacheKey = fleetId || localDraftId || "";
+  const revision = revisions.get(cacheKey) || 0;
 
   // 1. Check in-memory cache
   if (memoryCache.has(cacheKey)) {
@@ -173,6 +184,7 @@ export async function getBusFrontImageUrl(
       // Generate compact thumbnail data URL for persistent caching
       const dataUrl = await createThumbnailDataUrl(blob);
       if (!dataUrl) return null;
+      if (revision !== (revisions.get(cacheKey) || 0)) return null;
 
       memoryCache.set(cacheKey, dataUrl);
       setLocalStorageImage(cacheKey, dataUrl);
@@ -184,7 +196,7 @@ export async function getBusFrontImageUrl(
 
   pendingFetches.set(cacheKey, fetchPromise);
   fetchPromise.finally(() => {
-    pendingFetches.delete(cacheKey);
+    if (pendingFetches.get(cacheKey) === fetchPromise) pendingFetches.delete(cacheKey);
   });
 
   return fetchPromise;

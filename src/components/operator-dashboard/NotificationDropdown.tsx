@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/auth";
+import Link from "next/link";
+import { notificationDestination } from "./notification-destination";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2,
@@ -20,6 +22,7 @@ export interface OperatorNotification {
   read: boolean;
   category: "Booking" | "Fleet" | "Payment" | "Refund" | "System";
   priority: "Critical" | "High" | "Normal";
+  actionHref?: string;
 }
 
 
@@ -66,6 +69,7 @@ interface BackendNotification {
   createdAt: string;
   isRead: boolean;
   type: string;
+  meta?: { fleetId?: unknown };
 }
 
 export default function NotificationDropdown({
@@ -91,6 +95,7 @@ export default function NotificationDropdown({
             read: n.isRead,
             category: mapBackendTypeToCategory(n.type),
             priority: mapBackendTypeToPriority(n.type),
+            actionHref: notificationDestination(n.type, n.meta),
           }));
           setNotifications(mapped);
         }
@@ -333,6 +338,7 @@ export default function NotificationDropdown({
                         >
                           {notification.message}
                         </p>
+                        {notification.actionHref && <Link href={notification.actionHref} className="inline-block mt-2 text-xs font-bold underline text-[#7A1D1B]" onClick={event => { event.stopPropagation(); void handleMarkAsRead(notification.id); onClose(); }}>Open Documents</Link>}
                       </div>
                     </div>
                   ))}

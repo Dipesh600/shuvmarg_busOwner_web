@@ -10,11 +10,17 @@ export interface OwnerTrip {
   tripDate: string;
   departureTime: string;
   status: string;
-  brandId?: string;
+  brandId?: string | { _id?: string; brandName?: string };
   tripId?: string;
   tripFare?: number;
   arrivalTime?: string;
-  busId?: { _id?: string; busName?: string; busNumber?: string };
+  busId?: {
+    _id?: string;
+    busName?: string;
+    busNumber?: string;
+    totalSeats?: number;
+    brandId?: { _id?: string; brandName?: string } | string;
+  };
   scheduleId?: string;
   corridorId?: string;
   routeSnapshot?: {
@@ -31,7 +37,7 @@ export interface OwnerTrip {
     };
     assignment?: { scope?: string; reason?: string | null };
   } | null;
-  routeId?: { routeName?: string; fromCity?: string; toCity?: string };
+  routeId?: { routeName?: string; fromCity?: string; toCity?: string; basePrice?: number };
   directionLabel?: string;
   fromStopName?: string;
   toStopName?: string;

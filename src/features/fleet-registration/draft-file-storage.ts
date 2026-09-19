@@ -68,6 +68,7 @@ export async function saveDraftFiles(draftId: string, files: FleetFiles): Promis
       { key: "photos.rear", file: files.photos.rear },
       { key: "photos.side", file: files.photos.side },
       { key: "photos.cabin", file: files.photos.cabin },
+      { key: "vehicleVideo", file: files.vehicleVideo || null },
       { key: "fitnessCert", file: files.fitnessCert },
       { key: "insurance", file: files.insurance },
       { key: "bluebook", file: files.bluebook },
@@ -95,6 +96,7 @@ export async function saveDraftFiles(draftId: string, files: FleetFiles): Promis
 export async function loadDraftFiles(draftId: string): Promise<FleetFiles> {
   const result: FleetFiles = {
     photos: { front: null, rear: null, side: null, cabin: null },
+    vehicleVideo: null,
     fitnessCert: null,
     insurance: null,
     bluebook: null,
@@ -119,6 +121,7 @@ export async function loadDraftFiles(draftId: string): Promise<FleetFiles> {
       else if (record.slotKey === "photos.rear") result.photos.rear = file;
       else if (record.slotKey === "photos.side") result.photos.side = file;
       else if (record.slotKey === "photos.cabin") result.photos.cabin = file;
+      else if (record.slotKey === "vehicleVideo") result.vehicleVideo = file;
       else if (record.slotKey === "fitnessCert") result.fitnessCert = file;
       else if (record.slotKey === "insurance") result.insurance = file;
       else if (record.slotKey === "bluebook") result.bluebook = file;
